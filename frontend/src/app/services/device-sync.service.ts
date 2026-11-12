@@ -113,6 +113,16 @@ export class DeviceSyncService {
   readonly lastSyncedAt = signal<string | null>(null);
   readonly syncing = signal(false);
 
+  /**
+   * Whether this device is waiting on its first sync with the account: signed
+   * in, and nothing read from the service yet. A device that has just signed
+   * in holds none of the account's history or favourites until it lands, and
+   * For You reads that as an account with no history at all -- the four
+   * day-one doors on a device whose account had plenty (12 November). Cleared
+   * when the first pull answers or fails; one that failed is not waited on.
+   */
+  readonly firstSync = signal(false);
+
   private timer: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
@@ -207,6 +217,7 @@ export class DeviceSyncService {
       return;
     }
     this.keysInUse = [this.cursorKey(), this.offeredKey()];
+    this.firstSync.set(this.readCursor() === null);
 
     this.timer = setInterval(() => {
       // A hidden tab is not being read, and a phone with the screen off should
@@ -226,6 +237,7 @@ export class DeviceSyncService {
       this.timer = null;
     }
     document.removeEventListener('visibilitychange', this.onVisible);
+    this.firstSync.set(false);
     // Signed out, whether keeping what the device has or not: the next
     // sign-in reads the account from the start and offers it everything
     // the device has then.
@@ -398,6 +410,7 @@ export class DeviceSyncService {
     // Changes kept back for Save are not to be written over by the account's
     // own copy of the same things in the meantime.
     if (this.holding() && (this.local.hasPending() || this.settings.holding())) {
+      this.firstSync.set(false);
       return of(null);
     }
     const cursor = this.readCursor();
@@ -435,18 +448,27 @@ export class DeviceSyncService {
           // has to open a sealed payload to do it, so it is asynchronous where
           // nothing else here is. Not awaited: a pull that finished is a pull
           // that finished, and a guide arriving a moment later is fine.
-          void this.guideSources.applyIncoming(changes);
+          //
+          // On the first sync, the account's guides are then downloaded here
+          // too: a new device would otherwise have no guide until somebody
+          // found the offer (`loadFirstTimeHere` says when it does not).
+          const guides = this.guideSources.applyIncoming(changes);
+          if (!cursor) {
+            void guides.then(() => this.guideSources.loadFirstTimeHere());
+          }
 
           const moved = countChanges(changes);
 
           if (moved > 0) {
             this.remoteChanges.update(n => n + 1);
           }
+          this.firstSync.set(false);
 
           void this.auditGuides();
         }),
         catchError(() => {
           this.syncing.set(false);
+          this.firstSync.set(false);
           // Nothing to recover: the cursor is untouched, so the next attempt
           // asks for the same window again.
           return of(null);

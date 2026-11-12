@@ -830,7 +830,12 @@
     "withoutGuide": "Brez njega ni mogoče povedati, kaj je zdaj na sporedu. Kanali še vedno delujejo.",
     "nextAfter": "Nato po {{after}}",
     "more": "+ še {{count}}",
-    "show": "TV serija"
+    "show": "TV serija",
+    "settling": {
+      "sync": "Prenašamo vašo zgodovino in priljubljene",
+      "library": "Nalagamo vašo knjižnico filmov in serij",
+      "guide": "Nalagamo TV vodnik"
+    }
   },
   "actions": {
     "playLive": "Predvajaj v živo",

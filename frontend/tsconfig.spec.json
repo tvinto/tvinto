@@ -35,6 +35,12 @@
       "@angular/common/http": ["./node_modules/@angular/common/types/http.d.ts"],
       "@angular/common/http/testing": ["./node_modules/@angular/common/types/http-testing.d.ts"],
       "@angular/core/testing": ["./node_modules/@angular/core/types/testing.d.ts"],
+      // And these, found the same way (12 November): DeviceSyncService
+      // and every spec reaching a component with a button failed to load on
+      // a checkout with no Jest cache.
+      "@angular/core/rxjs-interop": ["./node_modules/@angular/core/types/rxjs-interop.d.ts"],
+      "@spartan-ng/brain/*": ["./node_modules/@spartan-ng/brain/types/spartan-ng-brain-*.d.ts"],
+      "@angular/cdk/*": ["./node_modules/@angular/cdk/types/*.d.ts"],
       "@angular/common/testing": ["./node_modules/@angular/common/types/testing.d.ts"],
       "@angular/platform-browser/testing": [
         "./node_modules/@angular/platform-browser/types/testing.d.ts"

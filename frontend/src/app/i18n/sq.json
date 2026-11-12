@@ -790,7 +790,12 @@
     "withoutGuide": "Pa të nuk mund të thuhet çfarë është në transmetim tani. Kanalet funksionojnë gjithsesi.",
     "nextAfter": "Pastaj pas {{after}}",
     "more": "+ edhe {{count}}",
-    "show": "Serial TV"
+    "show": "Serial TV",
+    "settling": {
+      "sync": "Po sjellim historikun dhe të preferuarat tuaja",
+      "library": "Po ngarkojmë bibliotekën tuaj të filmave dhe serialeve",
+      "guide": "Po ngarkojmë udhëzuesin e TV-së"
+    }
   },
   "actions": {
     "playLive": "Luaj live",

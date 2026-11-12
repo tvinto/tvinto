@@ -790,7 +790,12 @@
     "withoutGuide": "Sin ella no se puede saber qué hay ahora. Tus canales se siguen reproduciendo.",
     "nextAfter": "Después de {{after}}",
     "more": "+ {{count}} más",
-    "show": "Serie de TV"
+    "show": "Serie de TV",
+    "settling": {
+      "sync": "Trayendo tu historial y tus favoritos",
+      "library": "Cargando tu biblioteca de películas y series",
+      "guide": "Cargando la guía de TV"
+    }
   },
   "actions": {
     "playLive": "Ver en directo",

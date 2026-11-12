@@ -830,7 +830,12 @@
     "withoutGuide": "Bez niego nie da się powiedzieć, co jest teraz na antenie. Kanały i tak działają.",
     "nextAfter": "Potem po {{after}}",
     "more": "+ jeszcze {{count}}",
-    "show": "Serial TV"
+    "show": "Serial TV",
+    "settling": {
+      "sync": "Pobieramy Twoją historię i ulubione",
+      "library": "Wczytujemy Twoją bibliotekę filmów i seriali",
+      "guide": "Wczytujemy przewodnik TV"
+    }
   },
   "actions": {
     "playLive": "Odtwórz na żywo",

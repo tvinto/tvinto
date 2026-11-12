@@ -790,7 +790,12 @@
     "withoutGuide": "Zonder die gids valt er niets te zeggen over wat er nu op is. Je zenders spelen gewoon.",
     "nextAfter": "Daarna na {{after}}",
     "more": "+ nog {{count}}",
-    "show": "Tv-serie"
+    "show": "Tv-serie",
+    "settling": {
+      "sync": "Je geschiedenis en favorieten worden opgehaald",
+      "library": "Je film- en seriebibliotheek wordt geladen",
+      "guide": "De tv-gids wordt geladen"
+    }
   },
   "actions": {
     "playLive": "Live afspelen",

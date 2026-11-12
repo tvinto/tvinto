@@ -790,7 +790,12 @@
     "withoutGuide": "Sem ele não dá para dizer o que está no ar agora. Os canais funcionam mesmo assim.",
     "nextAfter": "Depois, após {{after}}",
     "more": "+ mais {{count}}",
-    "show": "Série de TV"
+    "show": "Série de TV",
+    "settling": {
+      "sync": "Trazendo seu histórico e favoritos",
+      "library": "Carregando sua biblioteca de filmes e séries",
+      "guide": "Carregando o guia de TV"
+    }
   },
   "actions": {
     "playLive": "Assistir ao vivo",

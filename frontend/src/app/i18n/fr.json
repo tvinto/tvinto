@@ -790,7 +790,12 @@
     "withoutGuide": "Sans lui, impossible de dire ce qui passe maintenant. Tes chaînes fonctionnent toujours.",
     "nextAfter": "Ensuite après {{after}}",
     "more": "+ {{count}} de plus",
-    "show": "Série TV"
+    "show": "Série TV",
+    "settling": {
+      "sync": "Récupération de votre historique et de vos favoris",
+      "library": "Chargement de votre bibliothèque de films et de séries",
+      "guide": "Chargement du guide TV"
+    }
   },
   "actions": {
     "playLive": "Regarder en direct",
