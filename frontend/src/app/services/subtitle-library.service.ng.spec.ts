@@ -66,7 +66,7 @@ describe('SubtitleLibraryService', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: HttpClient, useValue: http },
-        { provide: API_URL, useValue: 'https://sync.example/api' },
+        { provide: API_URL, useValue: () => 'https://sync.example/api' },
         { provide: PlatformService, useValue: { platform } },
         {
           provide: OpenSubtitlesService,

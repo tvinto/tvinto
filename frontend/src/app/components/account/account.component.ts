@@ -105,7 +105,7 @@ const SECTIONS_FOR = {
 export class AccountComponent {
   readonly accounts = inject(AccountService);
   /** The sync service this account is on, by its host. */
-  readonly serverShown = serverName(inject(API_URL));
+  readonly serverShown = serverName(inject(API_URL)());
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 

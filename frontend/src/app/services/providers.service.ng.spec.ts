@@ -44,7 +44,7 @@ describe('ProvidersService', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: HttpClient, useValue: http },
-        { provide: API_URL, useValue: 'https://sync.example/api' },
+        { provide: API_URL, useValue: () => 'https://sync.example/api' },
         { provide: AccountKeysService, useValue: { seal: async (text: string) => `sealed:${text.length}` } },
         {
           provide: ProviderAccessService,

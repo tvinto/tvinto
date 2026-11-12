@@ -18,13 +18,18 @@ import { API_URL } from './api-url';
  * So the device asks once, rather than guessing from a URL or from a config
  * flag somebody has to remember to set.
  *
- * Asked once per launch and remembered. A server does not change what it is
- * while an app is open, and this sits on the path to signing in.
+ * Asked once and remembered: a server does not change what it is while an
+ * app is open, and this sits on the path to signing in. Asked again when
+ * another server is chosen at sign-in (`forget`).
  */
 @Injectable({ providedIn: 'root' })
 export class ServiceKindService {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = inject(API_URL);
+  // Read at each use: a server chosen at sign-in takes effect without a restart.
+  private readonly syncServer = inject(API_URL);
+  private get apiUrl(): string {
+    return this.syncServer();
+  }
 
   private asked: Promise<boolean> | null = null;
 
@@ -55,7 +60,7 @@ export class ServiceKindService {
     return this.asked;
   }
 
-  /** Test seam, and what a change of server would need. */
+  /** For a server just chosen at sign-in (LoginComponent), and tests. */
   forget(): void {
     this.asked = null;
   }

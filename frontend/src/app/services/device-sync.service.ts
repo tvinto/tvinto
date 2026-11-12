@@ -92,7 +92,11 @@ export class DeviceSyncService {
   private readonly accounts = inject(AccountService);
   private readonly settings = inject(SettingsService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly apiUrl = inject(API_URL);
+  // Read at each use: a server chosen at sign-in takes effect without a restart.
+  private readonly syncServer = inject(API_URL);
+  private get apiUrl(): string {
+    return this.syncServer();
+  }
   private readonly local = inject(LocalUserDataService);
   private readonly guideSources = inject(GuideSourcesService);
   private readonly providerAccess = inject(ProviderAccessService);

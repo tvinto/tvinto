@@ -214,7 +214,7 @@ describe('TmdbService', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: HttpClient, useValue: { get: () => of({ data: { apiKey: options.serviceKey ?? null } }) } },
-        { provide: API_URL, useValue: 'https://sync.example/api' },
+        { provide: API_URL, useValue: () => 'https://sync.example/api' },
         { provide: LocalProfileService, useValue: { active: signal(options.local ?? false) } }
       ]
     });

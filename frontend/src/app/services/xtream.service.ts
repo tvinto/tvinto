@@ -108,7 +108,11 @@ const EMPTY_SERIES: SeriesInfo = {
   providedIn: 'root'
 })
 export class XtreamService {
-  private apiUrl = inject(API_URL);
+  // Read at each use: a server chosen at sign-in takes effect without a restart.
+  private readonly syncServer = inject(API_URL);
+  private get apiUrl(): string {
+    return this.syncServer();
+  }
 
   private readonly accounts = inject(AccountService);
   private readonly settings = inject(SettingsService);

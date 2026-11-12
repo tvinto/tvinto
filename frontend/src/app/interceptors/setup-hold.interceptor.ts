@@ -16,7 +16,7 @@ export const setupHoldInterceptor: HttpInterceptorFn = (req, next) => {
   if (req.context.get(SEND_HELD) || inject(AccountService).profileScope() !== 'setup') {
     return next(req);
   }
-  const apiUrl = inject(API_URL);
+  const apiUrl = inject(API_URL)();
   if (!req.url.startsWith(apiUrl)) {
     return next(req);
   }

@@ -31,7 +31,18 @@
       </div>
     }
 
-    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="flex flex-col gap-4">
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="flex flex-col gap-4" novalidate>
+      <!-- No server yet: its address is step one, at the top, and Sign in
+           checks it, keeps it and signs in, in the one press. It used to be
+           below the form with a button of its own that restarted the app,
+           which came back on Welcome with everything typed gone
+           (12 November). -->
+      @if (noServer()) {
+        <div class="flex flex-col gap-1.5" data-server-first>
+          <ng-container *ngTemplateOutlet="addressField" />
+        </div>
+      }
+
       <div class="flex flex-col gap-1.5">
         <label hlmLabel for="username">{{ 'login.username' | t }}</label>
         <input
@@ -41,8 +52,14 @@
           formControlName="username"
           autocomplete="username"
           [attr.disabled]="loading() ? '' : null"
+          [attr.aria-invalid]="fieldErrors().username ? true : null"
+          [attr.aria-describedby]="fieldErrors().username ? 'username-error' : null"
+          (input)="typedInForm('username')"
           class="w-full"
         />
+        @if (fieldErrors().username; as message) {
+          <small id="username-error" class="text-xs text-destructive" role="alert" data-field-error>{{ message }}</small>
+        }
       </div>
 
       <div class="flex flex-col gap-1.5">
@@ -55,6 +72,9 @@
             formControlName="password"
             [attr.autocomplete]="mode() === 'signIn' ? 'current-password' : 'new-password'"
             [attr.disabled]="loading() ? '' : null"
+            [attr.aria-invalid]="fieldErrors().password ? true : null"
+            [attr.aria-describedby]="fieldErrors().password ? 'password-error' : null"
+            (input)="typedInForm('password')"
             class="min-w-0 flex-1"
           />
           <!-- Beside the field rather than inside it, so a remote reaches it
@@ -74,7 +94,9 @@
             <ng-icon [name]="passwordShown() ? 'lucideEyeOff' : 'lucideEye'" size="18" />
           </button>
         </div>
-        @if (mode() === "register") {
+        @if (fieldErrors().password; as message) {
+          <small id="password-error" class="text-xs text-destructive" role="alert" data-field-error>{{ message }}</small>
+        } @else if (mode() === "register") {
           <small class="text-xs text-muted-foreground">{{ 'login.passwordRule' | t }}</small>
         }
       </div>
@@ -92,11 +114,20 @@
             spellcheck="false"
             placeholder="ABCD-EFGH"
             [attr.disabled]="loading() ? '' : null"
+            [attr.aria-invalid]="fieldErrors().invite ? true : null"
+            (input)="typedInForm('invite')"
             class="w-full font-mono tracking-wider uppercase"
           />
-          <small class="text-xs text-muted-foreground">
-            {{ (inviteNeeded() ? 'login.inviteHelp' : 'login.inviteOptionalHelp') | t }}
-          </small>
+          @if (fieldErrors().invite; as message) {
+            <small class="text-xs text-destructive" role="alert" data-field-error>{{ message }}</small>
+          }
+          <!-- Not before the server has said which it is: the optional help
+               describes the server. -->
+          @if (registration() !== null || !noServer()) {
+            <small class="text-xs text-muted-foreground">
+              {{ (inviteNeeded() ? 'login.inviteHelp' : 'login.inviteOptionalHelp') | t }}
+            </small>
+          }
         </div>
       }
 
@@ -133,50 +164,23 @@
 
     <!-- Which sync service the account is on: the
          build's own, or one somebody runs themselves. Changed only here,
-         signed out, and the app starts again on it. -->
+         signed out, and used at once (API_URL is read at each request). -->
     <!-- A setting row, as on Account, not a bordered box (round 14). The host
          is its line under the name, whole and wrapping where it must: a host
          cut short is the one thing here somebody needs to read to the end. -->
+    @if (!noServer()) {
     <app-setting-group class="mt-4 block" data-server>
       @if (!changingServer()) {
         <app-setting-row
           [label]="'server.label' | t"
-          [sub]="usingDefault ? serverShown + ' · ' + ('server.default' | t) : serverShown"
+          [sub]="usingDefault() ? serverShown() + ' · ' + ('server.default' | t) : serverShown()"
           [disabled]="loading()"
           focusKey="login-server"
           (activate)="startChangingServer()"
         />
       } @else {
-        <form class="setting-block flex flex-col gap-2" (submit)="$event.preventDefault(); useServer()">
-          <label hlmLabel for="server">{{ 'server.address' | t }}</label>
-          <input
-            hlmInput
-            type="url"
-            id="server"
-            name="server"
-            inputmode="url"
-            autocomplete="off"
-            autocapitalize="off"
-            spellcheck="false"
-            placeholder="my-sync.example.workers.dev"
-            [value]="serverInput()"
-            (input)="serverInput.set($any($event.target).value)"
-            [attr.disabled]="checkingServer() ? '' : null"
-            class="w-full"
-          />
-          <small class="text-xs text-muted-foreground">{{ 'server.help' | t }}</small>
-          @if (onTelevision()) {
-            <small class="text-xs text-muted-foreground" data-self-host>
-              {{ 'server.ownGuide' | t }}: <span class="break-all text-foreground">{{ selfHostGuideShown }}</span>
-            </small>
-          } @else {
-            <button hlmBtn variant="quiet" size="sm" type="button" class="-ms-4 self-start" data-self-host (click)="openSelfHostGuide()">
-              {{ 'server.ownGuide' | t }}
-            </button>
-          }
-          @if (serverError()) {
-            <p class="text-xs text-destructive" role="alert">{{ serverError() }}</p>
-          }
+        <form class="setting-block flex flex-col gap-2" (submit)="$event.preventDefault(); useServer()" novalidate>
+          <ng-container *ngTemplateOutlet="addressField" />
           <div class="mt-1 flex flex-wrap items-center gap-2">
             <button hlmBtn variant="primary" size="sm" type="submit" [disabled]="checkingServer()">
               @if (checkingServer()) {
@@ -186,23 +190,61 @@
                 {{ 'server.use' | t }}
               }
             </button>
-            @if (!usingDefault && !noServer) {
+            @if (hasDefault && !usingDefault()) {
               <button hlmBtn variant="secondary" size="sm" type="button" [disabled]="checkingServer()" (click)="useDefaultServer()">
                 {{ 'server.useDefault' | t }}
               </button>
             }
-            <button hlmBtn variant="quiet" size="sm" type="button" [disabled]="checkingServer()" (click)="changingServer.set(false)">
+            <button hlmBtn variant="quiet" size="sm" type="button" [disabled]="checkingServer()" (click)="cancelChangingServer()">
               {{ 'common.cancel' | t }}
             </button>
           </div>
         </form>
       }
     </app-setting-group>
+    }
+
+    <!-- The address, its help and what is wrong with it: step one of the
+         form with no server yet, or the Change form above. Never both. -->
+    <ng-template #addressField>
+      <label hlmLabel for="server">{{ 'server.address' | t }}</label>
+      <input
+        hlmInput
+        type="url"
+        id="server"
+        name="server"
+        inputmode="url"
+        autocomplete="off"
+        autocapitalize="off"
+        spellcheck="false"
+        placeholder="my-sync.example.workers.dev"
+        [value]="serverInput()"
+        (input)="typedServer($any($event.target).value)"
+        (change)="peekRegistration()"
+        [attr.disabled]="checkingServer() || loading() ? '' : null"
+        [attr.aria-invalid]="fieldErrors().server ? true : null"
+        [attr.aria-describedby]="fieldErrors().server ? 'server-error' : null"
+        class="w-full"
+      />
+      @if (fieldErrors().server; as message) {
+        <small id="server-error" class="text-xs text-destructive" role="alert" data-field-error>{{ message }}</small>
+      }
+      <small class="text-xs text-muted-foreground">{{ 'server.help' | t }}</small>
+      @if (onTelevision()) {
+        <small class="text-xs text-muted-foreground" data-self-host>
+          {{ 'server.ownGuide' | t }}: <span class="break-all text-foreground">{{ selfHostGuideShown }}</span>
+        </small>
+      } @else {
+        <button hlmBtn variant="quiet" size="sm" type="button" class="-ms-4 self-start" data-self-host (click)="openSelfHostGuide()">
+          {{ 'server.ownGuide' | t }}
+        </button>
+      }
+    </ng-template>
 
     <!-- On a television: the name and password, or the server's address while
          it is being changed, typed on a phone. -->
     <div class="mt-4 block">
-      <app-phone-form-offer [kind]="changingServer() ? 'server' : 'signin'" [compact]="true" (arrived)="fromPhone($event)" />
+      <app-phone-form-offer [kind]="askingServer() ? 'server' : 'signin'" [compact]="true" (arrived)="fromPhone($event)" />
     </div>
 
     <p class="mt-4 text-center text-xs text-muted-foreground">

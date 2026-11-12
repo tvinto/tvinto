@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { PhoneFormOfferComponent } from '../phone-form-offer/phone-form-offer.component';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -12,10 +13,11 @@ import { t } from '../../utils/i18n';
 import { SettingGroupComponent, SettingRowComponent } from '../../ui/setting-row.component';
 import { TPipe } from '../../pipes/t.pipe';
 import { takePageAfterRestart } from '../../services/family-profiles.service';
-import { API_URL, chooseServer, chosenServer, hasServer } from '../../services/api-url';
+import { API_URL, buildHasServer, chooseServer, chosenServer, hasServer } from '../../services/api-url';
 import { ToastService } from '../../services/toast.service';
 import { SyncStartService } from '../../services/sync-start.service';
 import { OnboardingService } from '../../services/onboarding.service';
+import { ServiceKindService } from '../../services/service-kind.service';
 import { technicalDetail } from '../../utils/failure-messages.utils';
 import { isSyncServiceHealth, registrationOf, serverAddressCandidates, serverName } from '@shared/server';
 import { LanguagePickerComponent } from '../language-picker/language-picker.component';
@@ -33,6 +35,9 @@ const SERVER_FIRST_TRY_MS = 4_000;
 
 type Mode = 'signIn' | 'register';
 
+/** The card's fields that can be missing something, by their element id. */
+type Field = 'server' | 'username' | 'password' | 'invite';
+
 /**
  * The way in.
  *
@@ -44,7 +49,7 @@ type Mode = 'signIn' | 'register';
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [PhoneFormOfferComponent, TPipe, ReactiveFormsModule, NgIcon, HlmButton, HlmInput, HlmLabel, SettingGroupComponent, SettingRowComponent, TvintoMarkComponent, LanguagePickerComponent],
+  imports: [NgTemplateOutlet, PhoneFormOfferComponent, TPipe, ReactiveFormsModule, NgIcon, HlmButton, HlmInput, HlmLabel, SettingGroupComponent, SettingRowComponent, TvintoMarkComponent, LanguagePickerComponent],
   providers: [provideIcons({ lucideEye, lucideEyeOff, lucideLoaderCircle })],
   templateUrl: './login.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -67,7 +72,15 @@ export class LoginComponent {
   /** Making an account, when the first launch's "Sync with an account" sent somebody here. */
   readonly mode = signal<Mode>(this.route.queryParamMap.get('create') === '1' ? 'register' : 'signIn');
   readonly loading = signal(false);
+  /** What the server said no to (a wrong password, a name taken): above the form. */
   readonly error = signal('');
+
+  /**
+   * What is missing from a field, said under that field, which also takes
+   * focus. Not "do this first" at the top of the card about a field that is
+   * right there (12 November).
+   */
+  readonly fieldErrors = signal<Partial<Record<Field, string>>>({});
 
   readonly form = new FormGroup({
     username: new FormControl('', {
@@ -106,9 +119,13 @@ export class LoginComponent {
    * several on a television -- and it happens before any request goes out. A
    * button that sat on "Signing in…" through all of it would look stuck, so
    * while the key is being made it says so, with the progress the derivation
-   * reports.
+   * reports. Before that, with the address typed on this card, the server is
+   * asked whether it is one.
    */
   readonly busyLabel = computed(() => {
+    if (this.checkingServer()) {
+      return t('server.checking');
+    }
     const deriving = this.accounts.deriving();
     if (deriving !== null) {
       return t('login.unlocking', { percent: Math.round(deriving * 100) });
@@ -119,10 +136,15 @@ export class LoginComponent {
   /**
    * Whether an account here needs an invite, as the server says
    * (registrationOf). Null until it answers, and for a server that does not
-   * say -- which needed invites, so that is what null means below.
+   * say -- which needed invites, so that is what null means below. With no
+   * server yet nothing is known, and the card does not claim either; the
+   * server is asked on Sign in before an invite is required.
    */
   readonly registration = signal<'open' | 'invite' | null>(null);
-  readonly inviteNeeded = computed(() => this.registration() !== 'open');
+  readonly inviteNeeded = computed(() => {
+    const registration = this.registration();
+    return registration === null ? !this.noServer() : registration === 'invite';
+  });
 
   constructor() {
     // Without an account this page is passed by, asking nothing of anyone.
@@ -131,14 +153,7 @@ export class LoginComponent {
       return;
     }
 
-    // Asked fresh each time rather than once: a server somebody has just set
-    // up is open to its first account and needs invites from then on.
-    if (!this.noServer) {
-      fetch(`${this.apiUrl}/health`, { cache: 'no-store' })
-        .then(response => response.json())
-        .then(body => this.registration.set(registrationOf(body)))
-        .catch(() => undefined);
-    }
+    this.askRegistration();
 
     // A token from a previous visit may already be good. Check before showing a
     // form that asks for something the user has effectively already given.
@@ -156,20 +171,29 @@ export class LoginComponent {
   // --- Which server ----------------------------------------------------------
 
   private readonly toasts = inject(ToastService);
+  private readonly serviceKind = inject(ServiceKindService);
+  private readonly tv = inject(TvNavigationService);
 
-  /** The server this start of the app talks to, as people recognise it. */
+  /** Where requests go, read at each use (API_URL): a server chosen here is used at once. */
   private readonly apiUrl = inject(API_URL);
+
   /**
    * A build that names no server, and none chosen here yet: the public one
-   * (hasServer). Nothing is asked of anyone until an address is given, and
-   * the address form is open from the start.
+   * (hasServer). The address is then the first field of the form, and Sign
+   * in checks it, keeps it and signs in, in one press.
    */
-  readonly noServer = !hasServer();
-  readonly serverShown = this.noServer ? t('server.none') : serverName(this.apiUrl);
+  readonly noServer = signal(!hasServer());
+  /** The server everything talks to, as people recognise it. */
+  readonly serverShown = signal(serverName(this.apiUrl()));
   /** Whether that is the build's own rather than one chosen here. */
-  readonly usingDefault = chosenServer() === null && !this.noServer;
+  readonly usingDefault = signal(chosenServer() === null);
+  /** Whether the build has one of its own to go back to: not a public build. */
+  readonly hasDefault = buildHasServer();
 
-  readonly changingServer = signal(this.noServer);
+  /** The address form open in place of the Server row: "Change", with a server already in use. */
+  readonly changingServer = signal(false);
+  /** The address is being asked for, on either form. */
+  readonly askingServer = computed(() => this.noServer() || this.changingServer());
 
   /**
    * The guide to running a sync service of one's own (server/README.md). A
@@ -177,7 +201,7 @@ export class LoginComponent {
    * type somewhere that has one.
    */
   readonly selfHostGuideShown = SELF_HOST_GUIDE.replace('https://', '');
-  readonly onTelevision = inject(TvNavigationService).isTelevision;
+  readonly onTelevision = this.tv.isTelevision;
 
   openSelfHostGuide(): void {
     const desktop = (window as { xtreamDesktop?: { openExternal?: (url: string) => Promise<boolean> } }).xtreamDesktop;
@@ -192,73 +216,159 @@ export class LoginComponent {
   }
   readonly serverInput = signal('');
   readonly checkingServer = signal(false);
-  /** What was typed and could not be an address: said under the field, where it was typed. */
-  readonly serverError = signal('');
 
   /** What was typed on a phone (PhoneFormOfferComponent): into the fields, used only when the person goes on here. */
   fromPhone(fields: Record<string, string>): void {
-    if (this.changingServer()) {
-      this.serverInput.set(fields['server'] ?? '');
-      this.serverError.set('');
+    if (this.askingServer() && fields['server'] !== undefined) {
+      this.serverInput.set(fields['server']);
+      this.clearFieldError('server');
     } else {
       this.form.patchValue({ username: fields['name'] ?? '', password: fields['password'] ?? '' });
     }
   }
 
   startChangingServer(): void {
-    this.serverInput.set(this.usingDefault || this.noServer ? '' : this.serverShown);
-    this.serverError.set('');
+    this.serverInput.set(this.usingDefault() ? '' : this.serverShown());
+    this.clearFieldError('server');
     this.changingServer.set(true);
+    this.focusField('server');
+  }
+
+  cancelChangingServer(): void {
+    this.changingServer.set(false);
+    this.clearFieldError('server');
+  }
+
+  typedServer(value: string): void {
+    this.serverInput.set(value);
+    this.clearFieldError('server');
+    if (this.noServer()) {
+      this.registration.set(null);
+    }
   }
 
   /**
-   * Asks the address whether it is a sync service, and if it is, starts the
-   * app again on it. Every service reads where the server is as it starts,
-   * so a fresh start is what makes the new one the one everything uses.
+   * Leaving the address field with no server yet: asks it, quietly, whether
+   * it takes accounts without an invite, so that Create account says so
+   * before it is pressed. Anything wrong with the address is said on Sign
+   * in, not here.
+   */
+  async peekRegistration(): Promise<void> {
+    if (!this.noServer()) {
+      return;
+    }
+    const typed = this.serverInput();
+    for (const apiUrl of serverAddressCandidates(typed)) {
+      try {
+        const response = await fetch(`${apiUrl}/health`, { cache: 'no-store', signal: AbortSignal.timeout(SERVER_FIRST_TRY_MS) });
+        const body: unknown = await response.json();
+        if (this.serverInput() === typed && isSyncServiceHealth(body)) {
+          this.registration.set(registrationOf(body));
+        }
+        return;
+      } catch {
+        // Not this way; the next, if there is one.
+      }
+    }
+  }
+
+  typedInForm(field: Field): void {
+    this.clearFieldError(field);
+  }
+
+  /**
+   * "Use this server", on the Change form: asks the address whether it is a
+   * sync service, and if it is, makes it the one everything uses. What is
+   * typed in the name and password stays as it is.
    */
   async useServer(): Promise<void> {
+    if (!this.serverInput().trim()) {
+      this.missing('server', t('server.needAddress'));
+      return;
+    }
+    this.checkingServer.set(true);
+    try {
+      const apiUrl = await this.checkServer();
+      if (apiUrl) {
+        this.serverChosen(apiUrl);
+        this.focusField('username');
+      }
+    } finally {
+      this.checkingServer.set(false);
+    }
+  }
+
+  /**
+   * The address typed, asked whether it is a sync service. Its API address if
+   * it is; null, with the reason said, if not.
+   */
+  private async checkServer(): Promise<string | null> {
     // https first; the same over http only for a host alone on the person's
     // own network, and only when https did not answer (serverAddressCandidates).
     const candidates = serverAddressCandidates(this.serverInput());
     if (!candidates.length) {
-      this.serverError.set(t('server.invalid'));
-      return;
+      this.missing('server', t('server.invalid'));
+      return null;
     }
-    this.serverError.set('');
-    this.checkingServer.set(true);
     const name = serverName(candidates[0]);
     const unreached: string[] = [];
-    try {
-      for (const [index, apiUrl] of candidates.entries()) {
-        let response: Response;
-        try {
-          response = await fetch(`${apiUrl}/health`, {
-            cache: 'no-store',
-            // Shorter while there is another way still to try.
-            signal: AbortSignal.timeout(index < candidates.length - 1 ? SERVER_FIRST_TRY_MS : SERVER_CHECK_MS)
-          });
-        } catch (error) {
-          unreached.push(`${apiUrl}: ${technicalDetail(error)}`);
-          continue;
-        }
-        const body: unknown = await response.json().catch(() => null);
-        if (!response.ok || !isSyncServiceHealth(body)) {
-          // It answered, as something else: not a reason to try it over http.
-          this.toasts.error(t('server.notSync'), t('server.notSyncBody', { name }), {
-            detail: `${apiUrl}: ${response.status} ${response.statusText}`.trim()
-          });
-          return;
-        }
-        chooseServer(apiUrl);
-        window.location.replace(document.baseURI);
-        return;
+    for (const [index, apiUrl] of candidates.entries()) {
+      let response: Response;
+      try {
+        response = await fetch(`${apiUrl}/health`, {
+          cache: 'no-store',
+          // Shorter while there is another way still to try.
+          signal: AbortSignal.timeout(index < candidates.length - 1 ? SERVER_FIRST_TRY_MS : SERVER_CHECK_MS)
+        });
+      } catch (error) {
+        unreached.push(`${apiUrl}: ${technicalDetail(error)}`);
+        continue;
       }
-      this.toasts.error(t('server.notReached'), t('server.notReachedBody', { name }), {
-        detail: unreached.join('\n')
-      });
-    } finally {
-      this.checkingServer.set(false);
+      const body: unknown = await response.json().catch(() => null);
+      if (!response.ok || !isSyncServiceHealth(body)) {
+        // It answered, as something else: not a reason to try it over http.
+        this.toasts.error(t('server.notSync'), t('server.notSyncBody', { name }), {
+          detail: `${apiUrl}: ${response.status} ${response.statusText}`.trim()
+        });
+        return null;
+      }
+      this.registration.set(registrationOf(body));
+      return apiUrl;
     }
+    this.toasts.error(t('server.notReached'), t('server.notReachedBody', { name }), {
+      detail: unreached.join('\n')
+    });
+    return null;
+  }
+
+  /**
+   * Keeps a server (or the build's own, for null) and uses it from now on.
+   * No restart: every service reads the address as it makes a request
+   * (API_URL), and what was learned about the old one is forgotten.
+   */
+  private serverChosen(apiUrl: string | null): void {
+    chooseServer(apiUrl);
+    this.serviceKind.forget();
+    this.noServer.set(!hasServer());
+    this.serverShown.set(serverName(this.apiUrl()));
+    this.usingDefault.set(chosenServer() === null);
+    this.changingServer.set(false);
+    this.clearFieldError('server');
+    if (apiUrl === null) {
+      this.askRegistration();
+    }
+  }
+
+  /** Asked fresh each time: a server somebody has just set up is open to its first account and needs invites from then on. */
+  private askRegistration(): void {
+    this.registration.set(null);
+    if (this.noServer()) {
+      return;
+    }
+    fetch(`${this.apiUrl()}/health`, { cache: 'no-store' })
+      .then(response => response.json())
+      .then(body => this.registration.set(registrationOf(body)))
+      .catch(() => undefined);
   }
 
   /** Back to the device's own library, from having come here to start syncing. */
@@ -267,57 +377,114 @@ export class LoginComponent {
   }
 
   useDefaultServer(): void {
-    chooseServer(null);
-    window.location.replace(document.baseURI);
+    this.serverChosen(null);
   }
 
   switchTo(mode: Mode): void {
     this.mode.set(mode);
     this.error.set('');
+    this.fieldErrors.set({});
   }
 
   togglePassword(): void {
     this.passwordShown.update(shown => !shown);
   }
 
-  onSubmit(): void {
-    if (this.noServer) {
-      this.error.set(t('server.needFirst'));
-      this.changingServer.set(true);
+  async onSubmit(): Promise<void> {
+    if (this.loading()) {
       return;
     }
-    if (this.form.invalid) {
-      this.error.set(
-        this.mode() === 'register'
-          ? t('login.needValid')
-          : t('login.needBoth')
-      );
+    this.error.set('');
+    // Everything that can be seen to be missing, in the order of the fields,
+    // before anything is asked of a server.
+    if (this.noServer() && !this.serverInput().trim()) {
+      this.missing('server', t('server.needAddress'));
       return;
     }
-
+    const registering = this.mode() === 'register';
     const { username, password, invite } = this.form.getRawValue();
-
-    // Registration is closed on the service except by invite, so an attempt
-    // without one can only be refused -- better said here than after a
-    // key derivation that takes seconds on a television.
-    if (this.mode() === 'register' && this.inviteNeeded() && !invite.trim()) {
-      this.error.set(t('login.needInvite'));
+    if (!username.trim()) {
+      this.missing('username', t('login.needUsername'));
+      return;
+    }
+    if (registering && this.form.controls.username.invalid) {
+      this.missing('username', t('login.usernameRule'));
+      return;
+    }
+    if (!password) {
+      this.missing('password', t('login.needPassword'));
+      return;
+    }
+    if (registering && this.form.controls.password.invalid) {
+      this.missing('password', t('login.passwordRule'));
       return;
     }
 
     this.loading.set(true);
-    this.error.set('');
 
-    const request =
-      this.mode() === 'signIn'
-        ? this.accounts.logIn(username, password)
-        : this.accounts.register(username, password, invite);
+    // The address typed on this card: checked and kept as part of the same
+    // press, rather than a button of its own and a second start.
+    if (this.noServer()) {
+      this.checkingServer.set(true);
+      const apiUrl = await this.checkServer().finally(() => this.checkingServer.set(false));
+      if (!apiUrl) {
+        this.loading.set(false);
+        this.focusField('server');
+        return;
+      }
+      this.serverChosen(apiUrl);
+    }
+
+    // Registration is closed on the service except by invite, so an attempt
+    // without one can only be refused -- better said here than after a
+    // key derivation that takes seconds on a television. Asked after the
+    // server, whose answer says whether it needs one.
+    if (registering && this.inviteNeeded() && !invite.trim()) {
+      this.loading.set(false);
+      this.missing('invite', t('login.needInvite'));
+      return;
+    }
+
+    const request = registering
+      ? this.accounts.register(username, password, invite)
+      : this.accounts.logIn(username, password);
 
     request.subscribe({
       next: () => void this.signedIn(),
       error: (err: unknown) => {
         this.loading.set(false);
         this.error.set(this.accounts.describeError(err));
+      }
+    });
+  }
+
+  /** Says under a field what it is missing, and puts focus there. */
+  private missing(field: Field, message: string): void {
+    this.fieldErrors.set({ [field]: message });
+    this.focusField(field);
+  }
+
+  private clearFieldError(field: Field): void {
+    if (this.fieldErrors()[field]) {
+      this.fieldErrors.update(errors => ({ ...errors, [field]: undefined }));
+    }
+  }
+
+  /**
+   * After the view has drawn what was just asked for (a field that has only
+   * now appeared). On a television without raising the keyboard: OK opens it,
+   * as for any field the remote reaches.
+   */
+  private focusField(field: Field): void {
+    setTimeout(() => {
+      const element = document.getElementById(field);
+      if (!element) {
+        return;
+      }
+      if (this.onTelevision()) {
+        this.tv.focusAsIfMoved(element);
+      } else {
+        element.focus();
       }
     });
   }

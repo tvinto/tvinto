@@ -61,7 +61,7 @@ describe('WebUpdateService', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: PlatformService, useValue: { platform } },
-        { provide: API_URL, useValue: OWN_SERVER },
+        { provide: API_URL, useValue: () => OWN_SERVER },
         { provide: WEB_UPDATE_PLUGIN, useValue: plugin },
         { provide: NativePlayerService, useValue: { active: playing } }
       ]

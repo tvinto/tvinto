@@ -72,7 +72,11 @@ const KNOWN_MESSAGES: Record<string, string> = {
 @Injectable({ providedIn: 'root' })
 export class OpenSubtitlesService {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = inject(API_URL);
+  // Read at each use: a server chosen at sign-in takes effect without a restart.
+  private readonly syncServer = inject(API_URL);
+  private get apiUrl(): string {
+    return this.syncServer();
+  }
   private readonly keys = inject(AccountKeysService);
   private readonly accounts = inject(AccountService);
   private readonly serviceKind = inject(ServiceKindService);

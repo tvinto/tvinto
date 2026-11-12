@@ -38,7 +38,11 @@ const isAccountRecord = (key: string): boolean => key.startsWith(BOOKING_PREFIX)
 export class SettingsService {
   private readonly http = inject(HttpClient);
   private readonly accounts = inject(AccountService);
-  private readonly apiUrl = inject(API_URL);
+  // Read at each use: a server chosen at sign-in takes effect without a restart.
+  private readonly syncServer = inject(API_URL);
+  private get apiUrl(): string {
+    return this.syncServer();
+  }
 
   private readonly values = signal<Record<string, string>>(this.readCache());
 
