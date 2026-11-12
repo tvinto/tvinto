@@ -1,0 +1,239 @@
+<!-- A landmark, because this page is outside the shell and so outside its
+     `<main>`. An audit found the sign-in screen to be the one page in the app
+     with no main region at all. -->
+<main class="flex min-h-dvh items-center justify-center bg-background p-5" data-login-page>
+  @if (!passingThrough) {
+  <!-- One column on a phone and a desktop. On a television, two: who and
+       where on the left, the form on the right, so the page is as wide as
+       the screen and fits on it (25 October; styles.css). -->
+  <div class="rounded-2xl bg-card w-full max-w-md p-8" data-login-card>
+    <div class="mb-6 flex flex-col items-center gap-3 text-center" data-login-brand>
+      <app-tvinto-mark class="size-11" />
+      <div class="space-y-1">
+        <h1 class="text-2xl font-semibold tracking-tight">{{ heading() }}</h1>
+        <p class="text-sm text-muted-foreground">
+          @if (mode() === "signIn") {
+            {{ 'login.leadSignIn' | t }}
+          } @else {
+            {{ 'login.leadRegister' | t }}
+          }
+        </p>
+      </div>
+    </div>
+
+    <div data-login-form>
+    @if (error()) {
+      <div
+        class="mb-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+        role="alert"
+      >
+        {{ error() }}
+      </div>
+    }
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="flex flex-col gap-4">
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="username">{{ 'login.username' | t }}</label>
+        <input
+          hlmInput
+          type="text"
+          id="username"
+          formControlName="username"
+          autocomplete="username"
+          [attr.disabled]="loading() ? '' : null"
+          class="w-full"
+        />
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <label hlmLabel for="password">{{ 'login.password' | t }}</label>
+        <div class="flex items-center gap-2">
+          <input
+            hlmInput
+            [type]="passwordShown() ? 'text' : 'password'"
+            id="password"
+            formControlName="password"
+            [attr.autocomplete]="mode() === 'signIn' ? 'current-password' : 'new-password'"
+            [attr.disabled]="loading() ? '' : null"
+            class="min-w-0 flex-1"
+          />
+          <!-- Beside the field rather than inside it, so a remote reaches it
+               with Right like any other control, and a finger has a whole
+               button to hit. -->
+          <button
+            hlmBtn
+           
+            size="icon"
+            type="button"
+            data-show-password
+            [attr.aria-pressed]="passwordShown()"
+            [attr.aria-label]="(passwordShown() ? 'login.hidePassword' : 'login.showPassword') | t"
+            [title]="(passwordShown() ? 'login.hidePassword' : 'login.showPassword') | t"
+            (click)="togglePassword()"
+          >
+            <ng-icon [name]="passwordShown() ? 'lucideEyeOff' : 'lucideEye'" size="18" />
+          </button>
+        </div>
+        @if (mode() === "register") {
+          <small class="text-xs text-muted-foreground">{{ 'login.passwordRule' | t }}</small>
+        }
+      </div>
+
+      @if (mode() === "register") {
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="invite">{{ (inviteNeeded() ? 'login.invite' : 'login.inviteOptional') | t }}</label>
+          <input
+            hlmInput
+            type="text"
+            id="invite"
+            formControlName="invite"
+            autocomplete="off"
+            autocapitalize="characters"
+            spellcheck="false"
+            placeholder="ABCD-EFGH"
+            [attr.disabled]="loading() ? '' : null"
+            class="w-full font-mono tracking-wider uppercase"
+          />
+          <small class="text-xs text-muted-foreground">
+            {{ (inviteNeeded() ? 'login.inviteHelp' : 'login.inviteOptionalHelp') | t }}
+          </small>
+        </div>
+      }
+
+      <button hlmBtn variant="primary" type="submit" class="w-full" [disabled]="loading()">
+        @if (loading()) {
+          <ng-icon name="lucideLoaderCircle" size="16" class="animate-spin" />
+          {{ busyLabel() }}
+        } @else {
+          {{ submitLabel() }}
+        }
+      </button>
+    </form>
+
+    <!-- The way to the other mode. Gone for a while, because registration on
+         the sync service was closed and the button could only lead to a
+         refusal (TV-15). With invite codes it leads somewhere: registration
+         stays closed to anybody without one. -->
+    <div class="mt-5 flex flex-wrap items-center justify-center gap-x-2 border-t border-border pt-4 text-sm text-muted-foreground">
+      @if (mode() === "signIn") {
+        <span>{{ (inviteNeeded() ? 'login.haveInvite' : 'login.noAccountYet') | t }}</span>
+        <button hlmBtn variant="quiet" size="sm" type="button" class="px-1" (click)="switchTo('register')">
+          {{ 'login.createAccount' | t }}
+        </button>
+      } @else {
+        <span>{{ 'login.haveAccount' | t }}</span>
+        <button hlmBtn variant="quiet" size="sm" type="button" class="px-1" (click)="switchTo('signIn')">
+          {{ 'login.signIn' | t }}
+        </button>
+      }
+    </div>
+    </div>
+
+    <div data-login-more>
+
+    <!-- Which sync service the account is on: the
+         build's own, or one somebody runs themselves. Changed only here,
+         signed out, and the app starts again on it. -->
+    <!-- A setting row, as on Account, not a bordered box (round 14). The host
+         is its line under the name, whole and wrapping where it must: a host
+         cut short is the one thing here somebody needs to read to the end. -->
+    <app-setting-group class="mt-4 block" data-server>
+      @if (!changingServer()) {
+        <app-setting-row
+          [label]="'server.label' | t"
+          [sub]="usingDefault ? serverShown + ' · ' + ('server.default' | t) : serverShown"
+          [disabled]="loading()"
+          focusKey="login-server"
+          (activate)="startChangingServer()"
+        />
+      } @else {
+        <form class="setting-block flex flex-col gap-2" (submit)="$event.preventDefault(); useServer()">
+          <label hlmLabel for="server">{{ 'server.address' | t }}</label>
+          <input
+            hlmInput
+            type="url"
+            id="server"
+            name="server"
+            inputmode="url"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            placeholder="my-sync.example.workers.dev"
+            [value]="serverInput()"
+            (input)="serverInput.set($any($event.target).value)"
+            [attr.disabled]="checkingServer() ? '' : null"
+            class="w-full"
+          />
+          <small class="text-xs text-muted-foreground">{{ 'server.help' | t }}</small>
+          @if (onTelevision()) {
+            <small class="text-xs text-muted-foreground" data-self-host>
+              {{ 'server.ownGuide' | t }}: <span class="break-all text-foreground">{{ selfHostGuideShown }}</span>
+            </small>
+          } @else {
+            <button hlmBtn variant="quiet" size="sm" type="button" class="-ms-4 self-start" data-self-host (click)="openSelfHostGuide()">
+              {{ 'server.ownGuide' | t }}
+            </button>
+          }
+          @if (serverError()) {
+            <p class="text-xs text-destructive" role="alert">{{ serverError() }}</p>
+          }
+          <div class="mt-1 flex flex-wrap items-center gap-2">
+            <button hlmBtn variant="primary" size="sm" type="submit" [disabled]="checkingServer()">
+              @if (checkingServer()) {
+                <ng-icon name="lucideLoaderCircle" size="14" class="animate-spin" />
+                {{ 'server.checking' | t }}
+              } @else {
+                {{ 'server.use' | t }}
+              }
+            </button>
+            @if (!usingDefault && !noServer) {
+              <button hlmBtn variant="secondary" size="sm" type="button" [disabled]="checkingServer()" (click)="useDefaultServer()">
+                {{ 'server.useDefault' | t }}
+              </button>
+            }
+            <button hlmBtn variant="quiet" size="sm" type="button" [disabled]="checkingServer()" (click)="changingServer.set(false)">
+              {{ 'common.cancel' | t }}
+            </button>
+          </div>
+        </form>
+      }
+    </app-setting-group>
+
+    <!-- On a television: the name and password, or the server's address while
+         it is being changed, typed on a phone. -->
+    <div class="mt-4 block">
+      <app-phone-form-offer [kind]="changingServer() ? 'server' : 'signin'" [compact]="true" (arrived)="fromPhone($event)" />
+    </div>
+
+    <p class="mt-4 text-center text-xs text-muted-foreground">
+      {{ 'login.notProvider' | t }}
+    </p>
+
+    <!-- Come here from a device used without an account: the way back to
+         it, which keeps everything as it is. -->
+    @if (toSync) {
+      <div class="mt-3 flex justify-center">
+        <button hlmBtn variant="quiet" size="sm" type="button" (click)="withoutAccount()" data-without-account>
+          {{ 'local.backWithout' | t }}
+        </button>
+      </div>
+    }
+
+    <!-- The language before signing in, too: the picker on Account is
+         behind the sign-in it would have helped with. -->
+    <div class="mt-3 flex justify-center gap-1 text-xs" role="group" [attr.aria-label]="'language.title' | t">
+      @for (language of languages.languages; track language.id) {
+        <button class="chip"
+          type="button"
+          [attr.lang]="language.id"
+          [attr.aria-pressed]="languages.current() === language.id"
+          (click)="languages.choose(language.id)"
+        >
+          {{ language.label }}
+        </button>
+      }
+    </div>
+    </div>
+  </div>
+  }
+</main>

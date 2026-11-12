@@ -1,0 +1,118 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace = "app.tvinto"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "app.tvinto"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        /*
+         * The APK's version, and half of a number line it shares with the web
+         * bundle (frontend/scripts/feed.js).
+         *
+         * A published bundle says which APK it needs (`minNative`), and this is
+         * what that is compared against, so it must be a real three-part
+         * version and it must go up whenever native code changes. "1.0" was the
+         * scaffold's and would have compared as 1.0.0 by luck rather than by
+         * meaning.
+         *
+         * Bump versionCode too when this changes: Capacitor discards a
+         * downloaded bundle when either differs from the one it last saw, which
+         * is what makes a freshly installed APK win over a bundle downloaded
+         * before it.
+         */
+        versionCode 41
+        versionName "1.0.135"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        /*
+         * VLC ships a native library per architecture, and all of them together
+         * are the better part of two hundred megabytes. These three are the ones
+         * that matter: arm64 for any television box or phone made in the last
+         * several years, armeabi for older boxes, and x86_64 for the emulator.
+         *
+         * x86 is left out deliberately -- 32-bit Intel Android effectively does
+         * not exist outside very old emulator images.
+         *
+         * And x86_64 is left out of what is published (`-PforDevices`, which
+         * `tools/build-apk.cmd -PforDevices` passes on): 62 MB of a 168 MB
+         * APK that no phone or television box can use, downloaded by every one
+         * of them -- a TV box's first install over Wi-Fi among them (22
+         * October). Test builds keep it, for the emulators.
+         */
+        ndk {
+            if (project.hasProperty('forDevices')) {
+                abiFilters 'arm64-v8a', 'armeabi-v7a'
+            } else {
+                abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64'
+            }
+        }
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+
+    // The native player. media3-ui brings PlayerView and the subtitle renderer;
+    // the hls artifact is what reads an .m3u8, and exoplayer itself handles
+    // progressive and MPEG-TS.
+    implementation "androidx.media3:media3-exoplayer:$media3Version"
+    implementation "androidx.media3:media3-exoplayer-hls:$media3Version"
+    implementation "androidx.media3:media3-ui:$media3Version"
+
+    // VLC, for what the platform cannot decode. It carries its own decoders
+    // rather than asking Android for one, which is the whole point: a device
+    // offers whatever codecs its vendor shipped, and 10-bit HEVC is missing
+    // from a great many of them.
+    implementation "org.videolan.android:libvlc-all:$libVlcVersion"
+
+    // The television's home screen: a row of favourite channels and the
+    // system's "Play next" (HomeScreenPlugin). 1.1.0 confirmed on Google's
+    // Maven, 4 October 2026.
+    implementation "androidx.tvprovider:tvprovider:1.1.0"
+
+    // The SQLite the database plugin uses, for "Free up space"
+    // (storage/DatabaseSpace): the clean must open the file with the same
+    // copy of SQLite as the plugin, or the two do not see each other's locks.
+    // Keep it at @capacitor-community/sqlite's own version.
+    implementation 'net.zetetic:sqlcipher-android:4.17.0@aar'
+    implementation "androidx.sqlite:sqlite:2.4.0"
+
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

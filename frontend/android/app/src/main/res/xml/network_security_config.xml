@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Permits plain HTTP.
+
+  Android has blocked cleartext since API 28, and this app targets 36. Without
+  this, every HTTP request is dropped inside the app before it reaches the
+  network: nothing arrives at the other end, nothing appears in any server log,
+  and the app simply reports that it could not reach anything.
+
+  It is needed twice over. The provider serves HTTP and has no TLS listener at
+  all, so every catalogue request and every video stream is cleartext. The
+  backend is reached over a local network or the emulator's host alias, where
+  there is no certificate to be had either.
+
+  Deliberately not narrowed to particular hosts: the provider's address is
+  whatever subscription the user enters, and a list here could not know it.
+
+  Note this is separate from allowMixedContent in capacitor.config.ts, and both
+  are required. That one is the WebView refusing to load HTTP content into a
+  page; this is the platform refusing to send the request in the first place.
+-->
+<network-security-config>
+  <base-config cleartextTrafficPermitted="true">
+    <trust-anchors>
+      <certificates src="system" />
+    </trust-anchors>
+  </base-config>
+</network-security-config>

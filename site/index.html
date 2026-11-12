@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en" data-type="software" data-radius="soft" data-ground="sky" data-buttons="tonal" data-motion>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tvinto: open source IPTV player for TV, phone and PC</title>
+<meta name="description" content="Plays the Xtream or M3U subscription you already have on Android TV, Android phones and Windows, with a real programme guide. Free under GPL v3.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Tvinto: open source IPTV player for TV, phone and PC">
+<meta property="og:description" content="A real programme guide and a player built for the remote. No account needed.">
+<meta property="og:image" content="share.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="img/tvinto-icon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#091426">
+<!-- <link rel="canonical" href="https://tvinto.app/"> once the domain is confirmed -->
+<meta name="site-kind" content="software">
+<meta name="page-type" content="software">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@400..700&family=Funnel+Sans:wght@400..600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/system.css">
+<link rel="stylesheet" href="assets/ui/cards.css">
+<link rel="stylesheet" href="assets/motion/motion.css">
+<link rel="stylesheet" href="assets/backgrounds/backgrounds.css">
+<link rel="stylesheet" href="assets/layout/layout.css">
+<link rel="stylesheet" href="assets/icons/icon.css">
+<style>
+:root {
+  --p-bg: #091426; --p-surface: #0f1d36; --p-ink: #eef1fb; --p-muted: #9aa6c4;
+  --p-accent: #4c60dd; --p-accent-ink: #ffffff; --p-action: #4c60dd; --p-action-ink: #ffffff;
+  --p-inv-bg: #eef1fb; --p-inv-surface: #dbdfea; --p-inv-ink: #091426; --p-inv-muted: #555f70;
+  --p-inv-accent: #4c60dd; --p-inv-accent-ink: #ffffff; --p-inv-action: #4c60dd; --p-inv-action-ink: #ffffff;
+  --font-display: "Funnel Display", system-ui, sans-serif;
+  --font-text: "Funnel Sans", system-ui, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --display-weight: 400;
+  --display-tracking: -0.03em;
+  --display-tracking-xl: -0.04em;
+}
+</style>
+<link rel="stylesheet" href="assets/ui/base.css">
+<link rel="stylesheet" href="assets/ui/terminal-run/fragment.css">
+<link rel="stylesheet" href="assets/diagrams/diagram.css">
+<script>document.documentElement.classList.add('m-enter');setTimeout(()=>document.documentElement.classList.add('m-enter-done'),700)</script>
+<script src="assets/backgrounds/backgrounds.js"></script>
+<script>document.documentElement.classList.add('mo-js');setTimeout(()=>document.documentElement.classList.add('mo-safe'),2500)</script>
+<link rel="modulepreload" href="assets/moments/moments.js">
+<link rel="modulepreload" href="assets/moments/lib.js">
+<link rel="modulepreload" href="assets/moments/pinned-chapters/moment.js">
+<style>
+  /* the hero's lit panel and the app's own screens on it */
+  .hero__art { background: radial-gradient(120% 90% at 20% 0%, #23336f 0%, #0f1d36 70%); }
+  .shot { border-radius: var(--r-md); overflow: hidden; box-shadow: 0 24px 60px -20px rgba(0,0,0,.6); border: 1px solid rgba(255,255,255,.08); background: #0b1628; }
+  .shot img { display: block; width: 100%; height: auto; }
+  .shot--note { left: var(--s-6); bottom: var(--s-6); width: 260px; }
+  .shot--profiles { aspect-ratio: 520 / 680; object-fit: cover; }
+
+  /* the guide: the steps drawn as the app's own guide rows, the one on now marked as the app marks it */
+  #guide .mo-pc__step { counter-increment: ch; position: relative; padding-left: 64px; }
+  #guide .mo-pc__step::before { content: counter(ch); position: absolute; left: 16px; top: 2px; font: 500 15px/1.6 var(--font-mono); color: var(--muted); }
+  #guide .mo-pc__steps { counter-reset: ch; }
+  #guide.is-live .mo-pc__step.is-on { border-left-color: #ff5a5f; }
+  #guide.is-live .mo-pc__step.is-on::before { color: #ff5a5f; }
+  #guide .mo-pc__visual img { object-fit: cover; }
+  #guide .mo-pc__visual img.v-profiles { object-fit: contain; background: #0b1628; }
+
+  /* the three tiers and the server's three steps: plain lists, one 1px rule closing each row */
+  .tier, .steps-list { list-style: none; margin: var(--s-5) 0 0; padding: 0; }
+  .tier li, .steps-list li { padding: 8px 0; border-bottom: 1px solid color-mix(in srgb, var(--ink) 14%, transparent); font-size: var(--t-body); }
+  .steps-list { counter-reset: st; }
+  .steps-list li { counter-increment: st; display: flex; gap: var(--s-4); }
+  .steps-list li::before { content: counter(st); font: 500 15px/1.6 var(--font-mono); color: var(--muted); }
+
+  /* each tier shows the screen it unlocks, cropped to the part that matters */
+  .tier-shot { margin: 0 0 var(--s-5); border-radius: var(--r-md); overflow: hidden; border: 1px solid rgba(255,255,255,.08); background: #0b1628; }
+  .tier-shot img { display: block; width: 100%; height: auto; }
+
+  /* the static guide (no pinning on a short or narrow screen) keeps the moment's two screens */
+  @media (min-width: 1024px) { main > #guide:not(.is-live) { height: calc(2 * 100svh); } }
+  @media (min-width: 640px) and (max-width: 1023px) { main > #guide:not(.is-live) { --h: 1; } }
+  @media (max-width: 639px) { main > #guide:not(.is-live) { min-height: calc(2 * 100lvh); } .closing__links .footer__col { grid-column: auto / span 4; } .close__word { font-size: 64px; } }
+  @media (max-width: 1023px) { .shot--note { width: 200px; left: var(--s-4); bottom: var(--s-4); } }
+  @media (min-width: 640px) and (max-width: 1023px) { .hero__art .ly-piece--note { display: none; } }
+  /* stacked, the guide's steps and the tiers spread over their two screens */
+  @media (max-width: 1023px) {
+    main > #guide:not(.is-live) > .mo-pc__grid { flex: 1 0 auto; align-content: stretch; }
+    main > #guide:not(.is-live) .mo-pc__text { grid-template-rows: auto 1fr; }
+    main > #guide:not(.is-live) .mo-pc__steps { align-content: space-between; }
+    #free > .wrap { display: flex; flex-direction: column; }
+  }
+
+  /* stacked, the tiers keep one picture and take two screens */
+  @media (max-width: 1023px) { #free { --h: 2; } }
+  /* on a tablet the guide steps sit two by two, each picture the full width of its column */
+  @media (min-width: 640px) and (max-width: 1023px) {
+    #guide:not(.is-live) .mo-pc__steps { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: var(--gutter); row-gap: var(--s-7); }
+    #guide:not(.is-live) .mo-pc__step { grid-template-columns: minmax(0, 1fr); align-content: start; padding-left: 36px; }
+    #guide:not(.is-live) .mo-pc__step::before { left: 0; }
+    #guide:not(.is-live) .mo-pc__step h3, #guide:not(.is-live) .mo-pc__step p { align-self: start; }
+    #guide:not(.is-live) .mo-pc__step .mo-pc__visual { grid-column: 1; grid-row: auto; margin-top: var(--s-3); }
+    #guide:not(.is-live) .mo-pc__visual > img { max-height: none; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: contain; }
+  }
+  @media (min-width: 640px) and (max-width: 1023px) { #free .tier-shot img { aspect-ratio: 16 / 7; object-fit: cover; object-position: 0 0; } }
+
+  .close__word { padding-block: 0.08em; }
+  @media (min-width: 640px) and (max-width: 1023px) { .footer .footer__col { grid-column: auto / span 4; } }
+
+  /* the server's diagram and the terminal sit in panels the size of their pictures */
+  #server .panel { --p-h: 560px; }
+  #cli .panel { --p-h: 560px; }
+  @media (max-width: 1023px) { #server .panel, #cli .panel { --p-h: 420px; } }
+  @media (max-width: 639px) { #server .panel { --p-h: 300px; } #cli .panel { --p-h: 300px; } }
+</style>
+</head>
+<body>
+<!-- type: software
+     deal: hero collage, nav nav-cards (kept as a plain bar: four words need no picture panel), close close-word,
+     footer footer-dark (was footer-statement: a light slab under a dark page), rhythm surface-pairs, buttons tonal, mark: the client's own logo; palette: the client's own (brand)
+     moments: pinned-chapters in #guide (the brief asks for the app's guide as the page's one moving section)
+     Screens at 1440: hero 1, guide 2 (pinned), free 1, server 1, cli 1, footer.closing 1 -->
+<header class="nav">
+  <div class="wrap nav__bar">
+    <a class="skip-link" href="#top">Skip to content</a>
+    <a class="nav__logo" href="#top"><img src="img/tvinto-icon.svg" alt="" width="28" height="28">Tvinto</a>
+    <nav class="nav__links" aria-label="Main">
+      <div class="nav__item"><a class="nav__link" href="#guide">Features</a></div>
+      <div class="nav__item"><a class="nav__link" href="#free">Free</a></div>
+      <div class="nav__item"><a class="nav__link" href="#server">Server</a></div>
+      <div class="nav__item"><a class="nav__link" href="#cli">Terminal</a></div>
+    </nav>
+    <div class="nav__actions">
+      <a class="nav__link" href="https://github.com/tvinto/tvinto">GitHub</a>
+      <a class="btn btn--primary" href="#contact">Download Tvinto</a>
+    </div>
+    <button class="nav__toggle" type="button" aria-expanded="false" aria-label="Menu">
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 5h14M2 13h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero hero--collage" data-enter aria-labelledby="hero-h">
+    <div class="wrap"><div class="hero-text grid hero__grid">
+      <div class="hero__text span-5">
+        <h1 id="hero-h">Open source IPTV player for TV, phone and PC</h1>
+        <p class="hero__lead">Tvinto plays the Xtream or M3U subscription you already have, with a real programme guide and a player built for the remote. No account needed.</p>
+        <div class="btn-row"><a class="btn btn--primary" href="#contact">Download Tvinto</a><a class="btn btn--secondary" href="https://github.com/tvinto/tvinto">View the source</a></div>
+        <p class="hero__proof">Android TV, Android phones and Windows. Free under GPL v3.</p>
+      </div>
+      <div class="hero__art span-6 start-7" role="img" aria-label="Tvinto's For You screen on a TV, with Who's watching beside it">
+        <div class="ly-piece ly-piece--main shot" aria-hidden="true"><img src="img/tv-for-you.png" alt="" fetchpriority="high" data-source="client" data-subject="the app's For You screen"></div>
+        <div class="ly-piece ly-piece--note shot shot--note" aria-hidden="true"><img class="shot--profiles" src="img/profiles.png" alt="" width="520" height="680" data-source="client" data-subject="the app's profile picker"></div>
+      </div>
+    </div></div>
+  </section>
+
+  <section class="section" id="guide" style="--h: 2" data-moment="pinned-chapters" aria-labelledby="guide-h">
+    <div class="wrap mo-pc__grid">
+      <div class="mo-pc__text">
+        <h2 id="guide-h">What's on in Tvinto</h2>
+        <ol class="mo-pc__steps">
+          <li class="mo-pc__step">
+            <h3>A programme guide in the app</h3>
+            <p>A TV-style grid with what's on now, a mini guide inside the player, reminders and catch-up.</p>
+            <figure class="mo-pc__visual"><img src="img/tv-guide.png" alt="The Sport guide on Android TV, with eight channels and what is on now" width="960" height="540" data-source="client" data-subject="the app's programme guide"></figure>
+          </li>
+          <li class="mo-pc__step">
+            <h3>Every copy of a film on one page</h3>
+            <p>Providers list a film once per language and quality. Tvinto groups them and plays yours first.</p>
+            <figure class="mo-pc__visual"><img src="img/film-copies.png" alt="The Last Lighthouse with four copies: English 4K, German HD, Croatian and one with no language given" width="1600" height="726" data-source="client" data-subject="a film page with its copies"></figure>
+          </li>
+          <li class="mo-pc__step">
+            <h3>Channels change inside the player</h3>
+            <p>Up and down switch channel. Left opens the mini guide with what's on everywhere else.</p>
+            <figure class="mo-pc__visual"><img src="img/tv-player-guide.png" alt="The mini guide over a playing channel, listing the Sport channels" width="1920" height="1080" data-source="client" data-subject="the player's mini guide"></figure>
+          </li>
+          <li class="mo-pc__step">
+            <h3>A profile for everyone at home</h3>
+            <p>Who's watching? with a picture each. You set up the kids' accounts and their PIN.</p>
+            <figure class="mo-pc__visual"><img class="v-profiles" src="img/profiles.png" alt="Who's watching? with three profiles, each with an animal picture" width="520" height="680" data-source="client" data-subject="the app's profile picker"></figure>
+          </li>
+        </ol>
+      </div>
+      <div class="mo-pc__visuals frame"></div>
+    </div>
+  </section>
+
+  <section class="section ground-surface" id="free" aria-labelledby="free-h">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 id="free-h">Free features, with two optional keys</h2>
+        <p>Most of Tvinto works the moment you add your provider. A few extras need your own server or a free key.</p>
+      </div>
+      <div class="grid grid--top">
+        <article class="card card--open span-4">
+          <figure class="tier-shot"><img src="img/tier-guide.png" width="960" height="540" alt="The programme guide on Windows" loading="lazy" data-source="client"></figure>
+          <h3>In the app straight away</h3>
+          <ul class="tier">
+            <li>Live TV, guides and catch-up</li>
+            <li>Films and series, copies grouped</li>
+            <li>Favourites, search and PIN locks</li>
+            <li>Several providers and M3U playlists</li>
+          </ul>
+        </article>
+        <article class="card card--open span-4">
+          <figure class="tier-shot"><img src="img/tier-family.png" width="960" height="540" alt="Family settings with a kid profile chosen" loading="lazy" data-source="client"></figure>
+          <h3>With your own server</h3>
+          <ul class="tier">
+            <li>Sync between TV, phone and PC</li>
+            <li>Family profiles and invites</li>
+            <li>Subtitles saved for every device</li>
+          </ul>
+        </article>
+        <article class="card card--open span-4">
+          <figure class="tier-shot"><img src="img/tier-show.png" width="960" height="540" alt="A show page with its description, rating and Subtitles button" loading="lazy" data-source="client"></figure>
+          <h3>Film details and subtitles with free keys</h3>
+          <ul class="tier">
+            <li>TMDB descriptions in your language, and trailers</li>
+            <li>Popular this week and age-rating locks</li>
+            <li>Subtitles from OpenSubtitles</li>
+          </ul>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section ground-surface" id="server" aria-labelledby="server-h">
+    <div class="wrap">
+      <div class="grid grid--top">
+        <div class="span-5 stack-5">
+          <h2 id="server-h">Your own sync server on Cloudflare</h2>
+          <p>Deploy it to your free Cloudflare account. Logins are encrypted on your devices, so the server can't read them.</p>
+          <ol class="steps-list">
+            <li>Press Deploy to Cloudflare</li>
+            <li>Enter its address in the app</li>
+            <li>Invite your household</li>
+          </ol>
+          <a class="link" href="https://github.com/tvinto/tvinto/blob/main/server/README.md">Set up your server</a>
+        </div>
+        <div class="panel span-6 start-7"><div class="dg" data-diagram><script type="application/json">{"layout": "hub", "alt": "Your Cloudflare sync server keeps Android TV, a phone, Windows and the tvinto command line in sync.", "center": {"label": "Your server", "icon": "logos:cloudflare-icon"}, "spokes": [{"label": "Android TV", "icon": "logos:android-icon"}, {"label": "Phone", "icon": "ui:phone"}, {"label": "Windows", "icon": "logos:microsoft-windows-icon"}, {"label": "tvinto CLI", "icon": "ui:terminal"}]}</script></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="cli" aria-labelledby="cli-h">
+    <div class="wrap">
+      <div class="grid grid--top">
+        <div class="span-5 stack-5">
+          <h2 id="cli-h">Settings from the terminal</h2>
+          <p>The tvinto command changes what the app can: categories, sorting, guide matches, the player. It also runs as an MCP server for AI agents like Claude.</p>
+          <p>Every change shows first with a code and only happens when you apply it.</p>
+          <a class="link" href="https://github.com/tvinto/tvinto/blob/main/cli/README.md">Read the CLI guide</a>
+        </div>
+        <div class="panel span-6 start-7"><div class="stage"><div class="at-rise fit" style="--fit-max:520px;--ax:max(24px, 50% - 260px);--ay:150px;--ay-sm:24px" data-ui-loop>
+            <div class="ui ui-panel ui-term" data-ui="terminal-run">
+              <div class="ui-term__head">
+                <span class="ui-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                <span class="ui-term__title">tvinto</span>
+                <span class="ui-meta">bash</span>
+                <span class="ui-spacer"></span>
+              </div>
+              <div class="ui-term__screen" data-term-screen>
+                <div class="ui-term__track" data-term-track>
+                  <div class="ui-term__ln ui-term__cmd"><span class="ui-term__cwd">~</span><span class="ui-term__sig">$</span><span class="ui-term__typed" data-term-cmd>tvinto hide live 12 15</span></div>
+                  <div class="ui-term__ln ui-term__meter" data-term-out data-term-meter><span class="ui-term__bar" style="--p:1"><i></i></span><span class="ui-term__count" data-term-count>2 of 2 categories</span></div>
+                  <div class="ui-term__ln ui-term__log" data-term-out data-term-step><svg class="ui-term__tick" viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.4 2.8 2.8 6.2-6.4"/></svg><span class="ui-term__path">Shopping</span><span class="ui-term__n">live</span><span class="ui-term__t">hides</span></div>
+                  <div class="ui-term__ln ui-term__log" data-term-out data-term-step><svg class="ui-term__tick" viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.4 2.8 2.8 6.2-6.4"/></svg><span class="ui-term__path">Radio</span><span class="ui-term__n">live</span><span class="ui-term__t">hides</span></div>
+                  <div class="ui-term__ln ui-term__gap" data-term-out aria-hidden="true"></div>
+                  <div class="ui-term__ln ui-term__sum" data-term-out><span class="ui-term__key">Changed</span><span class="ui-term__val">nothing yet</span></div>
+                  <div class="ui-term__ln ui-term__sum" data-term-out><span class="ui-term__key">To do this</span><span class="ui-term__val">tvinto apply K7P2</span></div>
+                  <div class="ui-term__ln ui-term__done" data-term-out data-term-done><span class="ui-term__ok"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4.5 8.3 2.4 2.4 4.6-5"/></svg></span><b>Preview</b><span class="ui-term__dim">for five minutes</span></div>
+                  <div class="ui-term__ln ui-term__cmd" data-term-next><span class="ui-term__cwd">~</span><span class="ui-term__sig">$</span><span class="ui-term__typed"></span><i class="ui-term__caret" aria-hidden="true"></i></div>
+                </div>
+              </div>
+            </div>
+          </div></div></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer closing footer--dark ground-inverse" id="contact" aria-labelledby="close-h">
+  <div class="wrap">
+    <div class="closing__cta close--word">
+      <div class="section-head--split">
+        <div><h2 id="close-h">Download Tvinto</h2><p class="t-lead">For Android TV and phones, and Windows. On a TV, type tvinto.app/a in the Downloader app.</p></div>
+        <a class="btn btn--primary" href="https://github.com/tvinto/tvinto/releases/latest">Download Tvinto</a>
+      </div>
+      <p class="close__word" aria-hidden="true">tvinto</p>
+    </div>
+    <div class="closing__links">
+      <div class="grid">
+        <div class="span-4 stack-4">
+          <a class="nav__logo" href="#top"><img src="img/tvinto-icon.svg" alt="" width="28" height="28">Tvinto</a>
+          <p class="footer__lede">An open source IPTV player. It comes with no channels or subscriptions.</p>
+        </div>
+        <div class="span-2 start-7 footer__col"><h3>App</h3><ul><li><a href="#guide">Features</a></li><li><a href="#free">What's free</a></li></ul></div>
+        <div class="span-2 footer__col"><h3>Server</h3><ul><li><a href="#server">Your own server</a></li><li><a href="#cli">Terminal</a></li></ul></div>
+        <div class="span-2 footer__col"><h3>Project</h3><ul><li><a href="https://github.com/tvinto/tvinto">Source code</a></li><li><a href="https://github.com/tvinto/tvinto/blob/main/NAME-POLICY.md">Name and logo</a></li></ul></div>
+      </div>
+      <div class="footer__legal">
+        <span>&copy; 2026 Tvinto &nbsp; GPL v3</span>
+        <a href="https://github.com/tvinto/tvinto/blob/main/SECURITY.md">Security</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script type="module" src="assets/system.js"></script>
+<script type="module" src="assets/motion/motion.js"></script>
+<script type="module" src="assets/layout/layout.js"></script>
+<script type="module" src="assets/diagrams/mount.js"></script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+ext {
+    minSdkVersion = 24
+    compileSdkVersion = 36
+    targetSdkVersion = 36
+    androidxActivityVersion = '1.11.0'
+    androidxAppCompatVersion = '1.7.1'
+    androidxCoordinatorLayoutVersion = '1.3.0'
+    androidxCoreVersion = '1.17.0'
+    androidxFragmentVersion = '1.8.9'
+    coreSplashScreenVersion = '1.2.0'
+    androidxWebkitVersion = '1.14.0'
+    junitVersion = '4.13.2'
+    androidxJunitVersion = '1.3.0'
+    androidxEspressoCoreVersion = '3.7.0'
+    cordovaAndroidVersion = '14.0.1'
+
+    /*
+     * AndroidX Media3 -- the maintained successor to ExoPlayer, and what plays
+     * the streams the WebView cannot. Many Xtream live channels are raw
+     * MPEG-TS, which a <video> element will not play at all.
+     *
+     * Pinned rather than left open: this build is run on a machine the
+     * assistant cannot reach, so a version that turns out not to exist is a
+     * failure someone else has to diagnose. 1.11.0 was confirmed present on
+     * Google's Maven along with every artifact named below.
+     */
+    media3Version = '1.11.0'
+
+    /*
+     * libVLC. 3.7.5 is the current stable line; 4.0 exists only as EAP builds
+     * and is not something to ship against.
+     */
+    libVlcVersion = '3.7.5'
+}

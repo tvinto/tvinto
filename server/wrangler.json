@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tvinto-sync",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-08-30",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tvinto",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    "ACCOUNT_REGISTRATION": "first-only",
+    "ALLOWED_ORIGINS": "https://localhost,http://localhost,capacitor://localhost,app://-"
+  },
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "invocation_logs": false
+    }
+  }
+}

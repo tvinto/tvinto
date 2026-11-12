@@ -1,0 +1,27 @@
+<!doctype html>
+<!-- Dark by default. Applied here rather than by the app so the first paint is
+     already dark; ThemeService takes over once Angular boots. -->
+<html lang="en" class="dark">
+<head>
+  <meta charset="utf-8">
+  <title>Tvinto</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <!-- Where the backend is, as a file rather than as part of the bundle, so a
+       deployed copy can be pointed somewhere else without being rebuilt. -->
+  <script src="config.js"></script>
+  <script>
+    // Read the saved choice before first paint, so a light-mode user never
+    // sees a dark flash on reload.
+    try {
+      if (localStorage.getItem('theme') === 'light') {
+        document.documentElement.classList.remove('dark');
+      }
+    } catch (_) { /* storage unavailable; keep the default */ }
+  </script>
+</head>
+<body>
+  <app-root></app-root>
+</body>
+</html>

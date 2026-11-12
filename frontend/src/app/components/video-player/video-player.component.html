@@ -1,0 +1,59 @@
+<!-- Just the player. The host supplies the modal chrome; this used to render a
+     second full-screen overlay of its own inside it, giving two headers and
+     two close buttons stacked on each other. -->
+<div class="space-y-3">
+  <div class="relative aspect-video overflow-hidden rounded-lg bg-black">
+    @if (isLoading()) {
+      <div
+        class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 text-muted-foreground"
+      >
+        <ng-icon name="lucideLoaderCircle" size="32" class="animate-spin" />
+        <p class="text-sm">{{ 'player.loading' | t }}</p>
+      </div>
+    }
+
+    @if (errorMessage()) {
+      <div class="absolute inset-0 z-10 flex items-center justify-center p-6">
+        <div
+          class="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-center text-sm text-destructive"
+        >
+          {{ errorMessage() }}
+        </div>
+      </div>
+    }
+
+    @if (resumedFrom() > 0) {
+      <div
+        class="absolute top-3 left-3 z-10 rounded-md bg-black/70 px-2.5 py-1 text-xs text-white"
+      >
+        {{ 'player.resumedFrom' | t: { time: resumedFromLabel() } }}
+      </div>
+    }
+
+    <video #videoElement controls autoplay class="h-full w-full" [class.invisible]="isLoading()">
+      {{ 'player.noVideoTag' | t }}
+    </video>
+
+    <!--
+      Inside the element that goes full screen, and that is the whole point.
+      The first version of this button sat below the player, outside it, so
+      going full screen took the way out of full screen off the screen with it.
+
+      A real button rather than the video's own control, because those live in
+      the element's shadow DOM and are walked with Tab, which a remote has not
+      got -- so full screen, the one thing you actually want from a player on a
+      television, could not be asked for at all.
+    -->
+    <button
+      hlmBtn
+      variant="secondary"
+      size="sm"
+      type="button"
+      class="absolute top-3 right-3 z-20 opacity-70 focus:opacity-100 hover:opacity-100"
+      (click)="toggleFullscreen()"
+    >
+      <ng-icon [name]="isFullscreen() ? 'lucideMinimize' : 'lucideMaximize'" size="16" />
+      {{ (isFullscreen() ? 'player.exit' : 'player.fullScreen') | t }}
+    </button>
+  </div>
+</div>

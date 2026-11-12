@@ -1,0 +1,26 @@
+<!-- Round 14 (DS-TV-9): the PIN in the player's pieces -- the dimmed screen,
+     round keys, dots for the digits given, Cancel as a pill under the keys.
+     No line about the remote's number keys: it was a hint, and they still
+     work. A wrong PIN says so in plain words, not red, which is reserved for
+     what is on air (TV-24). -->
+@if (open()) {
+  <app-dialog-shell
+    data-pin-dialog
+    [heading]="title() | t"
+    [message]="subtitle() ? (subtitle() | t: { name: request()?.subject ?? '' }) : ''"
+    [ownBack]="true"
+    (dismissed)="cancel()"
+  >
+    <p class="min-h-6 text-sm font-semibold" aria-live="polite">
+      @if (paused()) {
+        {{ 'lock.pad.wait' | t: { count: secondsLeft() } }}
+      } @else if (problem() === 'wrong') {
+        {{ 'lock.pad.tryAgain' | t }}
+      } @else if (problem() === 'mismatch') {
+        {{ 'lock.pad.chooseNew' | t }}
+      }
+    </p>
+    <app-pin-pad [entered]="typed().length" [disabled]="paused()" [wobble]="wobble()" (digit)="press($event)" (erase)="backspace()" />
+    <button dialogActions hlmBtn type="button" (click)="cancel()">{{ 'lock.pad.cancel' | t }}</button>
+  </app-dialog-shell>
+}

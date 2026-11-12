@@ -1,0 +1,224 @@
+<!-- The first launch (OnboardingService). Outside the shell, so its own main. -->
+<main class="flex min-h-dvh justify-center bg-background p-5" data-onboarding-page>
+  <div class="flex w-full max-w-md flex-col gap-6" data-onboarding>
+    <!-- Where and which step: the left column on a television. -->
+    <div class="flex flex-col gap-5" data-onboarding-intro>
+      <div class="flex items-center justify-between gap-3">
+        <span class="flex items-center gap-3">
+          <app-tvinto-mark class="size-10" />
+          <span class="text-lg font-semibold tracking-tight">Tvinto</span>
+        </span>
+        <!-- A computer has no Back key. Not on a television, whose remote has one
+             (data-screen-back). -->
+        @if (canGoBack()) {
+          <button hlmBtn variant="quiet" size="sm" type="button" data-screen-back (click)="back()">
+            <ng-icon name="lucideArrowLeft" size="16" />
+            {{ 'common.back' | t }}
+          </button>
+        }
+      </div>
+      <div class="flex flex-col gap-2">
+        @if (step() !== 'welcome') {
+          <div class="flex flex-col gap-2" data-onboarding-progress>
+            <span class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              {{ 'onboarding.stepOf' | t: { n: stepNumber(), of: numbered().length } }}
+            </span>
+            <div class="flex gap-1.5" aria-hidden="true">
+              @for (one of numbered(); track one; let i = $index) {
+                <span class="h-1 w-10 rounded-full" [class.bg-foreground]="i < stepNumber()" [class.bg-[var(--glass-strong)]]="i >= stepNumber()"></span>
+              }
+            </div>
+          </div>
+        }
+        <h1 class="text-3xl font-bold tracking-tight">
+          @switch (step()) {
+            @case ('welcome') { {{ 'onboarding.welcome' | t }} }
+            @case ('provider') { {{ 'onboarding.providerTitle' | t }} }
+            @case ('guide') { {{ 'onboarding.guideTitle' | t }} }
+            @case ('startup') { {{ 'startup.title' | t }} }
+            @case ('done') { {{ 'onboarding.doneTitle' | t }} }
+          }
+        </h1>
+        @switch (step()) {
+          @case ('welcome') { <p class="text-sm text-muted-foreground">{{ 'onboarding.welcomeLead' | t }}</p> }
+          @case ('provider') { <p class="text-sm text-muted-foreground">{{ 'onboarding.providerLead' | t }}</p> }
+          @case ('guide') { <p class="text-sm text-muted-foreground">{{ 'onboarding.guideLead' | t }}</p> }
+          @case ('startup') { <p class="text-sm text-muted-foreground">{{ 'onboarding.startupLead' | t }}</p> }
+        }
+      </div>
+    </div>
+
+    <!-- The step itself: a card on the right on a television. -->
+    <div class="flex flex-1 flex-col gap-5" data-onboarding-step>
+      @switch (step()) {
+        @case ('welcome') {
+          <app-language-picker focusKey="onboarding-language" />
+          <div class="mt-auto flex flex-col gap-2 sm:flex-row" data-onboarding-actions>
+            <button hlmBtn variant="primary" type="button" class="sm:flex-1" data-onboarding-first data-focus-key="onboarding-start" (click)="getStarted()">
+              {{ 'onboarding.getStarted' | t }}
+            </button>
+            <button hlmBtn variant="secondary" type="button" (click)="haveAccount()">{{ 'onboarding.haveAccount' | t }}</button>
+          </div>
+        }
+
+        @case ('provider') {
+          <div class="flex flex-wrap gap-2" role="group" [attr.aria-label]="'onboarding.providerTitle' | t">
+            <button class="chip" type="button" [attr.aria-pressed]="kind() === 'xtream'" (click)="chooseKind('xtream')">
+              {{ 'onboarding.xtream' | t }}
+            </button>
+            <button class="chip" type="button" [attr.aria-pressed]="kind() === 'm3u'" (click)="chooseKind('m3u')">
+              {{ 'onboarding.m3u' | t }}
+            </button>
+            <button class="chip" type="button" [attr.aria-pressed]="kind() === 'stalker'" (click)="chooseKind('stalker')">
+              {{ 'onboarding.portal' | t }}
+            </button>
+          </div>
+          @if (kind() === 'xtream') {
+            <div class="flex flex-col gap-1.5">
+              <label hlmLabel for="onboardingServer">{{ 'onboarding.serverAddress' | t }}</label>
+              <input hlmInput id="onboardingServer" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false"
+                placeholder="http://example.com:8080" class="w-full font-mono" data-onboarding-first
+                [value]="serverUrl()" (input)="serverUrl.set($any($event.target).value); found.set(null)" [attr.disabled]="checking() ? '' : null" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label hlmLabel for="onboardingUser">{{ 'onboarding.username' | t }}</label>
+              <input hlmInput id="onboardingUser" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" class="w-full"
+                [value]="username()" (input)="username.set($any($event.target).value); found.set(null)" [attr.disabled]="checking() ? '' : null" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label hlmLabel for="onboardingPassword">{{ 'onboarding.password' | t }}</label>
+              <div class="flex items-center gap-2">
+                <input hlmInput id="onboardingPassword" [type]="passwordShown() ? 'text' : 'password'" autocomplete="off" class="min-w-0 flex-1"
+                  [value]="password()" (input)="password.set($any($event.target).value); found.set(null)" [attr.disabled]="checking() ? '' : null" />
+                <button hlmBtn size="icon" type="button" [attr.aria-pressed]="passwordShown()"
+                  [attr.aria-label]="(passwordShown() ? 'login.hidePassword' : 'login.showPassword') | t" (click)="passwordShown.set(!passwordShown())">
+                  <ng-icon [name]="passwordShown() ? 'lucideEyeOff' : 'lucideEye'" size="18" />
+                </button>
+              </div>
+            </div>
+          } @else if (kind() === 'stalker') {
+            <div class="flex flex-col gap-1.5">
+              <label hlmLabel for="onboardingPortal">{{ 'onboarding.portalAddress' | t }}</label>
+              <input hlmInput id="onboardingPortal" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false"
+                placeholder="http://portal.example.com/c" class="w-full font-mono" data-onboarding-first
+                [value]="portalUrl()" (input)="portalUrl.set($any($event.target).value); found.set(null)" [attr.disabled]="checking() ? '' : null" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label hlmLabel for="onboardingMac">{{ 'onboarding.mac' | t }}</label>
+              <input hlmInput id="onboardingMac" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false"
+                placeholder="00:1A:79:00:00:00" class="w-full font-mono"
+                [value]="mac()" (input)="mac.set($any($event.target).value); found.set(null)" [attr.disabled]="checking() ? '' : null" />
+            </div>
+          } @else {
+            <div class="flex flex-col gap-1.5">
+              <label hlmLabel for="onboardingPlaylist">{{ 'onboarding.playlistAddress' | t }}</label>
+              <input hlmInput id="onboardingPlaylist" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false"
+                placeholder="http://example.com/playlist.m3u" class="w-full font-mono" data-onboarding-first
+                [value]="playlistUrl()" (input)="playlistUrl.set($any($event.target).value); found.set(null)" [attr.disabled]="checking() ? '' : null" />
+            </div>
+          }
+          @if (found(); as answer) {
+            <p class="flex items-center gap-2 text-sm font-semibold text-live" role="status" data-onboarding-found>
+              <ng-icon name="lucideCheck" size="16" />
+              {{ 'onboarding.found' | t: { host: answer.host, count: answer.categories } }}
+            </p>
+          }
+          <div class="mt-auto flex flex-col gap-2 sm:flex-row" data-onboarding-actions>
+            <button hlmBtn variant="primary" type="button" class="sm:flex-1" [attr.aria-disabled]="checking() ? true : null" (click)="checkProvider()">
+              @if (checking()) {
+                <ng-icon name="lucideLoaderCircle" size="16" class="animate-spin" />
+                {{ 'onboarding.checking' | t }}
+              } @else {
+                {{ (found() ? 'onboarding.continue' : 'onboarding.check') | t }}
+              }
+            </button>
+            <button hlmBtn variant="quiet" type="button" [attr.aria-disabled]="checking() ? true : null" (click)="next()">{{ 'onboarding.skip' | t }}</button>
+          </div>
+          <!-- On a television: the same form, typed on a phone. -->
+          <app-phone-form-offer [kind]="kind()" (arrived)="fromPhone($event)" />
+        }
+
+        @case ('guide') {
+          @for (source of sources.sources(); track source.id) {
+            @let state = sourceState(source.id);
+            <div class="flex flex-col gap-1 rounded-md bg-card-2 px-4 py-3" data-onboarding-guide>
+              <div class="flex items-center justify-between gap-3">
+                <span class="min-w-0 truncate font-semibold">{{ guideName(source.label) }}</span>
+                @if (state.totals && state.loading === null) {
+                  <span class="flex shrink-0 items-center gap-1 text-xs font-semibold text-live"><ng-icon name="lucideCheck" size="14" />{{ 'onboarding.added' | t }}</span>
+                }
+              </div>
+              <span class="text-xs text-muted-foreground tabular-nums">
+                @if (state.loading !== null) {
+                  {{ 'onboarding.downloading' | t: { count: state.loading } }}
+                } @else if (state.totals) {
+                  {{ 'onboarding.guideTotals' | t: { channels: state.totals.channels, programmes: state.totals.programmes } }}
+                } @else {
+                  {{ 'onboarding.waiting' | t }}
+                }
+              </span>
+            </div>
+          }
+          @if (!shareAdded()) {
+            <div class="flex items-center justify-between gap-3 rounded-md bg-card-2 px-4 py-3" data-onboarding-share>
+              <div class="flex min-w-0 flex-col">
+                <span class="font-semibold">{{ shareLabel() }}</span>
+                <span class="text-xs text-muted-foreground">epgshare01.online</span>
+              </div>
+              <button hlmBtn variant="secondary" size="sm" type="button" (click)="addShare()">{{ 'onboarding.add' | t }}</button>
+            </div>
+          }
+          <div class="mt-auto flex flex-col gap-2 sm:flex-row" data-onboarding-actions>
+            <button hlmBtn variant="primary" type="button" class="sm:flex-1" data-onboarding-first (click)="next()">{{ 'onboarding.continue' | t }}</button>
+            <button hlmBtn variant="quiet" type="button" (click)="next()">{{ 'onboarding.skip' | t }}</button>
+          </div>
+        }
+
+        @case ('startup') {
+          <app-startup-settings [embedded]="true" />
+          @if (preview.supported) {
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-sm font-medium">{{ 'onboarding.preview' | t }}</span>
+              <div class="flex flex-wrap gap-2" role="group" [attr.aria-label]="'onboarding.preview' | t">
+                <button class="chip" type="button" [attr.aria-pressed]="!preview.enabled()" (click)="setPreview(false)">
+                  {{ 'subs.off' | t }}
+                </button>
+                <button class="chip" type="button" [attr.aria-pressed]="preview.enabled()" (click)="setPreview(true)">
+                  {{ 'subs.on' | t }}
+                </button>
+              </div>
+            </div>
+          }
+          <div class="mt-auto flex flex-col gap-2 sm:flex-row" data-onboarding-actions>
+            <button hlmBtn variant="primary" type="button" class="sm:flex-1" data-onboarding-first (click)="next()">{{ 'onboarding.continue' | t }}</button>
+          </div>
+        }
+
+        @case ('done') {
+          <div class="flex flex-col" data-onboarding-summary>
+            <div class="flex items-center gap-3 border-b border-border py-3">
+              <span class="w-28 shrink-0 text-sm text-muted-foreground">{{ 'onboarding.doneProvider' | t }}</span>
+              <span class="min-w-0 truncate text-sm font-semibold">{{ providerLine() ?? '–' }}</span>
+            </div>
+            <div class="flex items-center gap-3 border-b border-border py-3">
+              <span class="w-28 shrink-0 text-sm text-muted-foreground">{{ 'onboarding.doneGuide' | t }}</span>
+              <span class="text-sm font-semibold">{{ guideCount() ? ('onboarding.guides' | t: { count: guideCount() }) : '–' }}</span>
+            </div>
+            @if (tv.isTelevision()) {
+              <div class="flex items-center gap-3 border-b border-border py-3">
+                <span class="w-28 shrink-0 text-sm text-muted-foreground">{{ 'startup.title' | t }}</span>
+                <span class="text-sm font-semibold">{{ 'onboarding.opensOn' | t: { page: (opensOnLastChannel() ? 'startup.lastChannel' : 'nav.forYou') | t } }}</span>
+              </div>
+            }
+          </div>
+          <div class="mt-auto flex flex-col gap-2 sm:flex-row" data-onboarding-actions>
+            <button hlmBtn variant="primary" type="button" class="sm:flex-1" data-onboarding-first (click)="startWatching()">{{ 'onboarding.startWatching' | t }}</button>
+            @if (!signedIn) {
+              <button hlmBtn variant="secondary" type="button" (click)="syncWithAccount()">{{ 'onboarding.syncWithAccount' | t }}</button>
+            }
+          </div>
+        }
+      }
+    </div>
+  </div>
+</main>

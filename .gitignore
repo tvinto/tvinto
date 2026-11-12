@@ -1,0 +1,112 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Environment variables
+.env
+*/.env
+
+# Build outputs
+dist/
+*/dist/
+build/
+*/build/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Angular
+.angular/
+*/angular/
+
+# SQLite cache databases, including the transient WAL and shared-memory files
+*.db
+# The key that decrypts the stored subscription passwords. It was committed
+# once, which is how it came to be listed here by name.
+*.db.key
+*.key
+# What rotation leaves behind. It is still a key, and the suffix stops the
+# patterns above from matching it -- which is how a retired key ends up being
+# the one that gets committed.
+*.key.superseded-*
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Temporary files
+*.tmp
+*.temp
+
+# Test output
+coverage/
+*/coverage/
+
+# The deploy archive, rebuilt on demand by git archive.
+xtream.tar.gz
+
+# Wrangler's local state, and the local-only variables it reads.
+worker/.wrangler/
+worker/.dev.vars
+
+# What a release is built into before it is uploaded: the desktop installer
+# and the web bundle. Rebuilt on demand, and far too big to keep.
+frontend/dist-updates/
+
+# mpv, fetched into the desktop build by frontend/electron/scripts/fetch-mpv.js.
+# 115 MB of somebody else, pinned and hash-checked there rather than committed.
+frontend/electron/resources/mpv/
+
+# What tools/build-apk.cmd writes. The build itself is worth keeping around;
+# the log of the last one is not.
+tools/build-apk.log
+
+# Skills installed by `npx skills add`, and the symlinks Claude Code reads them
+# through. Vendored rather than committed: they are somebody else's guidance,
+# they run with full agent permissions, and skills-lock.json is enough to put
+# the same versions back.
+.agents/
+.claude/skills/
+
+# Claude Code MCP servers for this machine: absolute paths, so not shared.
+# cli/README.md says how to add tvinto (claude mcp add tvinto -- ...).
+.mcp.json
+
+# One person's own setup, kept beside the code and never in it (the public
+# copy names nobody's server, database or notes).
+# - where their builds find their sync service and updates (frontend/scripts/write-config.mjs)
+frontend/config.local.json
+frontend/src/config.js
+# Built by frontend/scripts/build-phone-page.mjs before every build.
+frontend/src/assets/phone-form.html
+# - their Cloudflare database: worker/wrangler.example.toml is the template
+worker/wrangler.toml
+# - notes for their own assistant, and working notes kept as a repository of their own
+CLAUDE.local.md
+private/
+.claude/
+skills-lock.json
+# - anything with a secret in it
+.env.*
+!.env.example
+*.apk
+*.aab
+
+# design work in progress and the design checker's output
+site-next/
+.taste-skill/

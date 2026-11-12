@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  VLC draws into its own layout, which manages the surface and the aspect ratio
+  itself. Black behind it for the same reason as the Media3 player: a picture
+  narrower than the panel is letterboxed, and letterboxing onto whatever was
+  there looks like a rendering fault.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black">
+
+    <org.videolan.libvlc.util.VLCVideoLayout
+        android:id="@+id/vlc_video_layout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:focusable="true" />
+
+</FrameLayout>

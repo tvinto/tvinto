@@ -1,0 +1,59 @@
+@if (shown()) {
+  <app-setting-group [heading]="'tools.title' | t" data-tools>
+    @for (request of requests.waiting(); track request.id) {
+      <app-setting-row [label]="request.name" [sub]="'tools.waitingLabel' | t: { code: request.code }" kind="static" data-tool-request>
+        <span rowEnd class="flex gap-2">
+          <button hlmBtn variant="primary" size="sm" type="button" (click)="allow(request)" data-tool-allow>{{ 'tools.allow' | t }}</button>
+          <button hlmBtn variant="quiet" size="sm" type="button" (click)="refuse(request)" data-tool-refuse>{{ 'tools.refuse' | t }}</button>
+        </span>
+      </app-setting-row>
+    }
+
+    @for (action of requests.actions(); track action.id) {
+      <app-setting-row
+        [label]="requests.describe(action).title"
+        [sub]="'tools.askedLabel' | t: { tool: action.toolName }"
+        kind="static"
+        data-tool-action
+      >
+        <span rowEnd class="flex gap-2">
+          <button hlmBtn variant="primary" size="sm" type="button" (click)="allowAction(action)" data-tool-action-allow>{{ 'tools.allow' | t }}</button>
+          <button hlmBtn variant="quiet" size="sm" type="button" (click)="refuseAction(action)" data-tool-action-refuse>
+            {{ 'tools.refuse' | t }}
+          </button>
+        </span>
+      </app-setting-row>
+    }
+
+    @for (tool of tools(); track tool.id) {
+      <app-setting-row [label]="tool.name" [sub]="toolLine(tool)" kind="static" data-tool>
+        <button rowEnd hlmBtn variant="quiet" size="sm" type="button" (click)="signOut(tool)" data-tool-sign-out>
+          {{ 'tools.signOut' | t }}
+        </button>
+      </app-setting-row>
+    }
+
+    <!-- How to set one up: commands for a computer, so not on a television. -->
+    @if (showHow()) {
+      <div class="setting-block flex flex-col gap-3 text-sm" data-tools-how>
+        <h3 class="font-semibold">{{ 'tools.howTitle' | t }}</h3>
+        <ol class="flex list-decimal flex-col gap-2 pl-5 text-muted-foreground">
+          <li>{{ 'tools.howGet' | t }}</li>
+          <li>
+            {{ 'tools.howSignIn' | t }}
+            @if (localOnly()) {
+              <code class="mt-1 block rounded-lg bg-[var(--glass-quiet)] p-2 font-mono text-xs break-all text-foreground select-all" data-tools-sign-in>node dist/tvinto.js sign-in --local</code>
+            } @else {
+              <code class="mt-1 block rounded-lg bg-[var(--glass-quiet)] p-2 font-mono text-xs break-all text-foreground select-all" data-tools-sign-in>node dist/tvinto.js sign-in --server {{ server }} --user {{ username() }}</code>
+            }
+          </li>
+          <li>
+            {{ 'tools.howConnect' | t }}
+            <code class="mt-1 block rounded-lg bg-[var(--glass-quiet)] p-2 font-mono text-xs break-all text-foreground select-all" data-tools-connect>claude mcp add tvinto -- node &lt;path to cli&gt;/dist/tvinto.js mcp</code>
+          </li>
+        </ol>
+        <p class="text-xs text-muted-foreground">{{ 'tools.howNever' | t }}</p>
+      </div>
+    }
+  </app-setting-group>
+}

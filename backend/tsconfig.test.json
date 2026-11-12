@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "jest"],
+    "paths": {
+      "@shared/*": ["shared/*"],
+      // The Worker's tests run under this config, and the SQLite driver they
+      // stand D1 up on lives here rather than beside them -- worker/ has no
+      // node_modules of its own and wants none. Jest's `modulePaths` finds the
+      // module at runtime; this is only about finding its declarations, which
+      // is why it points at the types package rather than the code.
+      "better-sqlite3": ["backend/node_modules/@types/better-sqlite3"]
+    }
+  },
+  "include": ["src/**/*.ts", "../shared/**/*.ts", "../worker/**/*.ts", "../cli/src/**/*.ts"],
+  // The base config excludes tests from the build; this one exists to include
+  // them, so its exclude list has to be restated rather than inherited.
+  "exclude": ["node_modules", "dist"]
+}

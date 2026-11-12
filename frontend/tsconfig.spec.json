@@ -1,0 +1,48 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Jest runs CommonJS, and the app is built as ES modules, so the tests
+    // compile differently from the code they test. That is ordinary. What is
+    // not is the consequence below.
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "types": ["node", "jest"],
+
+    // `moduleResolution: node` is the pre-exports algorithm: it looks for a
+    // folder on disk. Angular 21 ships `@angular/core/testing` only as an
+    // entry in its package's `exports` map -- there is no such folder -- so
+    // TypeScript cannot find it and reports TS2307 on the import of TestBed.
+    //
+    // It is worse than an error, because it is intermittent: with a warm Jest
+    // cache the affected file is not re-checked, so the suite is green until
+    // somebody touches it or clears the cache. That is how it was found --
+    // one new spec failed with the same import that an existing, passing spec
+    // has always had.
+    //
+    // Pointing at the declarations directly is the smallest fix. Changing the
+    // module setting to one that reads `exports` means changing how every test
+    // is emitted, to solve a problem with one package's layout.
+    //
+    // `@angular/common/http` is on the list for the same reason, and was the
+    // one missing from it: two Angular specs reach AccountService, which
+    // imports HttpClient, and failed on every run for weeks. A suite that is
+    // always red stops being read, which is the real cost -- anything new that
+    // broke in those files would have looked like the same old failure.
+    "paths": {
+      "@shared/*": ["../shared/*"],
+      // The UI kit, for component specs; tsconfig.json maps it the same way.
+      "@spartan-ng/helm/*": ["./libs/ui/*/src/index.ts"],
+      "@angular/common/http": ["./node_modules/@angular/common/types/http.d.ts"],
+      "@angular/common/http/testing": ["./node_modules/@angular/common/types/http-testing.d.ts"],
+      "@angular/core/testing": ["./node_modules/@angular/core/types/testing.d.ts"],
+      "@angular/common/testing": ["./node_modules/@angular/common/types/testing.d.ts"],
+      "@angular/platform-browser/testing": [
+        "./node_modules/@angular/platform-browser/types/testing.d.ts"
+      ],
+      // The same layout in NgRx 21: the dashboard store's rxMethod comes
+      // from an `exports` entry with no folder, and its spec failed to load.
+      "@ngrx/signals/rxjs-interop": ["./node_modules/@ngrx/signals/types/ngrx-signals-rxjs-interop.d.ts"]
+    }
+  },
+  "include": ["src/**/*.spec.ts", "src/app/utils/**/*.ts", "../shared/**/*.ts"]
+}

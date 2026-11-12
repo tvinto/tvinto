@@ -1,0 +1,122 @@
+<!-- Round 14 (DS-TV-7): providers as a list of rows, their actions as pills
+     at the end of each; adding is glass fields and a Save pill. -->
+@if (providers.supported) {
+  <!-- No heading of its own: Account's section and the first provider's
+       page both name it already. -->
+  <app-setting-group data-providers>
+    <!-- Every provider alike, the first included: switched off, replaced or
+         removed the same way. -->
+    @for (record of providers.all(); track record.tag) {
+      <app-setting-row
+        [label]="record.label"
+        [tag]="(record.kind === 'm3u' ? 'providers.m3u' : 'providers.xtream') | t"
+        [sub]="record.enabled ? '' : ('providers.off' | t)"
+        kind="static"
+        data-provider-row
+      >
+        <span rowEnd class="flex flex-wrap items-center gap-2">
+          <button hlmBtn size="sm" type="button" [disabled]="busy()" (click)="toggle(record)">
+            {{ (record.enabled ? 'providers.switchOff' : 'providers.switchOn') | t }}
+          </button>
+          <button hlmBtn size="sm" type="button" [disabled]="busy()" (click)="startReplacing(record)">
+            {{ 'providers.replace' | t }}
+          </button>
+          <button
+            hlmBtn
+            variant="destructive"
+            size="icon-sm"
+            type="button"
+            [disabled]="busy()"
+            (click)="remove(record)"
+            [title]="'providers.remove' | t: { name: record.label }"
+            [attr.aria-label]="'providers.remove' | t: { name: record.label }"
+          >
+            <ng-icon name="lucideTrash2" />
+          </button>
+        </span>
+      </app-setting-row>
+    }
+
+    @if (editing(); as current) {
+      <form [formGroup]="form" (ngSubmit)="submit()" class="setting-block flex flex-col gap-4" data-provider-form>
+        <h3 class="text-base font-bold">
+          @if (current.mode === 'replace') {
+            {{ 'providers.replacing' | t: { name: current.record.label } }}
+          } @else {
+            {{ (current.kind === 'm3u' ? 'providers.addM3u' : current.kind === 'stalker' ? 'providers.addPortal' : 'providers.addXtream') | t }}
+          }
+        </h3>
+
+        <label class="flex flex-col gap-2">
+          <span hlmLabel>{{ 'sub.label' | t }}</span>
+          <input hlmInput id="providerLabel" type="text" formControlName="label" [placeholder]="'providers.labelPlaceholder' | t" />
+        </label>
+
+        @if (kindOf() === 'stalker') {
+          <label class="flex flex-col gap-2">
+            <span hlmLabel>{{ 'onboarding.portalAddress' | t }}</span>
+            <input hlmInput id="providerPortal" type="text" formControlName="portalUrl" placeholder="http://portal.example.com/c" class="font-mono" />
+          </label>
+          <label class="flex flex-col gap-2">
+            <span hlmLabel>{{ 'onboarding.mac' | t }}</span>
+            <input hlmInput id="providerMac" type="text" formControlName="mac" placeholder="00:1A:79:00:00:00" autocomplete="off" class="font-mono" />
+          </label>
+        } @else if (kindOf() === 'm3u') {
+          <label class="flex flex-col gap-2">
+            <span hlmLabel>{{ 'providers.playlistUrl' | t }}</span>
+            <input hlmInput id="providerUrl" type="text" formControlName="url" placeholder="http://example.com/playlist.m3u" class="font-mono" />
+          </label>
+        } @else {
+          <label class="flex flex-col gap-2">
+            <span hlmLabel>{{ 'sub.serverUrl' | t }}</span>
+            <input hlmInput id="providerServer" type="text" formControlName="serverUrl" placeholder="http://example.com:8080" class="font-mono" />
+          </label>
+          <label class="flex flex-col gap-2">
+            <span hlmLabel>{{ 'sub.username' | t }}</span>
+            <input hlmInput id="providerUser" type="text" formControlName="username" autocomplete="off" />
+          </label>
+          <label class="flex flex-col gap-2">
+            <span hlmLabel>{{ 'sub.password' | t }}</span>
+            <span class="flex items-center gap-3">
+              <input
+                hlmInput
+                id="providerPassword"
+                class="min-w-0 flex-1"
+                [type]="showPassword() ? 'text' : 'password'"
+                formControlName="password"
+                autocomplete="off"
+              />
+              <button hlmBtn variant="quiet" size="sm" type="button" [attr.aria-pressed]="showPassword()" (click)="showPassword.set(!showPassword())">
+                {{ (showPassword() ? 'sub.hide' : 'sub.show') | t }}
+              </button>
+            </span>
+          </label>
+        }
+
+        @if (kindOf(); as kind) {
+          <app-phone-form-offer [kind]="kind" (arrived)="fromPhone($event)" />
+        }
+
+        <div class="flex flex-wrap gap-3">
+          <button hlmBtn variant="primary" type="submit" [disabled]="busy()">{{ 'providers.save' | t }}</button>
+          <button hlmBtn variant="quiet" type="button" (click)="cancel()">{{ 'cat.cancel' | t }}</button>
+        </div>
+      </form>
+    } @else {
+      <div class="setting-block flex flex-wrap gap-3">
+        <button hlmBtn size="sm" type="button" (click)="startAdding('xtream')" data-add-xtream>
+          <ng-icon name="lucidePlus" />
+          {{ 'providers.addXtream' | t }}
+        </button>
+        <button hlmBtn size="sm" type="button" (click)="startAdding('m3u')" data-add-m3u>
+          <ng-icon name="lucidePlus" />
+          {{ 'providers.addM3u' | t }}
+        </button>
+        <button hlmBtn size="sm" type="button" (click)="startAdding('stalker')" data-add-portal>
+          <ng-icon name="lucidePlus" />
+          {{ 'providers.addPortal' | t }}
+        </button>
+      </div>
+    }
+  </app-setting-group>
+}

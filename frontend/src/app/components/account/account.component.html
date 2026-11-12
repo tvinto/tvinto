@@ -1,0 +1,203 @@
+<!--
+  D-13, D-17, P-14: Account as a list of sections, each its own page. On a
+  desktop and a television the list stays on the left and the section on the
+  right; on a phone the list is the page, and a section replaces it, with a
+  way back. Round 14 (DS-TV-2): the list is the player's pills, and each
+  section is groups of rows rather than boxed cards.
+-->
+<div class="h-full overflow-y-auto">
+  <div class="account-page mx-auto grid max-w-6xl gap-6 px-4 py-8 sm:px-6 md:grid-cols-[15rem_minmax(0,1fr)] md:gap-10" data-account-page>
+    <nav
+      class="flex-col gap-1 md:sticky md:top-0 md:self-start"
+      [class]="chosen() !== null ? 'hidden md:flex' : 'flex'"
+      [attr.aria-label]="'account.title' | t"
+      data-account-sections
+    >
+      <h1 class="page-title mb-3 md:hidden">{{ 'account.title' | t }}</h1>
+      @for (entry of sections(); track entry.id) {
+        <button
+          type="button"
+          class="menu-item"
+          [attr.aria-current]="current() === entry.id ? 'page' : null"
+          [attr.data-focus-key]="'account-' + entry.id"
+          data-tv-right="[data-account-section] :is(button, input, a[href]):not([disabled])"
+          (click)="choose(entry.id)"
+        >
+          <span class="menu-item-label">{{ entry.label | t }}</span>
+          <!-- In a span: the icon's own display outranks a utility on it. -->
+          <span class="flex md:hidden" aria-hidden="true"><ng-icon name="lucideChevronRight" /></span>
+        </button>
+      }
+
+      <!-- SR-P-3: on a phone, Guides lives here, its tab given to Search.
+           The television and the desktop keep Guides where it was. -->
+      @if (guidesLine(); as line) {
+        <a routerLink="/guides" class="menu-item md:hidden" data-account-guides>
+          <span class="menu-item-label">
+            {{ 'nav.guidesTitle' | t }}
+            <span class="menu-item-sub">{{ line }}</span>
+          </span>
+          <ng-icon name="lucideChevronRight" aria-hidden="true" />
+        </a>
+      }
+    </nav>
+
+    <section class="min-w-0 flex-col gap-8" [class]="chosen() === null ? 'hidden md:flex' : 'flex'" data-account-section>
+      <button hlmBtn variant="quiet" size="sm" type="button" class="-ml-3 self-start md:hidden" (click)="backToList()">
+        <ng-icon name="lucideChevronLeft" aria-hidden="true" />
+        {{ 'account.title' | t }}
+      </button>
+
+      <h2 class="page-title">{{ title() | t }}</h2>
+
+      @switch (current()) {
+        @case ('account') {
+          <!-- Used without an account: what that means, and the way to
+               syncing. -->
+          @if (accounts.localProfile.active()) {
+            <app-setting-group [heading]="'local.title' | t" data-local-profile>
+              <app-setting-row
+                [label]="'local.signInToSync' | t"
+                [sub]="'local.sub' | t"
+                focusKey="account-sign-in"
+                data-sign-in-to-sync
+                (activate)="signIn()"
+              />
+            </app-setting-group>
+          }
+
+          @if (account(); as user) {
+            <app-setting-group>
+              <app-setting-row
+                [label]="user.username"
+                [sub]="accountLine()"
+                kind="static"
+                data-account-server
+              />
+              <app-setting-row
+                [label]="'avatar.row' | t"
+                [value]="pictureName(user)"
+                focusKey="account-picture"
+                data-account-picture
+                (activate)="pictureOpen.set(true)"
+              />
+              @if (hasProfiles()) {
+                <app-setting-row [label]="'profiles.switch' | t" data-switch-profile (activate)="switchProfile()" />
+              }
+              @if (accounts.canChangeSetup()) {
+                <!--
+                  Password. A change seals everything sealed under the old
+                  password again under the new one, on this device, before the
+                  service is told (FamilyService.changePassword); the account's
+                  other devices are signed out and ask for the new one. Not for
+                  a kid, whose account is set up from above.
+                -->
+                <app-setting-row
+                  [label]="'account.password.change' | t"
+                  focusKey="account-password"
+                  data-password-card
+                  (activate)="passwordOpen.set(!passwordOpen())"
+                />
+                @if (passwordOpen()) {
+                  <form class="setting-block flex flex-col gap-4" (ngSubmit)="changePassword()" data-password-form>
+                    <div class="grid gap-4 sm:grid-cols-3">
+                      <label class="flex flex-col gap-2">
+                        <span hlmLabel>{{ 'account.password.current' | t }}</span>
+                        <input hlmInput name="current" type="password" autocomplete="current-password" [(ngModel)]="passwords.current" />
+                      </label>
+                      <label class="flex flex-col gap-2">
+                        <span hlmLabel>{{ 'account.password.next' | t }}</span>
+                        <input hlmInput name="next" type="password" autocomplete="new-password" [(ngModel)]="passwords.next" />
+                      </label>
+                      <label class="flex flex-col gap-2">
+                        <span hlmLabel>{{ 'account.password.repeat' | t }}</span>
+                        <input hlmInput name="repeat" type="password" autocomplete="new-password" [(ngModel)]="passwords.repeat" />
+                      </label>
+                    </div>
+                    <div>
+                      <button hlmBtn variant="primary" type="submit" [disabled]="changingPassword()">
+                        {{ (changingPassword() ? 'account.password.working' : 'account.password.change') | t }}
+                      </button>
+                    </div>
+                  </form>
+                }
+              }
+              <app-setting-row [label]="'account.signOut' | t" focusKey="account-sign-out" data-sign-out (activate)="signOut()" />
+            </app-setting-group>
+          }
+
+          <app-setting-group [heading]="'account.thisDevice' | t">
+            @if (accounts.canChangeSetup()) {
+              <app-display-size />
+              <app-language-picker />
+            }
+            <app-storage-settings />
+            <!-- What was searched for on this device (SR-TV-2): never synced,
+                 and cleared here. -->
+            @if (recentSearches.list().length) {
+              <app-setting-row
+                [label]="'search.recentTitle' | t"
+                [sub]="recentSearches.list().join(' · ')"
+                kind="static"
+                data-recent-searches
+              >
+                <button rowEnd hlmBtn size="sm" type="button" (click)="recentSearches.clear()">{{ 'search.clearRecent' | t }}</button>
+              </app-setting-row>
+            }
+          </app-setting-group>
+
+          <!-- tvinto, signed in on a computer: to the sync
+               service, or to this app when it is used without an account. -->
+          <app-tools />
+        }
+        @case ('family') {
+          <app-family />
+        }
+        @case ('lock') {
+          <app-parental-lock />
+        }
+        @case ('providers') {
+          <app-providers />
+
+          <!-- The old single-subscription form, only where there is no
+               Providers card: a browser, which goes through the backend.
+               Elsewhere the card above adds, replaces and removes every
+               provider alike, and a second form for "the main one" made one
+               of them something that could not be removed (9 October). -->
+          @if (!providers.supported) {
+            <app-setting-group [heading]="'account.subscription.title' | t" data-main-subscription>
+              <div class="setting-block">
+                <app-subscription [embedded]="true" />
+              </div>
+            </app-setting-group>
+          }
+        }
+        @case ('subtitles') {
+          <app-language-settings />
+
+          <app-opensubtitles-link />
+
+          <app-subtitle-settings />
+
+          <app-picture-settings />
+
+          <app-startup-settings />
+
+          <app-preview-settings />
+
+          <app-description-settings />
+        }
+      }
+    </section>
+  </div>
+</div>
+
+@if (pictureOpen() && account(); as user) {
+  <app-profile-picture-dialog
+    [name]="user.username"
+    [current]="user.picture ?? null"
+    [saving]="savingPicture()"
+    (saved)="savePicture($event)"
+    (closed)="pictureOpen.set(false)"
+  />
+}

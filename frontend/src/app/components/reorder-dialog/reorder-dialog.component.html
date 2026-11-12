@@ -1,0 +1,253 @@
+<!-- TV-14: on a television a page -- the rows on the left, and the keypad
+     as a column of its own beside them, so typing a position never summons the
+     system keyboard over the list. On a desktop, the dialog it always was. -->
+<div
+  class="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_oklch,var(--background)_88%,transparent)] p-4" data-focus-scope data-enter="dialog"
+  data-tv-page
+  (click)="cancel.emit()"
+>
+  <div
+    class="flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-card"
+    data-tv-page-surface
+    (click)="$event.stopPropagation()"
+    (focusin)="onFocusMoved($event)"
+  >
+    <div class="flex items-center gap-3 p-4" data-tv-page-header>
+      <button hlmBtn variant="quiet" size="sm" type="button" data-tv-only (click)="cancel.emit()">
+        <ng-icon name="lucideArrowLeft" size="16" />
+        {{ 'common.back' | t }}
+      </button>
+      <div class="min-w-0 flex-1">
+        <h3 class="text-lg font-bold">
+          {{ (kind() === 'category' ? 'arrange.categories' : 'arrange.channels') | t }}
+        </h3>
+        <p class="truncate text-xs text-muted-foreground">
+          {{ (kind() === 'category' ? 'arrange.countCategories' : 'guides.channels') | t: { count: workingItems().length } }}@if (signedIn()) { · {{ 'arrange.follows' | t }} }
+        </p>
+      </div>
+      <!-- D-9 and TV-14: Done in the header. Reset sits by the filter on a
+           desktop, where it has the room to say what it resets to. -->
+      <span class="flex shrink-0 gap-2">
+        <button hlmBtn size="sm" type="button" data-tv-only (click)="reset()">{{ 'subs.reset' | t }}</button>
+        <button hlmBtn variant="primary" size="sm" type="button" (click)="emitSave()" [disabled]="saving()">
+          {{ (saving() ? 'arrange.saving' : 'common.done') | t }}
+        </button>
+      </span>
+
+    </div>
+
+    <div class="flex min-h-0 flex-1 flex-col" data-tv-arrange>
+    <div class="flex min-h-0 flex-1 flex-col">
+
+    <div class="space-y-2 px-4 pb-3">
+      <div class="flex gap-2">
+      <div class="field-wrap flex-1">
+        <ng-icon name="lucideSearch" class="field-search-icon" aria-hidden="true" />
+        <input
+          hlmInput
+          type="text"
+          class="field-search field-clearable"
+          [value]="filter()"
+          (input)="onFilterInput($event)"
+          [placeholder]="'arrange.filter' | t"
+        />
+        @if (filter()) {
+          <button hlmBtn variant="quiet" size="icon-xs" type="button" class="field-clear" (click)="clearFilter()" [attr.aria-label]="'arrange.clearFilter' | t">
+            <ng-icon name="lucideX" />
+          </button>
+        }
+      </div>
+      <button hlmBtn size="sm" type="button" class="shrink-0" data-desktop-only (click)="reset()">
+        {{ 'arrange.undo' | t }}
+      </button>
+      </div>
+
+      @if (filter()) {
+        <p class="text-xs text-muted-foreground">
+          {{ 'arrange.showing' | t: { shown: visibleItems().length, total: workingItems().length } }}
+        </p>
+      }
+    </div>
+
+    <!-- Virtualised, which is not an optimisation: 830 categories at five
+         elements and two icon components apiece is some five thousand nodes
+         built in one change-detection pass, and that is a freeze of several
+         seconds on the emulator and an app that had to be killed on the
+         owner's television. The inline Arrange in category-picker learnt this
+         first; this list was left behind.
+
+         Fixed rows, so the viewport can place them arithmetically. The `li` is
+         the item box and nothing but -- the visual row lives inside it, and the
+         gap between rows is the `li`'s own padding rather than a margin, which
+         the scroller does not account for and which would stack rows on top of
+         each other. -->
+    @if (visibleItems().length > 0) {
+    <!-- As tall as its rows, up to the dialog's room: a scroll viewport has no
+         height of its own, and on a desktop the card only has a maximum, so
+         the list drew at nothing and the rows could not be reached (8 October).
+         A television's page sets the height instead (styles.css). -->
+    <cdk-virtual-scroll-viewport
+      [itemSize]="ROW_HEIGHT_PX()"
+      class="min-h-0 flex-1 px-4"
+      data-arrange-rows
+      [style.--arrange-rows-height.px]="visibleItems().length * ROW_HEIGHT_PX()"
+    >
+      <ul>
+        <!-- data-focus-key names the row's item rather than the element, so a
+             remote keeps its place when the CDK recycles the view underneath
+             it. Virtualising is what made this necessary. See
+             TvNavigationService. -->
+        <li
+          *cdkVirtualFor="let entry of rows(); trackBy: trackByItemId"
+          [attr.data-focus-key]="'arrange-' + entry.item.id"
+          [style.height.px]="ROW_HEIGHT_PX()"
+          class="pb-1.5"
+          data-tv-arrange-item
+        >
+        <div
+          class="flex h-full cursor-grab items-center gap-3 rounded-xl px-3 text-sm transition-colors"
+          data-tv-arrange-row
+          [class.arrange-row-editing]="entry.editing"
+          [class.font-semibold]="entry.editing"
+          [class.opacity-50]="draggingIndex() === entry.index"
+          draggable="true"
+          (dragstart)="onDragStart(entry.index)"
+          (dragover)="onDragOver(entry.index, $event)"
+          (dragend)="onDragEnd()"
+        >
+          <!-- Inert on a television, where there is nothing to drag with. It
+               stays because a pointer surface has the whole gesture. -->
+          <span class="shrink-0 text-dim-foreground" aria-hidden="true">⠿</span>
+          <!--
+            The position, and the way to change it by number.
+
+            The arrows step one visible row at a time, which cannot reach the
+            far end of eight hundred from a filtered match; typing the number
+            is the only way that scales. It is readonly and driven by the
+            keypad below -- see the component for why that is not a preference.
+          -->
+          <input
+            type="text"
+            readonly
+            class="h-9 w-14 shrink-0 cursor-pointer rounded-lg bg-[var(--glass)] px-1 text-center text-sm tabular-nums"
+            data-tv-arrange-position
+            [class.bg-foreground]="entry.editing"
+            [class.text-background]="entry.editing"
+            [value]="entry.position"
+            [attr.aria-label]="'arrange.positionOfItem' | t: { position: entry.index + 1, name: entry.item.name }"
+            [title]="'arrange.position' | t: { position: entry.index + 1 }"
+            (focus)="beginEdit(entry.item.id, entry.item.name, entry.index)"
+            (click)="beginEdit(entry.item.id, entry.item.name, entry.index)"
+            (keydown)="onPositionKey($event)"
+          />
+          <span class="min-w-0 flex-1 truncate" [title]="entry.item.name">
+            {{ entry.shown }}
+          </span>
+          <!-- Where it came from. In a list this long the old number is not
+               recoverable from anything on screen once the move is made. -->
+          @if (entry.was; as was) {
+            <span class="shrink-0 text-xs font-normal text-muted-foreground">{{ 'arrange.was' | t: { position: was } }}</span>
+          }
+          <span class="flex shrink-0 items-center gap-1" data-tv-arrange-steps>
+            <button
+              hlmBtn
+              variant="quiet"
+              size="icon-sm"
+              type="button"
+              (click)="moveItem(entry.index, -1)"
+              [disabled]="entry.first"
+              data-step="up"
+              [title]="'arrange.up' | t"
+            >
+              <ng-icon name="lucideChevronUp" size="14" />
+            </button>
+            <button
+              hlmBtn
+              variant="quiet"
+              size="icon-sm"
+              type="button"
+              (click)="moveItem(entry.index, 1)"
+              [disabled]="entry.last"
+              data-step="down"
+              [title]="'arrange.down' | t"
+            >
+              <ng-icon name="lucideChevronDown" size="14" />
+            </button>
+          </span>
+        </div>
+        </li>
+      </ul>
+    </cdk-virtual-scroll-viewport>
+    } @else {
+      <p class="min-h-0 flex-1 px-6 py-6 text-center text-sm text-muted-foreground">
+        {{ 'arrange.nothing' | t: { text: filter() } }}
+      </p>
+    }
+    </div>
+
+    <!--
+      The keypad, which exists because the alternative summons a keyboard over
+      the list. Present only while a position is being typed: a permanent one
+      would take a third of the dialog to serve the rarer of two ways to move a
+      row, and the arrows on each row are the common one.
+    -->
+    @if (editing() || tv.isTelevision()) {
+      <div class="p-4" data-keypad>
+        <p class="field-label">
+          {{ 'arrange.typePosition' | t }}
+        </p>
+        <p class="mt-1 mb-3 text-xs text-muted-foreground">
+          @if (editing(); as target) {
+            {{ 'arrange.typeHelp' | t: { name: target.name, count: workingItems().length } }}
+          } @else {
+            {{ 'arrange.moveToRow' | t }}
+          }
+        </p>
+
+        <div class="grid max-w-[320px] grid-cols-3 gap-2" data-tv-keypad-grid>
+          @for (digit of ["1", "2", "3", "4", "5", "6", "7", "8", "9"]; track digit) {
+            <button
+              hlmBtn
+              type="button"
+              class="tabular-nums"
+              [disabled]="!editing()"
+              (click)="press(digit)"
+            >
+              {{ digit }}
+            </button>
+          }
+          <button
+            hlmBtn
+            type="button"
+            [attr.aria-label]="'arrange.deleteDigit' | t"
+            [disabled]="!editing()"
+            (click)="backspace()"
+          >
+            ⌫
+          </button>
+          <button
+            hlmBtn
+            type="button"
+            class="tabular-nums"
+            [disabled]="!editing()"
+            (click)="press('0')"
+          >
+            0
+          </button>
+          <button
+            hlmBtn
+            variant="primary"
+            type="button"
+            [disabled]="!typed()"
+            (click)="applyTyped()"
+          >
+            {{ 'arrange.move' | t }}
+          </button>
+        </div>
+      </div>
+    }
+
+    </div>
+
+  </div>
+</div>

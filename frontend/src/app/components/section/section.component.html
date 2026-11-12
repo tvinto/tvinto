@@ -1,0 +1,1670 @@
+<!-- Two faces of one library. The front page is a page: it scrolls, and its
+     rails are as tall as their content. The browser is a fixed-height pane so
+     the virtualised grid has a viewport to scroll inside. -->
+@if (!browsing()) {
+  <div
+    class="relative h-full overflow-y-auto"
+    appSpotlightHost
+    #spot="spotlightHost"
+    [spotlightKeep]="true"
+    [attr.data-front-spot]="type() === 'live' ? null : ''"
+  >
+    <!-- NX-TV-7: the top of the screen is the title focus rests on -- the
+         page's first until focus reaches one -- with room kept for it, so the
+         first row is never under it (a user's TV, 31 October). Not on Live
+         TV: a channel has no picture or words of its own to show there. -->
+    @if (type() !== "live") {
+      <app-spotlight [target]="spot.target()" [fallback]="frontSpot()" />
+      <!-- Only with something to show: a library with no artwork and nothing
+           focused yet kept half the screen empty above its title. -->
+      @if (spot.target() || frontSpot()) {
+        <div data-nx-spot-room aria-hidden="true"></div>
+      }
+    }
+    <!-- D-1, D-4, D-8 and P-1: what you were watching, what you marked, and
+         two ways on. Cards carry no hover-only chips -- the card is the
+         target, and right-click (or holding it, or Menu) opens the actions
+         panel, which is where removing and unstarring live. -->
+    <div class="mx-auto flex max-w-[1600px] flex-col gap-6 px-4 py-6 sm:px-6" data-front>
+      <!-- Title and search -->
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 class="page-title">{{ title() }}</h1>
+          @if (frontCounts()) {
+            <p class="page-facts">{{ frontCounts() }}</p>
+          }
+        </div>
+
+        <!-- Round 11: the library's Search is the one search page, narrowed
+             to this library (SR-TV-3). A pill since round 14 (DS-TV-6), not a
+             square field in the corner. Not on a computer, whose field is in
+             the top bar (SR-D-1). -->
+        <button hlmBtn type="button" data-library-search [attr.aria-label]="searchPlaceholder()" (click)="openSearch()">
+          <ng-icon name="lucideSearch" aria-hidden="true" />
+          {{ 'nav.search' | t }}
+        </button>
+      </div>
+
+      @if (store.error()) {
+        <div class="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+          {{ store.error() }}
+        </div>
+      }
+
+      <!-- Continue watching -->
+      @if (continueShown().length) {
+        <section class="flex flex-col gap-2">
+          <h2 class="nx-row-title" data-front-heading>
+            {{ 'fy.continue' | t }}
+            <span class="ml-1 text-muted-foreground">{{ continueShown().length }}</span>
+          </h2>
+
+          <div class="flex snap-x gap-3 overflow-x-auto pb-2" data-tv-rail>
+            @for (row of continueRows(); track row.entry.type + row.entry.itemId) {
+              @let entry = row.entry;
+              @if (type() === "series") {
+                <!-- TV-12 / D-8: the show, never one of its episodes (the
+                     owner, 2 October). OK opens its page on what is next. -->
+                <div class="group relative flex w-[300px] shrink-0 snap-start" data-tv-continue>
+                  <button
+                    type="button"
+                    appCardGestures
+                    class="flex w-full items-stretch gap-3 overflow-hidden rounded-lg bg-card p-2.5 text-left transition-colors hover:bg-card-2"
+                    [attr.data-focus-key]="'recent-' + entry.type + '-' + entry.itemId"
+                    [attr.data-spot-kind]="entry.type"
+                    [attr.data-spot-id]="entry.type === 'series' ? (entry.seriesId ?? entry.itemId) : entry.itemId"
+                    [attr.data-spot-name]="entry.type === 'live' ? null : row.title"
+                    [attr.data-spot-poster]="entry.icon ?? ''"
+                    (activate)="resumeEntry(entry)"
+                    (menu)="openMenu({ kind: 'recent', entry })"
+                    [title]="entry.name"
+                  >
+                    <span class="relative h-[108px] w-[72px] shrink-0 overflow-hidden rounded-sm bg-background-2" data-tv-continue-poster>
+                      @if (entry.icon) {
+                        <img
+                          [src]="entry.icon"
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                          class="h-full w-full object-cover"
+                          (error)="$any($event.target).style.display = 'none'"
+                        />
+                      }
+                    </span>
+                    <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <span class="truncate text-sm text-muted-foreground">{{ 'fy.show' | t }}@if (row.prefix; as tag) { · {{ tag }} }</span>
+                      <span class="line-clamp-2 font-semibold">{{ row.title }}</span>
+                      <span class="text-sm text-muted-foreground">{{ row.when }}</span>
+                    </span>
+                  </button>
+                </div>
+              } @else if (type() === "vod") {
+                <!-- D-4: films lead with the poster, a meter across its foot
+                     and the time left under it. -->
+                <div class="group relative flex w-[150px] shrink-0 snap-start" data-tv-favourite-poster>
+                  <button
+                    type="button"
+                    appCardGestures
+                    class="flex w-full flex-col gap-1.5 text-left"
+                    [attr.data-focus-key]="'recent-' + entry.type + '-' + entry.itemId"
+                    [attr.data-spot-kind]="entry.type"
+                    [attr.data-spot-id]="entry.type === 'series' ? (entry.seriesId ?? entry.itemId) : entry.itemId"
+                    [attr.data-spot-name]="entry.type === 'live' ? null : row.title"
+                    [attr.data-spot-poster]="entry.icon ?? ''"
+                    (activate)="resumeEntry(entry)"
+                    (menu)="openMenu({ kind: 'recent', entry })"
+                    [title]="entry.name"
+                  >
+                    <span class="relative block h-[225px] w-full overflow-hidden rounded-md bg-card-2" data-tv-poster>
+                      @if (entry.icon && !brokenLogos().has(entry.itemId)) {
+                        <img
+                          [src]="entry.icon"
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                          class="h-full w-full object-cover"
+                          (error)="iconFailed(entry.itemId)"
+                        />
+                      } @else {
+                        <span class="poster-placeholder absolute inset-0 flex flex-col border-l-4 border-vod p-3">
+                          <span class="text-2xl font-bold text-vod">{{ row.monogram }}</span>
+                          <span class="mt-auto line-clamp-2 text-sm font-semibold">{{ row.title }}</span>
+                        </span>
+                      }
+                      @if (entry.durationSeconds > 0) {
+                        <span class="absolute inset-x-0 bottom-0 h-1.5 bg-black/50">
+                          <span class="block h-full bg-primary-bright" [style.width.%]="row.percent"></span>
+                        </span>
+                      }
+                    </span>
+                    <span class="block w-full truncate text-sm font-semibold">{{ row.title }}</span>
+                    <span class="block w-full truncate text-xs text-muted-foreground">
+                      {{ row.year }}{{ row.year && row.remaining ? " · " : "" }}{{ row.remaining }}
+                    </span>
+                  </button>
+                </div>
+              } @else {
+                <!-- D-1: a channel is its logo or its initials in the kind's
+                     colour, and a line saying what is on it now. -->
+                <div class="group relative flex w-[210px] shrink-0 snap-start" data-front-channel>
+                  <button
+                    type="button"
+                    appCardGestures
+                    class="flex w-full flex-col overflow-hidden rounded-lg bg-card text-left transition-colors hover:bg-card-2"
+                    [attr.data-focus-key]="'recent-' + entry.type + '-' + entry.itemId"
+                    [attr.data-spot-kind]="entry.type"
+                    [attr.data-spot-id]="entry.type === 'series' ? (entry.seriesId ?? entry.itemId) : entry.itemId"
+                    [attr.data-spot-name]="entry.type === 'live' ? null : row.title"
+                    [attr.data-spot-poster]="entry.icon ?? ''"
+                    (activate)="resumeEntry(entry)"
+                    (menu)="openMenu({ kind: 'recent', entry })"
+                    [title]="entry.name"
+                  >
+                    <span class="relative flex h-[92px] w-full items-center justify-center bg-card-2" data-front-tile>
+                      @if (entry.icon && !brokenLogos().has(entry.itemId)) {
+                        <img
+                          [src]="entry.icon"
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                          class="h-full w-full object-contain p-3"
+                          (error)="iconFailed(entry.itemId)"
+                        />
+                      } @else {
+                        <span class="text-2xl font-bold text-live">{{ row.monogram }}</span>
+                      }
+                      @if (row.now; as now) {
+                        <span class="absolute inset-x-0 bottom-0 h-0.5 bg-black/40">
+                          <span class="block h-full bg-on-air" [style.width.%]="now.percent"></span>
+                        </span>
+                      }
+                    </span>
+                    <span class="flex w-full min-w-0 flex-col gap-0.5 p-2.5">
+                      <span class="truncate text-sm font-semibold">{{ row.title }}</span>
+                      <span class="truncate text-xs text-muted-foreground">
+                        @if (row.now; as now) {
+                          {{ now.title }}{{ now.left ? " · " + now.left : "" }}
+                        } @else {
+                          {{ 'section.liveChannel' | t }}
+                        }
+                      </span>
+                    </span>
+                  </button>
+                </div>
+              }
+            }
+          </div>
+        </section>
+      }
+
+      <!-- Favourites, when there are some: an empty row is not drawn at all
+           (DS-TV-6), rather than a box saying how to fill it. -->
+      <section class="flex flex-col gap-2" [class.hidden]="!favorites().length">
+        <h2 class="nx-row-title" data-front-heading>
+          {{ (type() === 'series' ? 'section.favouriteShows' : 'cat.favourites') | t }}
+          @if (favorites().length) {
+            <span class="ml-1 text-muted-foreground">{{ favorites().length }}</span>
+          }
+        </h2>
+
+        @if (favorites().length && type() === "live") {
+          <!-- P-1: on a phone, favourite channels are a list -- what is on
+               each fits on a row, where a rail of tiles would hide all but two. -->
+          <ul class="flex flex-col gap-1.5" data-phone-only>
+            @for (card of favouriteRows(); track card.id) {
+              @let stream = card.stream;
+              <li class="flex items-center gap-1 rounded-lg bg-card">
+                <button
+                  type="button"
+                  appCardGestures
+                  class="flex min-w-0 flex-1 items-center gap-3 p-2.5 text-left"
+                  (activate)="openCard(stream)"
+                  (menu)="openMenu({ kind: 'stream', stream })"
+                  [title]="stream.name"
+                >
+                  <span class="flex h-10 w-12 shrink-0 items-center justify-center rounded-md bg-card-2">
+                    @if ((stream.stream_icon && !brokenLogos().has(card.id))) {
+                      <img [src]="stream.stream_icon" alt="" loading="lazy" class="h-8 w-10 object-contain" (error)="logoFailed(stream)" />
+                    } @else {
+                      <span class="text-sm font-bold text-live">{{ card.display.monogram }}</span>
+                    }
+                  </span>
+                  <span class="min-w-0 flex-1">
+                    <span class="block truncate font-semibold">
+                      {{ card.display.title }}
+                      @if (card.display.tags) {
+                        <span class="text-[10px]">{{ card.display.tags }}</span>
+                      }
+                    </span>
+                    <span class="block truncate text-xs">
+                      @if (card.now(); as now) {
+                        <span class="text-on-air">{{ 'epg.onAirShort' | t }}</span> · <span class="text-muted-foreground">{{ now.title }}</span>
+                      } @else {
+                        <span class="text-dim-foreground">{{ 'fy.noGuide' | t }}</span>
+                      }
+                    </span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  class="flex h-11 w-11 shrink-0 items-center justify-center text-muted-foreground"
+                  [attr.aria-label]="'section.actionsFor' | t: { name: stream.name }"
+                  (click)="openMenu({ kind: 'stream', stream })"
+                >
+                  ···
+                </button>
+              </li>
+            }
+            @if (favorites().length > FRONT_FAVOURITES) {
+              <li>
+                <button type="button" class="w-full rounded-lg border border-border-2 p-3 text-sm text-muted-foreground" (click)="openFavorites()">
+                  {{ 'fy.more' | t: { count: favorites().length - FRONT_FAVOURITES } }}
+                </button>
+              </li>
+            }
+          </ul>
+        }
+
+        @if (favorites().length) {
+          <div class="flex snap-x gap-3 overflow-x-auto pb-2" data-tv-rail [attr.data-desktop-rail]="type() === 'live' ? '' : null">
+            @for (card of favouriteRows(); track card.id) {
+              @let stream = card.stream;
+              @if (type() !== "live") {
+                <!-- Plain portrait posters, because OK here opens a page or a
+                     film rather than resuming: the shape is the promise. -->
+                <div class="group relative flex w-[126px] shrink-0 snap-start" data-tv-favourite-poster>
+                  <button
+                    type="button"
+                    appCardGestures
+                    class="flex w-full flex-col gap-1.5 text-left"
+                    [attr.data-focus-key]="'favourite-' + stream.stream_id"
+                    [attr.data-spot-kind]="type()"
+                    [attr.data-spot-id]="stream.stream_id"
+                    [attr.data-spot-name]="card.poster.title"
+                    [attr.data-spot-poster]="stream.stream_icon ?? ''"
+                    (activate)="openCard(stream)"
+                    (menu)="openMenu({ kind: 'stream', stream })"
+                    [title]="stream.name"
+                  >
+                    <span class="relative block h-[189px] w-full overflow-hidden rounded-md bg-card-2" data-tv-poster>
+                      @if ((stream.stream_icon && !brokenLogos().has(card.id))) {
+                        <img
+                          [src]="stream.stream_icon"
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                          class="h-full w-full object-cover"
+                          (error)="logoFailed(stream)"
+                        />
+                      } @else {
+                        <span
+                          class="poster-placeholder absolute inset-0 flex flex-col border-l-4 p-3"
+                          [class]="type() === 'series' ? 'border-series' : 'border-vod'"
+                        >
+                          <span class="text-2xl font-bold" [class]="type() === 'series' ? 'text-series' : 'text-vod'">
+                            {{ card.poster.monogram }}
+                          </span>
+                          <span class="mt-auto line-clamp-2 text-sm font-semibold">{{ card.poster.title }}</span>
+                        </span>
+                      }
+                    </span>
+                    <span class="block w-full truncate text-sm font-semibold">{{ card.poster.title }}</span>
+                    @if (card.caption) {
+                      <span class="block w-full truncate text-xs text-muted-foreground">{{ card.caption }}</span>
+                    }
+                  </button>
+                </div>
+              } @else {
+                <!-- D-1: a compact tile -- initials or logo, then number and
+                     what is on, "on air" in the on-air colour, "no guide" dim. -->
+                <div class="group relative flex w-[180px] shrink-0 snap-start" data-front-favourite-tile>
+                  <button
+                    type="button"
+                    appCardGestures
+                    class="flex h-[96px] w-full flex-col items-center justify-center gap-1.5 overflow-hidden rounded-lg bg-card px-2 text-center transition-colors hover:bg-card-2"
+                    [attr.data-focus-key]="'favourite-' + stream.stream_id"
+                    (activate)="openCard(stream)"
+                    (menu)="openMenu({ kind: 'stream', stream })"
+                    [title]="stream.name"
+                  >
+                    @if ((stream.stream_icon && !brokenLogos().has(card.id))) {
+                      <img
+                        [src]="stream.stream_icon"
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        class="h-9 max-w-[120px] object-contain"
+                        (error)="logoFailed(stream)"
+                      />
+                    } @else {
+                      <span class="text-xl font-bold text-live">{{ card.display.monogram }}</span>
+                    }
+                    <span class="block w-full truncate text-xs">
+                      @if (card.now(); as now) {
+                        <span class="text-muted-foreground">{{ card.number }}</span>{{ card.number ? " · " : "" }}<span class="text-muted-foreground">{{ now.title }}</span>
+                      } @else {
+                        <span class="text-dim-foreground">{{ card.display.title }} · {{ 'section.noGuideLower' | t }}</span>
+                      }
+                    </span>
+                  </button>
+                </div>
+              }
+            }
+
+            @if (favorites().length > FRONT_FAVOURITES) {
+              <button
+                type="button"
+                class="flex shrink-0 items-center justify-center rounded-lg border border-border-2 px-6 text-sm text-muted-foreground transition-colors hover:bg-card"
+                [class]="type() === 'live' ? 'h-[96px] w-[180px]' : 'h-[189px] w-[126px]'"
+                data-front-more
+                (click)="openFavorites()"
+              >
+                {{ 'fy.more' | t: { count: favorites().length - FRONT_FAVOURITES } }}
+              </button>
+            }
+          </div>
+        }
+      </section>
+
+      <!-- NX-TV-7: the categories as rows of posters -- the one left last, then
+           the next in this library's order, each only if this device holds it --
+           each ending in its whole list; then what the library added lately. -->
+      @if (type() !== "live") {
+        @for (row of categoryRows(); track row.id) {
+          <section class="flex flex-col gap-2" data-front-category-row>
+            <h2 class="nx-row-title" data-front-heading>
+              {{ row.name }}
+              <span class="ml-1 text-muted-foreground">{{ row.count }}</span>
+            </h2>
+            <div class="flex snap-x gap-3 overflow-x-auto pb-2" data-tv-rail>
+              @for (stream of row.streams; track stream.stream_id) {
+                <div class="group relative flex w-[126px] shrink-0 snap-start" data-tv-favourite-poster>
+                  <button
+                    type="button"
+                    appCardGestures
+                    class="flex w-full flex-col gap-1.5 text-left"
+                    [attr.data-focus-key]="'row-' + row.id + '-' + stream.stream_id"
+                    [attr.data-spot-kind]="type()"
+                    [attr.data-spot-id]="stream.stream_id"
+                    [attr.data-spot-name]="stream.name | posterTitle"
+                    [attr.data-spot-poster]="stream.stream_icon ?? ''"
+                    [attr.data-spot-line]="row.name"
+                    (activate)="openCard(stream)"
+                    (menu)="openMenu({ kind: 'stream', stream })"
+                    [title]="stream.name"
+                  >
+                    <span class="relative block h-[189px] w-full overflow-hidden rounded-md bg-card-2" data-tv-poster>
+                      @if (stream.stream_icon && !brokenLogos().has(stream.stream_id + '')) {
+                        <img [src]="stream.stream_icon" alt="" loading="lazy" decoding="async" class="h-full w-full object-cover" (error)="logoFailed(stream)" />
+                      } @else {
+                        <span class="poster-placeholder absolute inset-0 flex flex-col border-l-4 p-3" [class]="type() === 'series' ? 'border-series' : 'border-vod'">
+                          <span class="text-2xl font-bold" [class]="type() === 'series' ? 'text-series' : 'text-vod'">{{ stream.name | posterTitle | channelMonogram }}</span>
+                          <span class="mt-auto line-clamp-2 text-sm font-semibold">{{ stream.name | posterTitle }}</span>
+                        </span>
+                      }
+                      <!-- How far it got, on every started poster (NX-TV-9). -->
+                      @if (rowPercent(stream); as percent) {
+                        <span class="absolute inset-x-0 bottom-0 h-1.5 bg-black/50">
+                          <span class="block h-full bg-primary-bright" [style.width.%]="percent"></span>
+                        </span>
+                      }
+                    </span>
+                    <span class="block w-full truncate text-sm font-semibold">{{ stream.name | posterTitle }}</span>
+                  </button>
+                </div>
+              }
+              <!-- The rest of the category, as the row's last card. -->
+              <button
+                type="button"
+                class="flex h-[189px] w-[126px] shrink-0 snap-start flex-col items-center justify-center gap-2 rounded-md bg-foreground/10 text-sm font-bold hover:bg-foreground/15"
+                data-front-all
+                [attr.data-focus-key]="'row-all-' + row.id"
+                (click)="openRowCategory(row.id)"
+              >
+                <ng-icon name="lucideChevronRight" size="24" />
+                {{ 'search.all' | t: { count: row.count } }}
+              </button>
+            </div>
+          </section>
+        }
+
+        @if (addedRow().length) {
+          <section class="flex flex-col gap-2" data-front-added>
+            <h2 class="nx-row-title" data-front-heading>{{ 'fy.recentlyAdded' | t }}</h2>
+            <div class="flex snap-x gap-3 overflow-x-auto pb-2" data-tv-rail>
+              @for (stream of addedRow(); track stream.stream_id) {
+                <div class="group relative flex w-[126px] shrink-0 snap-start" data-tv-favourite-poster>
+                  <button
+                    type="button"
+                    appCardGestures
+                    class="flex w-full flex-col gap-1.5 text-left"
+                    [attr.data-focus-key]="'added-' + stream.stream_id"
+                    [attr.data-spot-kind]="type()"
+                    [attr.data-spot-id]="stream.stream_id"
+                    [attr.data-spot-name]="stream.name | posterTitle"
+                    [attr.data-spot-poster]="stream.stream_icon ?? ''"
+                    (activate)="openCard(stream)"
+                    (menu)="openMenu({ kind: 'stream', stream })"
+                    [title]="stream.name"
+                  >
+                    <span class="relative block h-[189px] w-full overflow-hidden rounded-md bg-card-2" data-tv-poster>
+                      @if (stream.stream_icon && !brokenLogos().has(stream.stream_id + '')) {
+                        <img [src]="stream.stream_icon" alt="" loading="lazy" decoding="async" class="h-full w-full object-cover" (error)="logoFailed(stream)" />
+                      } @else {
+                        <span class="poster-placeholder absolute inset-0 flex flex-col border-l-4 p-3" [class]="type() === 'series' ? 'border-series' : 'border-vod'">
+                          <span class="text-2xl font-bold" [class]="type() === 'series' ? 'text-series' : 'text-vod'">{{ stream.name | posterTitle | channelMonogram }}</span>
+                          <span class="mt-auto line-clamp-2 text-sm font-semibold">{{ stream.name | posterTitle }}</span>
+                        </span>
+                      }
+                    </span>
+                    <span class="block w-full truncate text-sm font-semibold">{{ stream.name | posterTitle }}</span>
+                  </button>
+                </div>
+              }
+            </div>
+          </section>
+        }
+      }
+
+      <!-- Browse by, Top rated and the genres watched most (TV-32, P-20). -->
+      @if (type() !== "live") {
+        <app-discover [kind]="type() === 'series' ? 'tv' : 'movie'" />
+      }
+
+      <!-- Round 14 (DS-TV-6): the ways on as pills -- into the categories, Arrange,
+           and across to the other thing you might be watching -- rather than
+           wide boxes with a coloured spine and an arrow. -->
+      <section class="flex flex-wrap items-center gap-3" data-front-links>
+        <button
+          hlmBtn
+          variant="primary"
+          type="button"
+          class="max-w-full"
+          data-tv-browse-tile
+          (click)="browseCategories()"
+          [disabled]="!store.categories().length"
+        >
+          <ng-icon [name]="type() === 'live' ? 'lucideLayoutPanelLeft' : 'lucideLayoutGrid'" aria-hidden="true" />
+          <!-- Always what it does, not where it goes: "Back to HR| CROATIA" was
+               not recognisable as the way into the guide (2 November).
+               It still opens on the category last left. -->
+          <span class="truncate">
+            {{ (type() === 'live' ? 'fy.browseGuide' : type() === 'vod' ? 'section.browseFilms' : 'section.browseShows') | t }}
+          </span>
+        </button>
+
+        @if (type() === "live" && recordings.available()) {
+          <button hlmBtn type="button" (click)="openRecordings()" data-recordings-link>
+            <ng-icon name="lucideCircleDot" aria-hidden="true" />
+            {{ 'recordings.title' | t }}
+          </button>
+        }
+
+        @if (type() === "live" && canChangeSetup()) {
+          <button hlmBtn type="button" data-desktop-rail (click)="openReorder('category')" [disabled]="!store.categories().length">
+            <ng-icon name="lucideArrowUpDown" aria-hidden="true" />
+            {{ 'arrange.categories' | t }}
+          </button>
+        } @else if (crossRecent(); as other) {
+          <button hlmBtn type="button" [title]="other.name | posterTitle" (click)="resumeEntry(other)">
+            <ng-icon name="lucidePlay" aria-hidden="true" />
+            {{ (other.type === 'series' ? 'section.continueShowInstead' : 'section.continueFilmInstead') | t }}
+          </button>
+        }
+        <!-- Reading a large library on a television can take a while: say so. -->
+        <app-slow-wait class="basis-full" [waiting]="!store.categoriesLoaded()" what="slow.categories" />
+      </section>
+    </div>
+  </div>
+} @else {
+  <!-- Category browser.
+
+       The three `data-tv-*` hooks below are read only by the television rules
+       in styles.css. They are attributes rather than classes because they are
+       not styling in their own right: they name the pane, its columns and its
+       sidebar so that one stylesheet can make the whole screen denser and
+       slide the categories out of the way, without every Tailwind class here
+       having to grow a `tv:` variant that means nothing on a desktop. -->
+  <div data-tv-pane class="flex h-full flex-col gap-3 p-4 sm:p-5" appSpotlightHost #gridSpot="spotlightHost">
+    <!-- The title row, as TV-1 heads the screen: where you are, how much of it
+         has a guide, and the three ways of looking at it on the right. Sort,
+         arrange and refresh sit beside those rather than on a row of their
+         own, which cost a guide row on a television. -->
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-2" data-tv-title-row>
+      <button hlmBtn variant="quiet" size="sm" type="button" data-screen-back (click)="backToHome()">
+        <ng-icon name="lucideArrowLeft" size="16" />
+        {{ title() }}
+      </button>
+
+      <h1 class="hidden min-w-0 truncate text-xl font-semibold tracking-tight md:block">{{ browseTitle() }}</h1>
+      <!--
+        The same words on a phone, but as a button: the sidebar that switches
+        category is a desktop thing, and going back to the list and in again
+        was the only way across. Now the category says so and opens the list.
+      -->
+      <button
+        type="button"
+        data-phone-only
+        class="min-w-0 items-center gap-1 text-left text-xl font-semibold tracking-tight"
+        [attr.aria-haspopup]="selectedCategory() ? 'dialog' : null"
+        (click)="selectedCategory() && showCategorySheet.set(true)"
+      >
+        <span class="min-w-0 truncate">{{ browseTitle() }}</span>
+        @if (selectedCategory()) {
+          <ng-icon name="lucideChevronDown" size="16" class="shrink-0 text-muted-foreground" />
+        }
+      </button>
+      @if (!store.loading()) {
+        <span class="text-sm text-muted-foreground" data-browse-counts>{{ browseCounts() }}</span>
+      }
+      <!-- NX-TV-8: one line about the poster focus is on, and no backdrop, so a
+           thousand films can be walked without loading one. -->
+      @if (gridSpot.target(); as spot) {
+        <span class="min-w-0 truncate text-sm" data-grid-spot><span class="font-bold">{{ spot.name }}</span></span>
+      }
+      @if (store.isGlobalSearch() && !store.loading()) {
+        <!-- Search covers every category through a daily index of the whole
+             library. This says how old it is, and fetches it again on request. -->
+        <span class="text-xs text-dim-foreground">{{ searchIndexLabel() }}</span>
+        <button hlmBtn size="sm" type="button" [disabled]="!!indexing()" (click)="reindexSearch()">
+          <ng-icon name="lucideRefreshCw" size="14" [class.animate-spin]="!!indexing()" />
+          {{ (indexing() ? 'section.reindexing' : 'section.reindex') | t }}
+        </button>
+      }
+      @if (type() === "live" && streamSort() === "number" && !hasChannelNumbers()) {
+        <small class="text-xs text-muted-foreground">{{ 'section.noNumbers' | t }}</small>
+      }
+
+      <!--
+        Where a search's results came from, and a way to narrow to it.
+
+        Search covers the whole library, and this provider files the same film
+        in several categories -- so "x-men" answers with four X-Mens and, until
+        now, nothing said which was the 4K one and which the Croatian one. The
+        families come first because they are the words somebody would use; the
+        categories underneath are the provider's own, most-hit first.
+      -->
+      @if (store.isGlobalSearch() && !store.loading() && facets().categories.length > 1) {
+        <div class="flex w-full flex-wrap items-center gap-1.5" data-search-facets>
+          <button
+            type="button"
+            class="chip"
+            [attr.aria-pressed]="!facetChosen()"
+            (click)="facetChosen.set(null)"
+          >
+            {{ 'search.all' | t: { count: store.streams().length } }}
+          </button>
+
+          @for (family of facets().families; track family.key) {
+            <button
+              type="button"
+              class="chip"
+              [attr.aria-pressed]="chosenFamily() === family.key"
+              (click)="chooseFacet('family', family.key)"
+            >
+              {{ family.label }} {{ family.count }}
+            </button>
+          }
+
+          @if (facets().families.length) {
+            <span class="mx-1 h-4 w-px bg-border-2" aria-hidden="true"></span>
+          }
+
+          @for (category of shownFacetCategories(); track category.categoryId) {
+            <button
+              type="button"
+              class="chip max-w-[16rem] truncate"
+              [attr.aria-pressed]="chosenFacetCategory() === category.categoryId"
+              [title]="category.name"
+              (click)="chooseFacet('category', category.categoryId)"
+            >
+              {{ category.name }} {{ category.count }}
+            </button>
+          }
+
+          @if (facets().categories.length > FRONT_FACETS) {
+            <button
+              type="button"
+              class="rounded-md px-2.5 py-1 text-xs text-muted-foreground underline-offset-2 hover:underline"
+              (click)="showAllFacets.set(!showAllFacets())"
+            >
+              {{ showAllFacets() ? ('section.fewer' | t) : ('fy.more' | t: { count: facets().categories.length - FRONT_FACETS }) }}
+            </button>
+          }
+        </div>
+      }
+
+      <!-- P-2, P-4, P-7: on a phone the controls give way to three chips. -->
+      <div class="w-full gap-2 overflow-x-auto" data-phone-only data-phone-chips>
+        <button
+          type="button"
+          class="chip shrink-0"
+          [attr.aria-pressed]="quickFilter() === 'all'"
+          (click)="quickFilter.set('all')"
+        >
+          {{ 'section.allCount' | t: { count: quickCounts().all } }}
+        </button>
+        @if (type() === "live") {
+        <button
+          type="button"
+          class="chip shrink-0"
+          [attr.aria-pressed]="quickFilter() === 'now'"
+          (click)="quickFilter.set('now')"
+        >
+          {{ 'section.onAirCount' | t: { count: quickCounts().now } }}
+        </button>
+        } @else {
+        <button
+          type="button"
+          class="chip shrink-0"
+          [attr.aria-pressed]="quickFilter() === 'progress'"
+          (click)="quickFilter.set('progress')"
+        >
+          {{ (type() === 'vod' ? 'section.inProgressCount' : 'section.watchingCount') | t: { count: quickCounts().progress } }}
+        </button>
+        }
+        <button
+          type="button"
+          class="chip shrink-0"
+          [attr.aria-pressed]="quickFilter() === 'fav'"
+          (click)="quickFilter.set('fav')"
+        >
+          ★ {{ quickCounts().fav }}
+        </button>
+        <!-- A short name on the chip, so the row fits a phone; the full names
+             are in the panel it opens (DS-P-4). -->
+        <button type="button" class="chip shrink-0" data-phone-sort [attr.aria-label]="'search.sort' | t" (click)="chooseStreamSort()">
+          <ng-icon name="lucideArrowUpDown" aria-hidden="true" />
+          {{ 'section.sortShort.' + shownStreamSort() | t }}
+        </button>
+      </div>
+
+      <!--
+        How this list of channels is ordered, and the way to order it by hand.
+
+        In the toolbar above the channels on every device (D-2). They spent a
+        week at the head of the categories panel on a television, beside the
+        categories' own Arrange, and two Arrange buttons in one panel read as
+        one thing twice -- a user asked for this one above the channels it
+        arranges. Up from the first channel reaches it.
+      -->
+
+      <ng-template #streamControls>
+        <!-- The sort as a pill that opens the panel (DS-TV-6), not a dropdown. -->
+        <button hlmBtn size="sm" type="button" id="streamSort" [attr.aria-label]="('search.sort' | t) + ': ' + streamSortLabel()" (click)="chooseStreamSort()">
+          <ng-icon name="lucideArrowUpDown" aria-hidden="true" />
+          {{ streamSortLabel() }}
+        </button>
+        @if (canChangeSetup()) {
+          <button
+            hlmBtn
+           
+            size="sm"
+            type="button"
+            data-arrange-streams
+            (click)="openReorder('stream')"
+            [disabled]="!store.streams().length"
+          >
+            <ng-icon name="lucideArrowUpDown" size="14" />
+            {{ 'cat.arrange' | t }}
+          </button>
+        }
+      </ng-template>
+
+      <div class="ml-auto flex flex-wrap items-center gap-2" data-desktop-rail>
+        <span class="flex flex-wrap items-center gap-2" data-stream-controls>
+          <ng-container *ngTemplateOutlet="streamControls" />
+        </span>
+        @if (type() === "live" && listView()) {
+          <button
+            hlmBtn
+            variant="quiet"
+            size="icon"
+            type="button"
+            (click)="refreshGuide()"
+            [title]="'section.refreshGuide' | t"
+            [attr.aria-label]="'section.refreshGuide' | t"
+          >
+            <ng-icon name="lucideRefreshCw" size="16" />
+          </button>
+        }
+
+        <!-- Guide and Grid as two chips with the one in use checked, and Search
+             a pill of its own (DS-TV-6), where they were a boxed group of
+             three. -->
+        @if (type() === "live") {
+          <div class="flex items-center gap-2" role="group" [attr.aria-label]="'section.view' | t">
+            <button type="button" class="chip" [attr.aria-pressed]="listView()" (click)="showGuide()">{{ 'section.guide' | t }}</button>
+            <button type="button" class="chip" [attr.aria-pressed]="!listView()" (click)="showGrid()">{{ 'section.grid' | t }}</button>
+          </div>
+        }
+        <button hlmBtn size="sm" type="button" (click)="openSearch()">
+          <ng-icon name="lucideSearch" aria-hidden="true" />
+          {{ 'nav.search' | t }}
+        </button>
+
+        <form
+          [formGroup]="form"
+          class="field-wrap w-full sm:w-72"
+          data-tv-filter
+          [attr.data-open]="searchTerm() ? '' : null"
+          (ngSubmit)="searchStreams()"
+          (submit)="$event.preventDefault()"
+        >
+          <ng-icon name="lucideSearch" class="field-search-icon" aria-hidden="true" />
+          <input
+            hlmInput
+            type="text"
+            formControlName="searchTerm"
+            (keyup.enter)="searchStreams()"
+            [placeholder]="'section.filterResults' | t"
+            class="field-search field-clearable"
+          />
+          @if (searchTerm()) {
+            <button hlmBtn variant="quiet" size="icon-xs" type="button" class="field-clear" (click)="clearSearch()" [attr.aria-label]="'search.clear' | t">
+              <ng-icon name="lucideX" />
+            </button>
+          }
+        </form>
+      </div>
+    </div>
+
+    <div
+      data-tv-columns
+      [attr.data-docked]="menuTarget() && menuDocked() ? '' : null"
+      [attr.data-drawer]="drawerState()"
+      class="grid min-h-0 flex-1 grid-cols-1 gap-4"
+      [class]="
+        menuTarget() && menuDocked()
+          ? 'md:grid-cols-[minmax(200px,260px)_minmax(0,1fr)_minmax(300px,360px)]'
+          : 'md:grid-cols-[minmax(240px,300px)_minmax(0,1fr)]'
+      "
+    >
+      <!-- The panel, and its own focus scope while it is open. The scope is
+           what stops the arrows wandering back out into the guide by geometry:
+           with it, a Right that finds nothing to its right arrives at
+           onPanelKey as an unprevented press, which is the one that closes.
+           Closed, this is the 80px rail and holds no controls at all -- an
+           affordance, not something to land on. -->
+      <aside
+        data-tv-sidebar
+        class="rounded-2xl bg-card hidden min-h-0 flex-col p-3 md:flex"
+        [attr.data-focus-scope]="drawerState() === 'categories' ? '' : null"
+        (keydown)="onPanelKey($event)"
+      >
+        @if (drawerState() === 'closed') {
+          <span data-tv-drawer-rail aria-hidden="true">
+            <span data-tv-drawer-arrow>◄</span>
+            <span data-tv-drawer-name>{{ railName() }}</span>
+          </span>
+        } @else {
+          <app-category-picker
+            [categories]="store.categories()"
+            [type]="type()"
+            [providerLabels]="providerLabels()"
+            [providerKinds]="providerKinds()"
+            [selectedId]="selectedCategory()"
+            [favoritesCount]="favouritesShown()"
+            [favoritesId]="FAVORITES_CATEGORY"
+            [compact]="true"
+            (selectionChange)="chooseCategory($event)"
+            (arrange)="openReorder('category')"
+          />
+
+        }
+      </aside>
+
+      <section class="flex min-h-0 flex-col gap-3" (keydown)="onDrawerKey($event)">
+        @if (store.error()) {
+          <div class="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+            {{ store.error() }}
+          </div>
+        }
+
+        @if (store.loading()) {
+          <div class="flex items-center justify-center gap-2 p-10 text-muted-foreground">
+            <ng-icon name="lucideLoaderCircle" size="18" class="animate-spin" />
+            @if (indexing()) {
+              <!-- The once-a-day download that makes search cover every
+                   category; the first search of the day waits for it. -->
+              {{ (type() === 'live' ? 'section.indexingChannels' : type() === 'vod' ? 'section.indexingFilms' : 'section.indexingShows') | t }}
+            } @else {
+              {{ 'sub.loading' | t }}
+            }
+          </div>
+        }
+
+        @if (!store.loading() && store.streams().length > 0) {
+          <!-- Every view in here scrolls itself, in a virtual scroller. -->
+          <div class="min-h-0 flex-1 overflow-y-hidden pr-1">
+            @if (phone() && type() === "live") {
+              <!-- P-2: on a phone a category is a list of channels, each saying
+                   what is on and for how long; the timeline needs a width a
+                   phone does not have. Virtualised like the grid. -->
+              <cdk-virtual-scroll-viewport [itemSize]="80" class="h-full" data-phone-channel-list>
+                <div *cdkVirtualFor="let card of listRows(); trackBy: trackByCard" class="h-[80px] pb-1.5">
+                  @let stream = card.stream;
+                  <div class="flex h-full items-center rounded-lg bg-card">
+                    <button
+                      type="button"
+                      appCardGestures
+                      class="flex h-full min-w-0 flex-1 items-center gap-3 px-2.5 text-left"
+                      [attr.aria-label]="stream.name"
+                      (activate)="openCard(stream)"
+                      (menu)="openMenu({ kind: 'stream', stream })"
+                    >
+                      <span
+                        class="flex h-11 w-12 shrink-0 items-center justify-center rounded-md bg-card-2"
+                        [class.poster-placeholder]="!card.hasGuide"
+                      >
+                        @if ((stream.stream_icon && !brokenLogos().has(card.id))) {
+                          <img [src]="stream.stream_icon" alt="" loading="lazy" class="h-9 w-10 object-contain" (error)="logoFailed(stream)" />
+                        } @else {
+                          <span class="text-sm font-bold" [class]="card.hasGuide ? 'text-live' : 'text-muted-foreground'">
+                            {{ card.display.monogram }}
+                          </span>
+                        }
+                      </span>
+                      <span class="min-w-0 flex-1">
+                        <span class="block truncate text-sm font-semibold">
+                          {{ card.display.title }}
+                          @if (card.display.tags) {
+                            <span class="text-[10px]">{{ card.display.tags }}</span>
+                          }
+                        </span>
+                        @if (card.now(); as now) {
+                          <span class="block truncate text-xs">
+                            <span class="text-muted-foreground">{{ now.title }}</span>
+                          </span>
+                          <span class="block truncate text-xs text-muted-foreground">
+                            {{ now.left }}{{ now.left && card.until() ? " · " : "" }}{{ card.until() }}
+                          </span>
+                        } @else {
+                          <span class="block truncate text-xs text-dim-foreground">
+                            {{ (card.hasGuide ? 'section.nothingOnNow' : 'section.noGuideTap') | t }}
+                          </span>
+                        }
+                      </span>
+                      @if (card.favourite) {
+                        <ng-icon name="lucideStar" size="14" class="shrink-0 text-favorite" />
+                      }
+                    </button>
+                    <button
+                      type="button"
+                      class="flex h-full w-11 shrink-0 items-center justify-center text-muted-foreground"
+                      [attr.aria-label]="'section.actionsFor' | t: { name: stream.name }"
+                      (click)="openMenu({ kind: 'stream', stream })"
+                    >
+                      ···
+                    </button>
+                  </div>
+                </div>
+              </cdk-virtual-scroll-viewport>
+            } @else if (!listView()) {
+              <!-- Rows are virtualised, so a 600-channel category builds a
+                   screenful of cards rather than all of them. The grid is
+                   chunked into rows first because the scroller works in one
+                   dimension. -->
+              <cdk-virtual-scroll-viewport
+                #gridViewport
+                [itemSize]="GRID_ROW_HEIGHT_PX()"
+                class="h-full"
+              >
+                <div
+                  *cdkVirtualFor="let row of gridRows(); trackBy: trackByRowKey"
+                  class="grid gap-3 pb-3"
+                  [attr.data-tv-poster-row]="posterGrid() ? '' : null"
+                  [style.grid-template-columns]="'repeat(' + gridColumns() + ', minmax(0, 1fr))'"
+                >
+                  @for (card of row; track card.id) {
+                    @let stream = card.stream;
+                    <!-- Fixed height: the scroller positions rows arithmetically
+                         from GRID_ROW_HEIGHT_PX, so a card that sizes itself
+                         would drift out of step with its own scrollbar. -->
+                    @if (posterGrid()) {
+                      <!-- TV-5 and TV-13: a 2:3 poster and two lines, nothing
+                           else -- no overlay buttons that need a hover. What
+                           has been watched is a bar across the poster's foot
+                           and the words under it. A missing poster becomes a
+                           plate of the same size, so the row stays even and
+                           the card is still identifiable. -->
+                      <div
+                        class="group relative flex h-[292px] cursor-pointer flex-col gap-1.5 rounded-lg text-left outline-none"
+                        tabindex="0"
+                        role="button"
+                        appCardGestures
+                        data-tv-poster-card
+                        [attr.data-focus-key]="'stream-' + stream.stream_id"
+                        [attr.data-spot-kind]="type() === 'live' ? null : type()"
+                        [attr.data-spot-id]="type() === 'live' ? null : stream.stream_id"
+                        [attr.data-spot-name]="type() === 'live' ? null : (stream.name | posterTitle)"
+                        [attr.aria-label]="stream.name"
+                        (activate)="openCard(stream)"
+                        (menu)="openMenu({ kind: 'stream', stream })"
+                      >
+                        <div class="relative h-[222px] w-full shrink-0 overflow-hidden rounded-md bg-card-2" data-tv-poster>
+                          @if ((stream.stream_icon && !brokenLogos().has(card.id))) {
+                            <img
+                              [src]="stream.stream_icon"
+                              alt=""
+                              loading="lazy"
+                              decoding="async"
+                              class="h-full w-full object-cover"
+                              (error)="logoFailed(stream)"
+                            />
+                          } @else {
+                            <span class="poster-placeholder absolute inset-0 flex flex-col border-l-4 border-primary-bright p-3">
+                              <span class="text-2xl font-bold text-muted-foreground">{{ card.poster.monogram }}</span>
+                              <span class="mt-auto line-clamp-2 text-sm font-semibold">
+                                {{ card.poster.title }}
+                              </span>
+                            </span>
+                          }
+
+                          @if (type() === "series") {
+                          }
+
+                          @if (card.showProgress) {
+                            <span class="absolute inset-x-0 bottom-0 h-1.5 bg-black/50">
+                              <span class="block h-full bg-primary-bright" [style.width.%]="card.percent"></span>
+                            </span>
+                          }
+
+                          @if (ages.lockedStreamLabel(type(), stream.stream_id); as rating) {
+                            <app-age-cover [rating]="rating" />
+                          }
+
+                          <!-- Not on a television, where starring is in the actions panel and the
+                               star was a hidden button in every card that each press still had
+                               to look at and rule out (the performance audit, 15 October). -->
+                          @if (!television()) {
+                            <button
+                              type="button"
+                              data-card-action
+                              class="absolute top-2 left-2 z-10 flex size-7 items-center justify-center rounded-sm bg-background/70 transition-colors"
+                              [class]="
+                                card.favourite
+                                  ? 'text-favorite'
+                                  : 'text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 hover:text-favorite'
+                              "
+                              (click)="toggleFavorite(stream, $event)"
+                              [title]="(card.favourite ? 'actions.unstar' : 'actions.addFavourite') | t"
+                            >
+                              <ng-icon name="lucideStar" size="16" />
+                            </button>
+                          }
+                        </div>
+
+                        <span class="block w-full truncate text-sm font-semibold" [title]="stream.name">
+                          {{ card.poster.title }}
+                          @if (card.poster.tags) {
+                            <span class="text-xs">{{ card.poster.tags }}</span>
+                          }
+                        </span>
+                        <!-- With several providers, whose: a token that never shrinks (TV-25). -->
+                        <span class="flex w-full min-w-0 text-xs text-muted-foreground">
+                          <span class="min-w-0 truncate">{{ card.caption }}</span>
+                          @if (stream.stream_id | providerName; as provider) {
+                            <span class="shrink-0 text-dim-foreground" data-card-provider>{{ card.caption ? '&nbsp;· ' : '' }}{{ provider }}</span>
+                          }
+                        </span>
+                      </div>
+                    } @else {
+                    <!--
+                      D-2: a tile and two lines. The tile is the logo, or the
+                      channel's initials in the live colour; a channel with no
+                      guide keeps the same card with a hatched tile and the
+                      words "No guide", so half the list reads as intentional
+                      rather than half-failed. The star is a status mark, not a
+                      button -- starring, the guide and choosing a guide channel
+                      are in the actions panel (right-click, hold OK, Menu).
+
+                      data-focus-key names the channel rather than the element,
+                      so a remote keeps its place when the scroller recycles
+                      this row out from under it. See TvNavigationService.
+                    -->
+                    <div
+                      class="group relative flex h-[168px] cursor-pointer flex-col overflow-hidden rounded-lg bg-card transition-colors hover:bg-card-2"
+                      tabindex="0"
+                      role="button"
+                      appCardGestures
+                      [attr.data-focus-key]="'stream-' + stream.stream_id"
+                      [attr.aria-label]="stream.name"
+                      (activate)="openCard(stream)"
+                      (menu)="openMenu({ kind: 'stream', stream })"
+                    >
+                      <div
+                        class="relative flex h-[96px] shrink-0 items-center justify-center bg-card-2"
+                        [class.poster-placeholder]="!card.hasGuide"
+                        data-tv-grid-tile
+                      >
+                        @if ((stream.stream_icon && !brokenLogos().has(card.id))) {
+                          <!-- Lazy: a large category otherwise asks the provider
+                               for 600 logos at once, all competing with playback. -->
+                          <img
+                            [src]="stream.stream_icon"
+                            [alt]="stream.name"
+                            loading="lazy"
+                            decoding="async"
+                            class="h-16 w-24 object-contain"
+                            data-tv-grid-logo
+                            (error)="logoFailed(stream)"
+                          />
+                        } @else {
+                          <span
+                            class="flex h-16 w-24 items-center justify-center text-2xl font-bold"
+                            [class]="card.hasGuide ? 'text-live' : 'text-muted-foreground'"
+                            data-tv-grid-logo
+                          >
+                            {{ card.display.monogram }}
+                          </span>
+                        }
+
+                        @if (card.now(); as now) {
+                          <span class="absolute inset-x-0 bottom-0 h-0.5 bg-black/40">
+                            <span class="block h-full bg-on-air" [style.width.%]="now.percent"></span>
+                          </span>
+                        }
+                        @if (card.favourite) {
+                          <ng-icon
+                            name="lucideStar"
+                            size="14"
+                            class="absolute top-2 right-2 text-favorite"
+                            [attr.aria-label]="'show.inFavourites' | t"
+                          />
+                        }
+                      </div>
+
+                      <div class="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-3">
+                        <h3 class="truncate text-sm font-semibold" [title]="stream.name">
+                          {{ card.display.title }}
+                          @if (card.display.tags) {
+                            <span class="text-[10px] font-semibold">{{ card.display.tags }}</span>
+                          }
+                        </h3>
+                        <p class="truncate text-xs" [class]="card.now() ? 'text-muted-foreground' : 'text-muted-foreground'">
+                          @if (card.now(); as now) {
+                            {{ now.title }}
+                          } @else if (card.hasGuide) {
+                            {{ 'section.nothingOnNow' | t }}
+                          } @else {
+                            {{ 'fy.noGuide' | t }}
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    }
+                  }
+                </div>
+              </cdk-virtual-scroll-viewport>
+            } @else if (type() === "live") {
+              <div class="flex h-full flex-col" (focusin)="onGuideFocus($event)">
+                <!-- The channel the remote rests on, playing in the box on the
+                     left (a native window over it, ChannelPreviewService), and
+                     the programme in focus beside it -- TiviMate's guide. On a
+                     television that has it, and only while it is switched on. -->
+                @if (previewShown()) {
+                  <!-- One height whatever the programme says: it jumped with every
+                       channel passed (21 October). A long description
+                       is cut, with Read more for the rest. -->
+                  <div class="grid h-[15.25rem] shrink-0 grid-cols-[auto_1fr] gap-5 overflow-hidden border-b border-border p-3" data-guide-preview>
+                    <div #previewBox class="relative aspect-video h-[12.5rem] overflow-hidden rounded-md bg-black" data-preview-box>
+                      @if (preview.state() === "failed") {
+                        <span class="absolute inset-0 flex items-center justify-center p-3 text-center text-sm text-muted-foreground">{{ 'preview.failed' | t }}</span>
+                      } @else if (preview.state() !== "playing" && previewInfo(); as info) {
+                        <span class="absolute inset-0 flex items-center justify-center p-3 text-center text-lg font-bold text-live">
+                          <span class="line-clamp-3">{{ info.channel }}</span>
+                        </span>
+                      }
+                    </div>
+                    @if (previewInfo(); as info) {
+                      <div class="flex h-full min-h-0 min-w-0 flex-col gap-1.5" data-preview-info>
+                        <p class="truncate text-sm text-muted-foreground">{{ info.channel }}</p>
+                        <p class="truncate text-xl font-bold">{{ info.title }}</p>
+                        @if (info.time) {
+                          <p class="text-sm text-muted-foreground">{{ info.time }}@if (info.left) { · {{ info.left }} }</p>
+                        }
+                        @if (info.percent !== null) {
+                          <span class="block h-1 w-48 overflow-hidden rounded-full bg-background-2"><span class="block h-full bg-on-air" [style.width.%]="info.percent"></span></span>
+                        }
+                        @if (info.description) {
+                          <p #previewDescription class="line-clamp-2 shrink-0 text-sm" data-preview-description>{{ info.description }}</p>
+                        }
+                        <div class="mt-auto flex min-w-0 items-center gap-3">
+                          @if (info.next) {
+                            <p class="min-w-0 flex-1 truncate text-sm text-muted-foreground">{{ 'preview.next' | t: { time: info.next.time, title: info.next.title } }}</p>
+                          }
+                          @if (previewDescriptionCut()) {
+                            <button
+                              type="button"
+                              class="ml-auto shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase hover:bg-card-2"
+                              data-preview-read-more
+                              (click)="readPreview()"
+                            >
+                              {{ 'preview.readMore' | t }}
+                            </button>
+                          }
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+                <!-- The time header: the date over the channel column (TV-1),
+                     24-hour half-hours over the lanes, and the now-line's own
+                     label, so the red line crossing thirty rows says what time
+                     it marks. -->
+                <!-- Above the rows rather than stuck to the top of them: the
+                     rows scroll in a virtual scroller now, whose content is
+                     moved by a transform that sticky positioning cannot see
+                     past. Above the rows in the stacking order too, so the
+                     now-time label that hangs over the first row is not drawn
+                     under it. -->
+                <div class="relative z-20 grid shrink-0 grid-cols-[240px_1fr] border-b border-border bg-card" data-tv-guide-head>
+                  <div class="p-2 text-xs font-semibold tracking-wide text-muted-foreground">
+                    {{ guideDate() }}
+                  </div>
+                  <!-- Four hours wide, two in view: moved along with the rows
+                       below (guideSpansWider). Clipped across only, so the
+                       now-time label can still hang over the first row. -->
+                  <div class="relative min-w-0 [overflow-x:clip]">
+                    <div #guideHeadLanes class="relative flex" [style.width.px]="guideLanesPx()">
+                      @for (slotLabel of epgSlots(); track slotLabel) {
+                        <div class="flex-1 p-2 text-xs font-semibold text-muted-foreground">{{ slotLabel }}</div>
+                      }
+                      <span
+                        class="absolute top-full z-20 -translate-x-1/2 -translate-y-1/2 rounded-sm bg-on-air px-1.5 text-xs font-bold text-white"
+                        [style.left]="nowLineLeft()"
+                      >
+                        {{ nowLabel() }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <!--
+                  Only the rows on screen, and a few either side.
+
+                  Every channel in the category was drawn, each with its
+                  programme blocks: 476 focusable things on the emulator for
+                  one category, all laid out and checked on every press. Held
+                  Down froze the set for seconds (22 September), and
+                  a category of three hundred channels was worse again. The
+                  rows have a fixed height, which the scroller places them by:
+                  GUIDE_ROW_HEIGHT_PX and [data-tv-guide-row] in styles.css.
+                  The buffer is a few rows' worth, so the row a press moves to
+                  is always built before it is needed -- five, because a long
+                  hold moves four rows a step (TvNavigationService).
+                -->
+                <cdk-virtual-scroll-viewport
+                  #guideViewport
+                  class="min-h-0 flex-1"
+                  data-tv-guide-rows
+                  [itemSize]="GUIDE_ROW_HEIGHT_PX()"
+                  [minBufferPx]="GUIDE_ROW_HEIGHT_PX() * 5"
+                  [maxBufferPx]="GUIDE_ROW_HEIGHT_PX() * 8"
+                >
+                <div
+                  *cdkVirtualFor="let lane of laneRows(); trackBy: trackByCard"
+                  class="group/row grid h-[57px] grid-cols-[240px_1fr] border-b border-border/60"
+                  data-tv-guide-row
+                  [style.width.px]="guideRowPx()"
+                >
+                    @let stream = lane.stream;
+                    <!-- Pinned while the lanes scroll sideways under it. -->
+                    <div class="sticky left-0 z-20 flex min-w-0 items-stretch gap-1 bg-background">
+                      <!-- The whole cell is the channel: logo or monogram, name,
+                           number and tags, and the star if it is a favourite
+                           (TV-1). The same gestures as a card, because this row
+                           is what most people meet -- without them there is no
+                           way to star a channel or reach its actions from a
+                           remote. -->
+                      <button
+                        type="button"
+                        appCardGestures
+                        class="flex min-w-0 flex-1 items-center gap-2 rounded-md p-2 text-left"
+                        [attr.data-focus-key]="'guide-' + stream.stream_id"
+                        (activate)="guideActivate(stream)"
+                        (menu)="openMenu({ kind: 'stream', stream })"
+                        [title]="stream.name"
+                      >
+                        @if ((stream.stream_icon && !brokenLogos().has(lane.id))) {
+                          <img
+                            [src]="stream.stream_icon"
+                            alt=""
+                            loading="lazy"
+                            decoding="async"
+                            class="h-8 w-11 shrink-0 rounded-sm bg-background-2 object-contain"
+                            data-tv-guide-logo
+                            (error)="logoFailed(stream)"
+                          />
+                        } @else {
+                          <span
+                            class="flex h-8 w-11 shrink-0 items-center justify-center rounded-sm bg-background-2 text-xs font-bold text-live"
+                            data-tv-guide-logo
+                          >
+                            {{ lane.display.monogram }}
+                          </span>
+                        }
+                        <span class="min-w-0 flex-1">
+                          <span class="block truncate text-sm font-semibold">{{ lane.display.title }}</span>
+                          <!-- The number line carries the provider when there are
+                               several (TV-25), as it carries the suffixes. -->
+                          @if (lane.meta || (stream.stream_id | providerName)) {
+                            <span class="flex min-w-0 text-xs text-muted-foreground">
+                              <span class="min-w-0 truncate">{{ lane.meta }}</span>
+                              @if (stream.stream_id | providerName; as provider) {
+                                <span class="shrink-0" data-card-provider>{{ lane.meta ? '&nbsp;· ' : '' }}{{ provider }}</span>
+                              }
+                            </span>
+                          }
+                        </span>
+                        @if (lane.catchUp) {
+                          <ng-icon name="lucideHistory" size="14" class="shrink-0 text-muted-foreground" [attr.aria-label]="lane.catchUpTitle" [title]="lane.catchUpTitle" />
+                        }
+                        @if (lane.favourite) {
+                          <ng-icon name="lucideStar" size="14" class="shrink-0 text-favorite" [attr.aria-label]="'section.favourite' | t" />
+                        }
+                      </button>
+                      <!-- The way back in. A row that already has a guide had
+                           no way to change which one, so a wrong match was
+                           permanent and a hand-made one could not be undone.
+                           Not for a kid, whose guides are set up from above. -->
+                      @if (canChangeSetup()) {
+                      <button
+                        type="button"
+                        class="mr-2 shrink-0 self-center rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground focus-visible:opacity-100 group-hover/row:opacity-100"
+                        (click)="pickGuideChannel(stream, $event)"
+                        [title]="
+                          (lane.byHand ? 'section.matchedByHand' : 'section.chooseWhich') | t
+                        "
+                      >
+                        <ng-icon
+                          name="lucideTv"
+                          size="12"
+                          [class.text-muted-foreground]="lane.byHand"
+                        />
+                      </button>
+                      }
+                    </div>
+
+                    <div class="relative h-14" data-tv-guide-lane>
+                      <div
+                        class="pointer-events-none absolute inset-y-0 z-10 w-px -translate-x-1/2 bg-on-air"
+                        [style.left]="nowLineLeft()"
+                      ></div>
+                      @for (block of lane.blocks(); track block.item.prog.start) {
+                        @let item = block.item;
+                        <!-- Two lines: the title, then its times -- and on the
+                             one on air, the minutes left and a thin
+                             meter along its foot (TV-1). Holding OK opens the
+                             channel's actions, as holding the channel does;
+                             the hint for that shows only on the focused block,
+                             which is the one place a remote user is looking. -->
+                        <button
+                          type="button"
+                          appCardGestures
+                          class="absolute inset-y-1 flex flex-col justify-center overflow-clip rounded-sm px-2 text-left transition-colors"
+                          [class]="
+                            item.onAir
+                              ? 'border-l-2 border-l-on-air bg-card-3 hover:bg-card-2'
+                              : item.finished
+                                ? 'bg-card text-muted-foreground hover:bg-card-2'
+                                : 'bg-card-2 hover:bg-card-3'
+                          "
+                          [attr.data-finished]="item.finished ? '' : null"
+                          [attr.data-on-air]="item.onAir ? '' : null"
+                          [title]="item.prog.title"
+                          [style.left]="item.style['left']"
+                          [style.width]="item.style['width']"
+                          [attr.data-focus-key]="'prog-' + stream.stream_id + '-' + item.prog.start"
+                          (activate)="onProgrammeBlock(stream, item)"
+                          (menu)="openMenu({ kind: 'stream', stream })"
+                        >
+                          <!-- The words stay beside the channel names while a
+                               programme that began earlier runs on under them:
+                               with the guide reaching back hours, one that
+                               started before the part on screen showed as an
+                               empty block, its title off to the left. Moved
+                               along by the lanes' scroll rather than made
+                               sticky: each sticky title had a layer of its
+                               own on a television, and a guide's worth of them
+                               slowed every press (programmeWordsShift). -->
+                          <span
+                            class="block w-fit min-w-0"
+                            [style.translate]="block.shift"
+                            [style.max-width]="block.width"
+                            data-programme-words
+                          >
+                            <span class="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
+                              <!-- Finished, and the channel keeps it: OK plays it
+                                   from the start. -->
+                              @if (block.replay) {
+                                <ng-icon name="lucideHistory" size="14" class="shrink-0 text-muted-foreground" [attr.aria-label]="'catchUp.watchAgain' | t" />
+                              } @else if (block.reminded) {
+                                <ng-icon name="lucideBell" size="14" class="shrink-0 text-muted-foreground" [attr.aria-label]="'remind.setShort' | t" data-reminded />
+                              }
+                              <span class="truncate">{{ item.prog.title || ('section.noProgramme' | t) }}</span>
+                            </span>
+                            <span class="block truncate text-xs text-muted-foreground">
+                              {{ item.time }}@if (item.left) { · {{ item.left }} }
+                            </span>
+                          </span>
+                          @if (item.onAir) {
+                            <span
+                              class="absolute bottom-0 left-0 h-0.5 bg-on-air"
+                              [style.width.%]="item.percent"
+                            ></span>
+                          }
+                        </button>
+                      }
+                      <!-- Nothing on now or to come, not merely nothing held: a guide
+                           that has run out left the row empty from the last programme
+                           on, with no way to fix it. The band starts where that
+                           programme ends, and says when. -->
+                      @if (lane.gap(); as gap) {
+                        <!-- A deliberate band rather than an outline that looks
+                             like a rendering fault, one row tall and focusable
+                             where it matters: the fix is on the row itself
+                             (TV-1). It is where a person notices the guide is
+                             missing, and where they know which channel it is. -->
+                        <div class="guide-hatch absolute inset-y-1 right-0 rounded-sm" [style.left]="gap.left" data-guide-gap>
+                        <!-- Kept in view while the lanes scroll: the band is
+                             four hours long, and the button was at its far end. -->
+                        <div
+                          class="flex h-full max-w-full items-center justify-between gap-2 px-3 text-xs text-dim-foreground"
+                          data-guide-hatch-shown
+                          [style.width]="gap.width"
+                        >
+                          <span class="truncate">{{ gap.until ? ('section.guideEndsAt' | t: { time: gap.until }) : ('section.noGuideForChannel' | t) }}</span>
+                          @if (canChangeSetup()) {
+                            <button
+                              hlmBtn
+                              variant="secondary"
+                              size="sm"
+                              type="button"
+                              class="shrink-0"
+                              (click)="pickGuideChannel(stream, $event)"
+                            >
+                              {{ 'cgp.title' | t }}
+                            </button>
+                          }
+                        </div>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                </cdk-virtual-scroll-viewport>
+              </div>
+            }
+          </div>
+        }
+
+        @if (!store.loading() && store.streams().length === 0) {
+          <!--
+            "Nothing here" was the whole message, and after a search it was a
+            lie by omission: a search covers the catalogue this device has
+            browsed, not the line-up, so a miss means "not fetched yet" at
+            least as often as it means "you do not have this".
+
+            Saying which is the difference between a person opening the
+            category and finding their channel, and a person concluding the
+            channel is gone.
+          -->
+          <!-- D-11: the same hatched ground as a channel with no guide, a
+               kicker saying which state this is, and what to do about it. -->
+          <div class="poster-placeholder mx-auto mt-6 flex w-full max-w-xl flex-col gap-2 rounded-lg border border-border-2 p-5" data-empty-state>
+            @if (store.isGlobalSearch()) {
+              <p class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">{{ 'section.searchNothing' | t }}</p>
+              <h2 class="text-lg font-semibold">
+                {{ (type() === 'live' ? 'section.noChannelMatches' : type() === 'vod' ? 'section.noFilmMatches' : 'section.noShowMatches') | t: { text: searchTerm() } }}
+              </h2>
+              @if (searchRescue(); as rescue) {
+                <p class="text-sm text-muted-foreground">
+                  {{ 'section.marks' | t }}
+                </p>
+              } @else {
+                <p class="text-sm text-muted-foreground">
+                  {{ 'section.searchHelp' | t: { index: searchIndexLabel() } }}
+                </p>
+              }
+              <div class="mt-1 flex flex-wrap gap-2">
+                @if (searchRescue(); as rescue) {
+                  <button hlmBtn variant="primary" size="sm" type="button" (click)="searchFor(rescue)">{{ 'section.searchFor' | t: { text: rescue } }}</button>
+                }
+                @if (!searchRescue()) {
+                  <button hlmBtn variant="primary" size="sm" type="button" [disabled]="!!indexing()" (click)="reindexSearch()">{{ 'section.reindex' | t }}</button>
+                }
+                <button hlmBtn size="sm" type="button" (click)="clearSearch()">{{ 'section.clear' | t }}</button>
+              </div>
+            } @else {
+              <p class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">{{ 'section.emptyCategory' | t }}</p>
+              <h2 class="text-lg font-semibold">{{ (type() === 'live' ? 'section.emptyChannels' : type() === 'vod' ? 'section.emptyFilms' : 'section.emptyShows') | t: { name: browseTitle() } }}</h2>
+              <p class="text-sm text-muted-foreground">
+                {{ 'section.emptyHelp' | t }}
+              </p>
+              <div class="mt-1 flex flex-wrap gap-2">
+                <button hlmBtn size="sm" type="button" (click)="loadStreams()">{{ 'section.loadAgain' | t }}</button>
+              </div>
+            }
+          </div>
+        }
+      </section>
+
+      @if (menuTarget() && menuDocked()) {
+        <aside class="hidden min-h-0 md:flex" data-tv-actions-column>
+          <app-item-actions
+            class="flex min-h-0 w-full"
+            [docked]="true"
+            (leave)="returnFromMenu()"
+            [name]="menuName()"
+            [subtitle]="menuSubtitle()"
+            [icon]="menuIcon()"
+            [monogram]="menuMonogram()"
+            [nowPlaying]="menuNowPlaying()"
+            [film]="menuFilm()"
+            [actions]="menuActions()"
+            (chosen)="onMenuAction($event)"
+            (closed)="closeMenu()"
+          />
+        </aside>
+      }
+    </div>
+  </div>
+}
+
+<!-- The number being typed on the remote, and what became of it. In the corner,
+     over everything, and never focusable: it is a reading, not a place. -->
+@if (starting(); as startingName) {
+  <!-- A play asked for from For You: this page is only passing through. -->
+  <div class="fixed inset-0 z-[60] flex items-center justify-center bg-background" role="status">
+    <p class="flex items-center gap-3 text-2xl font-semibold">
+      <ng-icon name="lucideLoaderCircle" size="24" class="animate-spin" />
+      {{ 'section.starting' | t: { name: startingName } }}
+    </p>
+  </div>
+}
+
+@if (leaving()) {
+  <!-- On the way back to the page that asked for the play: nothing of this one. -->
+  <div class="fixed inset-0 z-[60] bg-background"></div>
+}
+
+@if (channelChanging(); as changingTo) {
+  <!-- Between one channel's player closing and the next one opening: a moment
+       the screen would otherwise show the guide and nothing saying why. -->
+  <div class="fixed inset-0 z-[60] flex items-center justify-center bg-[color-mix(in_oklch,var(--background)_88%,transparent)]" role="status">
+    <p class="flex items-center gap-3 text-2xl font-semibold">
+      <ng-icon name="lucideLoaderCircle" size="24" class="animate-spin" />
+      {{ 'section.changingTo' | t: { name: changingTo } }}
+    </p>
+  </div>
+}
+
+@if (numberTyped() || numberMissing()) {
+  <div
+    class="pointer-events-none fixed top-4 right-4 z-[60] rounded-md bg-card-3 px-4 py-2 text-2xl font-bold tabular-nums shadow-2xl"
+    role="status"
+  >
+    {{ numberTyped() ? numberTyped() + "_" : numberMissing() }}
+  </div>
+}
+
+@if (showPlayer()) {
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_oklch,var(--background)_88%,transparent)] p-4" data-focus-scope
+    (click)="closePlayer()"
+  >
+    <div
+      class="rounded-2xl bg-card flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="flex items-center justify-between p-4">
+        <h2 class="truncate text-lg font-semibold">{{ currentStreamName() }}</h2>
+        <button hlmBtn variant="quiet" size="icon" type="button" [attr.aria-label]="'show.closePlayer' | t" (click)="closePlayer()">
+          <ng-icon name="lucideX" size="18" />
+        </button>
+      </div>
+      <div class="min-h-0 flex-1 overflow-auto p-4">
+        <app-video-player
+          [streamUrl]="currentStreamUrl()"
+          [streamName]="currentStreamName()"
+          [startPositionSeconds]="resumeAt()"
+          (progress)="onPlaybackProgress($event)"
+          (close)="closePlayer()"
+        ></app-video-player>
+      </div>
+    </div>
+  </div>
+}
+
+@if (menuTarget() && !menuDocked()) {
+  <app-item-actions
+    [name]="menuName()"
+    [subtitle]="menuSubtitle()"
+    [icon]="menuIcon()"
+    [monogram]="menuMonogram()"
+    [nowPlaying]="menuNowPlaying()"
+    [film]="menuFilm()"
+    [actions]="menuActions()"
+    (chosen)="onMenuAction($event)"
+    (closed)="closeMenu()"
+  />
+}
+
+@if (mappingStream(); as stream) {
+  <app-channel-guide-picker
+    [stream]="stream"
+    (closed)="closeGuidePicker()"
+    (changed)="guideMappingChanged()"
+  />
+}
+
+@if (showEPG()) {
+  <!-- A dialog on a desktop; on a television a full-surface page (TV-4): the
+       chrome stays, the body is replaced, and Back is a real button at a fixed
+       corner. An overlay has no geometry the arrows can use. -->
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_oklch,var(--background)_88%,transparent)] p-4"
+    data-focus-scope
+    data-tv-page
+    (click)="closeEPG()"
+  >
+    <div
+      class="rounded-2xl bg-card flex max-h-[85vh] w-full max-w-5xl flex-col overflow-hidden"
+      data-tv-page-surface
+      (click)="$event.stopPropagation()"
+    >
+      <div class="flex items-center gap-3 p-4">
+        <button hlmBtn variant="secondary" size="sm" type="button" data-tv-only (click)="closeEPG()">
+          <ng-icon name="lucideArrowLeft" size="16" />
+          {{ 'common.back' | t }}
+        </button>
+        <!-- Named, because this is opened from a list of channels and used to
+             say only "Programme guide" -- so the one fact needed to know
+             whether it was the right one was the fact missing. -->
+        <h2 class="min-w-0 flex-1 truncate text-lg font-semibold">
+          {{ 'section.programmeGuide' | t }}
+          @if (selectedStream(); as stream) {
+            <span class="ml-2 text-sm font-normal text-muted-foreground">{{ stream.name | channelTitle }}</span>
+          }
+        </h2>
+        <button
+          hlmBtn
+          variant="quiet"
+          size="icon"
+          type="button"
+          data-desktop-only
+          [attr.aria-label]="'section.closeGuide' | t"
+          (click)="closeEPG()"
+        >
+          <ng-icon name="lucideX" size="18" />
+        </button>
+      </div>
+      <div class="min-h-0 flex-1 overflow-auto p-4">
+        <app-epg
+          [stream]="selectedStream()"
+          [compact]="false"
+          [canWatch]="true"
+          [canCatchUp]="catchUpHere"
+          (watch)="watchFromGuide()"
+          (catchUp)="catchUpFromGuide($event)"
+        ></app-epg>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showCategorySheet()) {
+  <!-- P-2: a sheet from the bottom, where the thumb is; the same picker the
+       desktop keeps in its sidebar, so the two screens are one thing.
+
+       A height, not a maximum. The list inside is a virtual scroller, which
+       has no height of its own and takes what it is given -- under a maximum
+       it was given nothing, so the sheet opened on the filter and Favourites
+       and every category sat below the bottom of the screen, where no finger
+       could reach it (22 September; measured: a 0px list). -->
+  <div
+    class="fixed inset-0 z-50 flex items-end bg-[color-mix(in_oklch,var(--background)_88%,transparent)]"
+    data-focus-scope
+    data-category-sheet
+    (click)="showCategorySheet.set(false)"
+  >
+    <div
+      class="flex h-[80dvh] w-full flex-col rounded-t-xl bg-card-2 p-3 shadow-2xl"
+      (click)="$event.stopPropagation()"
+    >
+      <span class="mx-auto mb-2 h-1 w-10 shrink-0 rounded-full bg-border-2" aria-hidden="true"></span>
+      <app-category-picker
+        [categories]="store.categories()"
+        [type]="type()"
+        [providerLabels]="providerLabels()"
+        [providerKinds]="providerKinds()"
+        [selectedId]="selectedCategory()"
+        [favoritesCount]="favouritesShown()"
+        [favoritesId]="FAVORITES_CATEGORY"
+        [compact]="true"
+        (selectionChange)="chooseCategory($event); showCategorySheet.set(false)"
+        (arrange)="showCategorySheet.set(false); openReorder('category')"
+      />
+    </div>
+  </div>
+}
+
+@if (subtitleTarget(); as target) {
+  <app-subtitle-picker
+    [item]="target.item"
+    [name]="target.name"
+    [poster]="target.poster"
+    (closed)="subtitleTarget.set(null)"
+  />
+}
+
+@if (showReorder()) {
+  <app-reorder-dialog
+    [kind]="reorderKind()"
+    [items]="reorderItems()"
+    [saving]="savingOrder()"
+    (save)="onReorderSave($event)"
+    (cancel)="closeReorder()"
+  />
+}

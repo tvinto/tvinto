@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:usesCleartextTraffic="true"
+        android:banner="@drawable/tv_banner"
+        android:theme="@style/AppTheme">
+
+        <activity
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:name=".MainActivity"
+            android:label="@string/title_activity_main"
+            android:theme="@style/AppTheme.NoActionBarLaunch"
+            android:launchMode="singleTask"
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <!--
+                  A television home screen lists only activities that claim
+                  this. Without it the app installs on a TV and then cannot be
+                  found from the launcher at all.
+                -->
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+
+            <!--
+              tvinto:// links: a reminder's notification and banner, and the
+              television's home-screen rows, open the app on a channel, a
+              film or a show with one (DeepLinksService in the web app).
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="tvinto" />
+            </intent-filter>
+
+        </activity>
+
+        <!--
+          The native player.
+
+          Not exported: it is started by this app and nothing else should be
+          able to point it at a URL. configChanges lists what it handles itself,
+          so that rotating a phone or a television changing its resolution does
+          not tear the Activity down and restart playback from the beginning.
+        -->
+        <activity
+            android:name=".player.PlayerActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:supportsPictureInPicture="false"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
+
+        <!-- The same screen, played by VLC instead. See VlcPlayerActivity. -->
+        <activity
+            android:name=".player.VlcPlayerActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:supportsPictureInPicture="false"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
+
+        <!--
+          Opening the app when the device starts, if asked to on Account
+          (device/StartUp). The screen coming back on from standby is heard
+          by StartUpPlugin, while the app runs.
+        -->
+        <receiver
+            android:name=".device.StartUpReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!--
+          Reminders from the guide going off with the app closed or the player
+          in front, and set again after the device restarts (ReminderReceiver).
+        -->
+        <receiver
+            android:name=".reminders.ReminderReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!--
+          Gives the device database's wasted space back while the device is
+          idle (storage/DatabaseSpace). In the app's own process: one of its
+          own was frozen by Android holding the database's lock.
+        -->
+        <!--
+          Recordings booked from the guide: the alarm that starts them, and set
+          again after the device restarts (recording/Bookings).
+        -->
+        <receiver
+            android:name=".recording.Bookings"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!--
+          Records a live channel to a file while the programme lasts
+          (recording/RecordingService). specialUse: dataSync may run only six
+          hours a day from Android 15, and a day of recordings can be longer.
+        -->
+        <service
+            android:name=".recording.RecordingService"
+            android:foregroundServiceType="specialUse"
+            android:exported="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Recording a live TV programme the user chose, for watching later" />
+        </service>
+
+        <service
+            android:name=".storage.CompactJobService"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:exported="false" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths"></meta-data>
+        </provider>
+    </application>
+
+    <!-- Permissions -->
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Offering a downloaded app update to Android's installer (AppUpdatePlugin). Android still asks the person. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <!--
+      Reminders (ReminderReceiver): telling the person, setting the alarm for
+      the minute rather than whenever Doze allows, and setting it again after
+      a restart. USE_EXACT_ALARM is granted on install from Android 13; Play
+      keeps it for alarm and calendar apps, and this app is installed by hand.
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- "Display over other apps": what Android 10 and later need before an app
+         may open itself when the television is turned on (device/StartUp).
+         The person grants it, from Account; nothing is drawn over anything. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!--
+      One build for the phone, the tablet and the television.
+
+      Both are declared not-required on purpose. Leanback required="true" would
+      stop the app installing on a phone; touchscreen left at its default of
+      required="true" would stop it appearing on a television, since a TV has
+      no touchscreen and Play filters on exactly that. Saying "can use, does
+      not need" to both is what lets one APK serve all three.
+    -->
+    <uses-feature
+        android:name="android.software.leanback"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
+</manifest>

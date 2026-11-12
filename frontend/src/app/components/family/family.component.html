@@ -1,0 +1,242 @@
+<!-- Round 14 (DS-TV-2): the family as groups of rows. A member opens under
+     their row; on/off choices are switches, the role is chips; removing a
+     member asks in the confirm dialog. -->
+@if (view(); as family) {
+  <!-- Where this account stands: set up by somebody, or at the top of its own. -->
+  @if (family.me.managerId !== null) {
+    <app-setting-group data-family-place>
+      @if (family.me.role === 'kid') {
+        <app-setting-row
+          [label]="'family.setUpBy' | t: { name: managerName(), role: ('family.role.' + family.me.role | t) }"
+          [sub]="'family.kidNote' | t"
+          kind="static"
+        />
+      } @else {
+        <app-setting-row [label]="'family.setUpBy' | t: { name: managerName(), role: ('family.role.' + family.me.role | t) }" kind="static">
+          <button rowEnd hlmBtn variant="quiet" size="sm" type="button" [disabled]="busy() !== null" (click)="leave()">
+            {{ 'family.leave' | t }}
+          </button>
+        </app-setting-row>
+      }
+    </app-setting-group>
+  }
+
+  @if (accounts.managesFamily()) {
+    <app-setting-group [heading]="'family.title' | t" data-family-members>
+      @for (row of rows(); track row.member.id) {
+        <div [style.margin-left.rem]="row.depth * 1.5">
+          <app-setting-row
+            [label]="row.member.username"
+            [sub]="memberLine(row.member)"
+            [focusKey]="'family-' + row.member.id"
+            (activate)="select(row.member)"
+          />
+
+          @if (selectedId() === row.member.id && selected(); as member) {
+            <div class="setting-block flex flex-col gap-1" data-family-member>
+              @if (!member.sealedEnc) {
+                <p class="pb-2 text-sm text-muted-foreground">{{ 'family.waiting' | t: { name: member.username } }}</p>
+              }
+
+              <app-setting-row [label]="'family.roleTitle' | t" [sub]="'family.roleNote.' + member.role | t" kind="static">
+                <app-choice-chips
+                  rowEnd
+                  [label]="'family.roleTitle' | t"
+                  [choices]="roleChoices()"
+                  [value]="member.role"
+                  [disabled]="busy() !== null"
+                  (valueChange)="$event && setRole(member, $event)"
+                />
+              </app-setting-row>
+              <app-setting-row
+                [label]="'avatar.row' | t"
+                [value]="pictureName(member)"
+                [disabled]="busy() !== null"
+                data-member-picture
+                (activate)="picturing.set(member)"
+              />
+              <app-setting-row
+                [label]="'family.householdOn' | t"
+                [sub]="'family.householdNote' | t"
+                kind="switch"
+                [checked]="member.household"
+                [disabled]="busy() !== null"
+                (activate)="setHousehold(member, !member.household)"
+              />
+
+              @if (member.sealedEnc) {
+                @for (offer of selectedShares()?.providers ?? []; track offer.record.tag) {
+                  <app-setting-row
+                    [label]="'family.subscription.sharing' | t: { name: offer.record.label }"
+                    [sub]="'family.subscription.note' | t"
+                    kind="switch"
+                    [checked]="offer.shared"
+                    [disabled]="busy() !== null"
+                    (activate)="setShare(member, offer.record, !offer.shared)"
+                  />
+                }
+                <app-setting-row
+                  [label]="'family.guides.title' | t"
+                  [sub]="(selectedShares()?.guides ? 'family.guides.mine' : 'family.guides.theirs') | t"
+                  kind="switch"
+                  [checked]="!!selectedShares()?.guides"
+                  [disabled]="busy() !== null"
+                  (activate)="setGuides(member, !selectedShares()?.guides)"
+                />
+                <app-setting-row [label]="'family.open.title' | t" kind="static">
+                  <span rowEnd class="flex flex-wrap gap-2">
+                    <button hlmBtn size="sm" type="button" [disabled]="busy() !== null" (click)="setUp(member, 'providers')">
+                      {{ 'family.open.providers' | t }}
+                    </button>
+                    <button hlmBtn size="sm" type="button" [disabled]="busy() !== null" (click)="setUp(member, 'lock')">
+                      {{ 'family.open.lock' | t }}
+                    </button>
+                    <button hlmBtn size="sm" type="button" [disabled]="busy() !== null" (click)="setUp(member, 'subtitles')">
+                      {{ 'account.sections.subtitles' | t }}
+                    </button>
+                  </span>
+                </app-setting-row>
+
+                <form class="setting-block flex flex-col gap-2" (ngSubmit)="resetPassword(member)">
+                  <label class="flex flex-col gap-2">
+                    <span hlmLabel>{{ 'family.reset.title' | t }}</span>
+                    <span class="flex flex-wrap items-center gap-3">
+                      <input
+                        hlmInput
+                        name="reset"
+                        type="password"
+                        autocomplete="new-password"
+                        [(ngModel)]="resetTo"
+                        [placeholder]="'family.reset.placeholder' | t"
+                        class="min-w-0 flex-1"
+                      />
+                      <button hlmBtn size="sm" type="submit" [disabled]="busy() !== null">{{ 'family.reset.button' | t }}</button>
+                    </span>
+                  </label>
+                </form>
+              }
+
+              <div class="setting-block flex flex-wrap gap-2">
+                <button hlmBtn variant="destructive" size="sm" type="button" [disabled]="busy() !== null" (click)="release(member)">
+                  {{ 'family.release.button' | t }}
+                </button>
+                <button hlmBtn variant="destructive" size="sm" type="button" [disabled]="busy() !== null" (click)="deleteMember(member)">
+                  {{ 'family.delete.button' | t }}
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      } @empty {
+        @if (!adding()) {
+          <p class="setting-block text-sm text-muted-foreground">{{ 'family.empty' | t }}</p>
+        }
+      }
+
+      @if (adding()) {
+        <form class="setting-block flex flex-col gap-4" (ngSubmit)="add()" data-family-add-form>
+          <h3 class="text-base font-bold">{{ 'family.add.title' | t }}</h3>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label class="flex flex-col gap-2">
+              <span hlmLabel>{{ 'family.add.username' | t }}</span>
+              <input hlmInput name="username" type="text" autocomplete="off" [(ngModel)]="draft.username" />
+            </label>
+            <label class="flex flex-col gap-2">
+              <span hlmLabel>{{ 'family.add.password' | t }}</span>
+              <span class="flex items-center gap-3">
+                <input
+                  hlmInput
+                  name="password"
+                  class="min-w-0 flex-1"
+                  [type]="passwordShown() ? 'text' : 'password'"
+                  autocomplete="new-password"
+                  [(ngModel)]="draft.password"
+                />
+                <button hlmBtn variant="quiet" size="sm" type="button" [attr.aria-pressed]="passwordShown()" (click)="passwordShown.set(!passwordShown())">
+                  {{ (passwordShown() ? 'family.add.hide' : 'family.add.show') | t }}
+                </button>
+              </span>
+            </label>
+          </div>
+
+          <div class="flex flex-col">
+            <app-setting-row [label]="'family.roleTitle' | t" [sub]="'family.roleNote.' + draft.role | t" kind="static">
+              <app-choice-chips rowEnd [label]="'family.roleTitle' | t" [choices]="roleChoices()" [value]="draft.role" (valueChange)="$event && (draft.role = $event)" />
+            </app-setting-row>
+            <app-setting-row
+              [label]="'family.householdOn' | t"
+              [sub]="'family.householdNote' | t"
+              kind="switch"
+              [checked]="draft.household"
+              (activate)="draft.household = !draft.household"
+            />
+            @for (offer of draftProviders(); track offer.record.tag) {
+              <app-setting-row
+                [label]="'family.subscription.sharing' | t: { name: offer.record.label }"
+                kind="switch"
+                [checked]="offer.shared"
+                (activate)="toggleDraftShare(offer.record)"
+              />
+            }
+            <app-setting-row
+              [label]="'family.guides.title' | t"
+              [sub]="(draft.guides ? 'family.guides.mine' : 'family.guides.theirs') | t"
+              kind="switch"
+              [checked]="draft.guides"
+              (activate)="draft.guides = !draft.guides"
+            />
+          </div>
+
+          <div class="flex flex-wrap gap-3">
+            <button hlmBtn variant="primary" type="submit" [disabled]="busy() !== null">
+              @if (busy() === 'add') {
+                <ng-icon name="lucideLoaderCircle" class="animate-spin" />
+              }
+              {{ 'family.add.create' | t }}
+            </button>
+            <button hlmBtn variant="quiet" type="button" (click)="adding.set(false)">{{ 'family.add.cancel' | t }}</button>
+          </div>
+        </form>
+      } @else {
+        <div class="setting-block">
+          <button hlmBtn size="sm" type="button" [disabled]="busy() !== null" (click)="startAdding()" data-family-add>
+            <ng-icon name="lucideUserPlus" />
+            {{ 'family.add.title' | t }}
+          </button>
+        </div>
+      }
+    </app-setting-group>
+
+    <app-invites />
+  }
+
+  @if (family.me.managerId === null && family.me.role !== 'kid') {
+    <app-setting-group [heading]="'family.join.title' | t" data-family-join>
+      <form class="setting-block flex flex-wrap items-center gap-3" (ngSubmit)="join()">
+        <input
+          hlmInput
+          name="join"
+          type="text"
+          autocomplete="off"
+          [(ngModel)]="joinCode"
+          placeholder="ABCD-EFGH"
+          [attr.aria-label]="'family.join.title' | t"
+          class="min-w-0 flex-1 font-mono uppercase"
+        />
+        <button hlmBtn type="submit" [disabled]="busy() !== null">{{ 'family.join.button' | t }}</button>
+      </form>
+    </app-setting-group>
+  }
+} @else {
+  <p class="text-sm text-muted-foreground">{{ 'family.loading' | t }}</p>
+}
+
+@if (picturing(); as member) {
+  <app-profile-picture-dialog
+    [name]="member.username"
+    [current]="member.picture ?? null"
+    [saving]="busy() === 'picture'"
+    (saved)="setPicture(member, $event)"
+    (closed)="picturing.set(null)"
+  />
+}

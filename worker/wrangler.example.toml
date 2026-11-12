@@ -1,0 +1,61 @@
+# Copy to wrangler.toml (not committed) and fill in your own database id.
+# server/ is the Deploy-to-Cloudflare copy, which needs none of this.
+
+name = "xtream-sync"
+main = "src/index.ts"
+compatibility_date = "2026-08-30"
+
+# `nodejs_compat` is deliberately absent. Nothing here needs Node: the crypto is
+# SubtleCrypto, the storage is D1, and the one thing that would have needed a
+# Node module -- scrypt -- happens on the device instead.
+
+[[d1_databases]]
+binding = "DB"
+database_name = "xtream"
+# Filled in by `wrangler d1 create xtream`, which prints it.
+database_id = "<your D1 database id, from: npx wrangler d1 create xtream>"
+
+[vars]
+# Origins allowed to call this. The devices are native: Capacitor serves from
+# https://localhost and electron-serve from a scheme of its own.
+ALLOWED_ORIGINS = "https://localhost,http://localhost,capacitor://localhost,app://-"
+
+# Who may make an account without an invite code. `first-only`: whoever makes
+# the first one -- the person who has just set this server up -- and after
+# that only somebody with an invite from an account here. On a server that
+# already has accounts it is the same as `closed`. `closed`: invites only,
+# from the start. Anything else: open to anybody, which is not worth it --
+# this is reachable from anywhere. The sign-in page asks /api/health which it
+# is, and asks for a code only when one is needed.
+ACCOUNT_REGISTRATION = "first-only"
+
+# ACCOUNT_SALT_SECRET is a secret, not a var:
+#   wrangler secret put ACCOUNT_SALT_SECRET
+# 32 bytes of base64. Without it the salt endpoint refuses rather than
+# inventing one -- a Worker has nowhere to keep something it generated, and a
+# salt that changed between two asks would answer the question the disguise
+# exists to refuse.
+
+# What the apps update themselves from, served at /updates/ (see
+# src/updates.ts): the desktop installer and its manifest, and the Android web
+# bundle and its manifest.
+#
+# R2 has to be enabled on the account before a bucket can exist, and a binding
+# naming a bucket that does not exist makes `wrangler deploy` fail -- so if this
+# is ever moved to another account, comment this block out until
+# `npx wrangler r2 bucket create xtream-updates` has been run there. Without it
+# /updates/ answers 503 and everything else is untouched, which is the point:
+# adding updates must not be able to take signing in down with it.
+[[r2_buckets]]
+binding = "UPDATES"
+bucket_name = "xtream-updates"
+
+# Workers Logs: what the Worker itself writes -- console.error on a failure
+# nothing else caught (src/index.ts) -- kept in the dashboard, 3 days on the
+# free plan. Not each request: whether those keep the headers, where every
+# session token travels, Cloudflare does not say, so they stay off.
+[observability]
+enabled = true
+
+[observability.logs]
+invocation_logs = false

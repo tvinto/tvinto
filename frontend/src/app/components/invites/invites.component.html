@@ -1,0 +1,29 @@
+<!-- Round 14: invites as a group of rows, the code just made shown large. -->
+<app-setting-group [heading]="'invites.title' | t" data-invites>
+  @if (made(); as invite) {
+    <!-- Shown once: the service keeps only a hash of it. -->
+    <div class="setting-block flex flex-col gap-1" role="status" data-invite-code>
+      <span class="font-mono text-3xl font-bold tracking-widest select-all">{{ invite.code }}</span>
+      <span class="text-sm text-muted-foreground">{{ 'invites.made' | t: { date: (invite.expiresAt | tdate: "d MMM, HH:mm") } }}</span>
+    </div>
+  }
+
+  @for (row of rows(); track row.invite.id) {
+    <app-setting-row [label]="inviteLine(row.invite, row.open)" kind="static">
+      @if (row.open) {
+        <button rowEnd hlmBtn variant="quiet" size="sm" type="button" (click)="revoke(row.invite)">{{ 'invites.cancel' | t }}</button>
+      }
+    </app-setting-row>
+  }
+
+  <div class="setting-block">
+    <button hlmBtn size="sm" type="button" [disabled]="busy()" (click)="create()">
+      @if (busy()) {
+        <ng-icon name="lucideLoaderCircle" class="animate-spin" />
+      } @else {
+        <ng-icon name="lucideUserPlus" />
+      }
+      {{ 'invites.create' | t }}
+    </button>
+  </div>
+</app-setting-group>

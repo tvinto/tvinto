@@ -1,0 +1,19 @@
+# Everything the image builds for itself, or has no business carrying.
+**/node_modules
+**/dist
+**/coverage
+**/.angular
+frontend
+android
+electron
+
+# Never: these are the live database and the key that reads it.
+backend/*.db
+backend/*.db-shm
+backend/*.db-wal
+backend/*.db.key
+backend/.env
+**/.env
+**/.env.*
+
+.git

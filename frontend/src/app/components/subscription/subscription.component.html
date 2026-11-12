@@ -1,0 +1,224 @@
+<!--
+  D-10: the subscription is the one screen holding a credential the household
+  cannot rotate, so it gets the on-air red spine -- the only place that accent
+  is used away from live programming. On the Account page it is the right-hand
+  column (`embedded`); on its own route, for a first sign-in, the same card
+  with a page heading above it.
+-->
+@if (embedded()) {
+  <ng-container [ngTemplateOutlet]="body" />
+} @else {
+  <div class="h-full overflow-y-auto">
+    <div class="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-8 sm:px-6">
+      <div class="flex flex-col gap-1">
+        <h1 class="text-2xl font-bold tracking-tight">
+          {{ (isFirstOne() ? 'sub.addTitle' : 'sub.yourTitle') | t }}
+        </h1>
+        <p class="text-sm text-muted-foreground">
+          {{ 'sub.lead' | t }}
+        </p>
+      </div>
+      <ng-container [ngTemplateOutlet]="body" />
+    </div>
+  </div>
+}
+
+<ng-template #body>
+  <!-- A kid's subscription is set up by the accounts above it. -->
+  @if (!canChangeSetup()) {
+    <p class="rounded-md border border-border bg-muted/40 p-4 text-sm text-muted-foreground" role="status">{{ 'sub.setUpForYou' | t }}</p>
+  } @else {
+  <div class="flex flex-col gap-4">
+    @if (error()) {
+      <div
+        class="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+        role="alert"
+      >
+        {{ error() }}
+      </div>
+    }
+
+    @if (notice()) {
+      <div class="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+        {{ notice() }}
+      </div>
+    }
+
+    @if (check() === "unreachable") {
+      <div class="flex items-start gap-3 rounded-md border border-on-air/40 bg-on-air/10 p-3">
+        <ng-icon name="lucideTriangleAlert" size="18" class="mt-0.5 shrink-0 text-on-air" />
+        <div class="flex flex-col gap-2 text-sm">
+          <p>
+            {{ 'sub.unreachable' | t }}
+          </p>
+          <button hlmBtn size="sm" type="button" (click)="goToLibrary()">
+            {{ 'sub.tryAnyway' | t }}
+          </button>
+        </div>
+      </div>
+    }
+
+    <!--
+      Not a warning, and deliberately not the message above it. Nobody went and
+      asked the provider anything: the sync service holds this sealed and
+      cannot open it, so there is nothing here to be worried about.
+    -->
+    @if (check() === "not-checked") {
+      <div class="flex items-start gap-3 rounded-md border border-border bg-muted/40 p-3">
+        <ng-icon name="lucideCheck" size="18" class="mt-0.5 shrink-0 text-muted-foreground" />
+        <div class="flex flex-col gap-2 text-sm">
+          <p>
+            {{ 'sub.sealed' | t }}
+          </p>
+          <button hlmBtn variant="primary" size="sm" type="button" (click)="goToLibrary()">{{ 'sub.openLibrary' | t }}</button>
+        </div>
+      </div>
+    }
+
+    <div class="flex flex-col gap-5 rounded-lg border-l-4 border-on-air bg-card p-5" data-subscription-card>
+      <!-- What is stored. A sealed record shows no address or username here:
+           this device has not opened it, and has nothing to show. -->
+      @if (loading()) {
+        <p class="flex items-center gap-2 text-sm text-muted-foreground">
+          <ng-icon name="lucideLoaderCircle" size="16" class="animate-spin" />
+          {{ 'sub.loading' | t }}
+        </p>
+      } @else {
+        @for (subscription of subscriptions(); track subscription.id) {
+          <!--
+            On a phone the row stacks: the name and what it says about itself on
+            one line, the buttons under them. Side by side, the name was three
+            words of "Your subscrip…" beside a badge, and the date was cut in
+            half -- the two facts worth reading were the two that did not fit.
+          -->
+          <div class="flex flex-col gap-2 rounded-md bg-card-2 px-3 py-2.5 sm:flex-row sm:items-center sm:gap-3">
+            <div class="min-w-0 flex-1">
+              <p class="flex flex-wrap items-center gap-2">
+                <span class="min-w-0 truncate font-semibold">{{ subscription.label || ('sub.yourTitle' | t) }}</span>
+                @if (subscription.active) {
+                  <span class="shrink-0 tag">
+                    {{ 'sub.inUse' | t }}
+                  </span>
+                }
+              </p>
+              <p class="text-xs break-words text-muted-foreground">
+                @if (subscription.serverUrl) {
+                  {{ subscription.serverUrl }} ·
+                }
+                {{ 'sub.updated' | t: { date: (subscription.updatedAt | tdate: "d MMM y, HH:mm") } }}
+              </p>
+            </div>
+            <div class="flex shrink-0 items-center gap-2">
+              <button hlmBtn variant="secondary" size="sm" type="button" class="flex-1 sm:flex-none" (click)="renew(subscription)">
+                {{ 'sub.renew' | t }}
+              </button>
+              <button
+                hlmBtn
+                variant="quiet"
+                size="icon-sm"
+                type="button"
+                (click)="remove(subscription)"
+                [title]="'sub.remove' | t"
+                [attr.aria-label]="'sub.remove' | t"
+              >
+                <ng-icon name="lucideTrash2" size="16" />
+              </button>
+            </div>
+          </div>
+        }
+      }
+
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="flex flex-col gap-4">
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="label">
+            {{ 'sub.label' | t }}
+          </label>
+          <input hlmInput type="text" id="label" formControlName="label" [placeholder]="'sub.labelPlaceholder' | t" class="w-full" />
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label hlmLabel for="serverUrl">
+            {{ 'sub.serverUrl' | t }}
+          </label>
+          <input
+            hlmInput
+            type="text"
+            id="serverUrl"
+            formControlName="serverUrl"
+            placeholder="http://example.com:8080"
+            class="w-full font-mono"
+          />
+          <!-- Said where the address is entered, in terms of what it means,
+               rather than as a padlock icon somewhere else. -->
+          @if (plainHttp()) {
+            <p class="flex items-start gap-2 rounded-md bg-on-air/15 px-3 py-2 text-xs">
+              <span class="shrink-0 rounded-sm bg-on-air px-1.5 font-bold text-white">HTTP</span>
+              <span>
+                {{ 'sub.noTls' | t }}
+              </span>
+            </p>
+          } @else {
+            <small class="text-xs text-muted-foreground">
+              {{ 'sub.withoutApi' | t: { path: '/player_api.php' } }}
+            </small>
+          }
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label
+            hlmLabel
+            for="providerUsername"
+          >
+            {{ 'sub.username' | t }}
+          </label>
+          <input
+            hlmInput
+            type="text"
+            id="providerUsername"
+            formControlName="username"
+            autocomplete="off"
+            class="w-full font-mono"
+          />
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label
+            hlmLabel
+            for="providerPassword"
+          >
+            {{ 'sub.password' | t }}
+          </label>
+          <div class="relative">
+            <input
+              hlmInput
+              [type]="showPassword() ? 'text' : 'password'"
+              id="providerPassword"
+              formControlName="password"
+              autocomplete="off"
+              class="w-full pr-16 font-mono"
+            />
+            <button
+              type="button"
+              class="absolute top-1/2 right-2 -translate-y-1/2 rounded-sm px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+              (click)="showPassword.set(!showPassword())"
+            >
+              {{ (showPassword() ? 'sub.hide' : 'sub.show') | t }}
+            </button>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+          <button hlmBtn variant="primary" type="submit" [disabled]="saving()">
+            @if (saving()) {
+              <ng-icon name="lucideLoaderCircle" size="16" class="animate-spin" />
+              {{ 'sub.checking' | t }}
+            } @else {
+              {{ 'sub.save' | t }}
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  }
+</ng-template>

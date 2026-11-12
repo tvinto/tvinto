@@ -1,0 +1,82 @@
+# Every push and pull request: the tests, the builds, and the checks that
+# something generated has not drifted from its source. What CLAUDE.md lists
+# under Commands, run the same way.
+#
+# The linters fail the run on anything, warnings included: both were brought
+# to none on 27 October and stay there. Not here: the Android and desktop builds, which need
+# signing and an SDK and are made on a user's machine.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    # backend/'s Jest also runs shared/, worker/ and cli/ tests, and the guard
+    # on source encoding (backend/src/utils/sourceEncoding.test.ts).
+    name: Backend, shared, worker and CLI
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            backend/package-lock.json
+            worker/package-lock.json
+            cli/package-lock.json
+      # The root's one package is what shared/ imports (fast-xml-parser).
+      - run: npm ci
+      - run: npm ci
+        working-directory: backend
+      - run: npm ci
+        working-directory: worker
+      - run: npm ci
+        working-directory: cli
+      - name: Lint
+        run: npx eslint . --max-warnings 0
+        working-directory: backend
+      - name: Tests
+        run: npx jest
+        working-directory: backend
+      - name: The CLI's types (esbuild checks none)
+        run: backend/node_modules/.bin/tsc -p cli
+      - name: server/ is the Worker as it stands
+        run: node worker/scripts/build-server.mjs --check
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+      - run: npm ci
+      - run: npm ci
+        working-directory: frontend
+      - name: Lint
+        run: npx eslint . --max-warnings 0
+        working-directory: frontend
+      - name: Tests
+        run: npx jest
+        working-directory: frontend
+      - name: Build
+        run: npm run build
+        working-directory: frontend

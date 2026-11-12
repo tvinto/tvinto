@@ -1,0 +1,407 @@
+<!-- A fixed-height column: the navbar keeps its place and the outlet below it
+     owns the remaining height, so a section can scroll inside itself rather
+     than pushing the bar off the top of the screen. -->
+<div class="flex h-dvh flex-col bg-background" data-shell-root>
+  <!-- Setting somebody up from this device: everything
+       below is their account, kept here until Save sends it and goes back to
+       this one's. -->
+  @if (accounts.profileScope() === 'setup') {
+    <div class="flex shrink-0 items-center gap-3 bg-[var(--glass)] px-4 py-2 text-sm font-semibold sm:px-6" role="status">
+      <span class="min-w-0 flex-1 truncate">{{ 'family.settingUp' | t: { name: accounts.account()?.username ?? '' } }}</span>
+      <button hlmBtn variant="primary" size="sm" type="button" (click)="profiles.saveSetUp()">
+        {{ 'family.save' | t }}
+      </button>
+    </div>
+  }
+  <header
+    data-shell-header
+    class="sticky top-0 z-40 flex shrink-0 items-center gap-1 border-b border-border bg-background/80 px-4 py-2.5 backdrop-blur-md sm:gap-3 sm:px-6"
+  >
+    <!--
+      Out of the remote's reach. It is the way back to the front page for a
+      pointer, and on a television that is what the nav beside it is for -- so
+      landing on it only costs a press and lights up a thing that is not a
+      control. See FOCUSABLE in TvNavigationService: the exclusion works
+      because that list asks for `a[href]:not([tabindex="-1"])`.
+    -->
+    <a routerLink="/for-you" tabindex="-1" class="mr-1 flex min-w-0 items-center gap-2">
+      <app-tvinto-mark class="size-8" />
+      <span class="hidden text-sm font-semibold tracking-tight md:inline">Tvinto</span>
+      <!-- P-1: on a phone the bar names the page, and the sections are tabs
+           along the bottom instead. -->
+      <span class="truncate text-lg font-bold tracking-tight md:hidden">{{ pageTitle() | t }}</span>
+    </a>
+
+    <!--
+      Scrolls rather than crushes. Without shrink-0 the flex line squeezes each
+      link until "TV Shows" wraps between its two words and the label lands on
+      top of its own icon, which is what a phone showed.
+    -->
+    <nav class="hidden min-w-0 flex-1 items-center gap-1 overflow-x-auto md:flex">
+      @for (section of sections; track section.path) {
+        <!-- D-1: words, and on the section you are in a pill with a dot in
+             that library's colour -- live green, films blue, shows violet. -->
+        <a
+          [routerLink]="section.path"
+          [class.font-bold]="isHere(section.path)"
+          [class.text-foreground]="isHere(section.path)"
+          [attr.aria-current]="isHere(section.path) ? 'page' : null"
+          class="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-[var(--glass-quiet)] hover:text-foreground"
+        >
+          @if (isHere(section.path)) {
+            <span class="h-1.5 w-1.5 rounded-full" [class]="section.dot" aria-hidden="true"></span>
+          }
+          {{ section.label | t }}
+        </a>
+      }
+    </nav>
+
+    <div class="ml-auto flex shrink-0 items-center gap-1">
+      <!--
+        SR-D-1: one field, on every page, where search is looked for on a
+        computer. Typing opens the search page -- narrowed to the library it
+        was typed on -- and the results follow each key. Ctrl K or / reaches it
+        from anywhere.
+      -->
+      <div class="field-wrap mr-1 hidden md:flex" data-top-search>
+        <ng-icon name="lucideSearch" class="field-search-icon" aria-hidden="true" />
+        <input
+          #topSearch
+          hlmInput
+          type="text"
+          class="field-search w-56 lg:w-80"
+          [value]="topQuery()"
+          [placeholder]="'search.placeholder' | t"
+          [attr.aria-label]="'search.aria' | t"
+          (input)="onTopSearchInput($event)"
+          (keydown.enter)="recent.remember(topSearch.value)"
+          (keydown.escape)="onTopSearchEscape($event)"
+        />
+      </div>
+      <!--
+        No badge on it. A guide this account uses and this device has not got
+        is worth saying on the Guides page, where the sentence and the button
+        that fixes it are; a dot in the corner of a button only asks a question
+        it cannot answer, and it asked it of somebody who opened the app to
+        watch something.
+      -->
+      <a
+        hlmBtn
+       
+        size="sm"
+        class="hidden md:inline-flex"
+        routerLink="/guides"
+        routerLinkActive="bg-secondary text-foreground"
+        [title]="'nav.guidesTitle' | t"
+      >
+        {{ 'nav.guides' | t }}
+      </a>
+      <button
+        hlmBtn
+       
+        size="icon"
+        type="button"
+        (click)="toggleTheme()"
+        [title]="(theme.isDark() ? 'shell.lightTheme' : 'shell.darkTheme') | t"
+      >
+        <ng-icon [name]="theme.isDark() ? 'lucideSun' : 'lucideMoon'" size="18" />
+      </button>
+      <!-- The account as a chip with its picture (profileFace), or an
+           initial with no account. With other people in the household it
+           opens a panel to switch to one of them or go to Account (a user,
+           2 November); otherwise it is the way to Account. Signing out is on
+           the Account page (D-10), beside the password, not a bare icon here. -->
+      @if (hasProfiles()) {
+        <button
+          hlmBtn
+          size="sm"
+          type="button"
+          class="gap-2"
+          data-profile-chip
+          [title]="'shell.signedInAs' | t: { name: accounts.account()?.username ?? '' }"
+          (click)="openProfiles()"
+        >
+          <ng-container *ngTemplateOutlet="chipFace" />
+        </button>
+      } @else {
+        <a
+          hlmBtn
+          size="sm"
+          routerLink="/account"
+          routerLinkActive="bg-secondary text-foreground"
+          class="gap-2"
+          [title]="accounts.account() ? ('shell.signedInAs' | t: { name: accounts.account()?.username ?? '' }) : ('local.chip' | t)"
+        >
+          <ng-container *ngTemplateOutlet="chipFace" />
+        </a>
+      }
+      <ng-template #chipFace>
+        @if (accounts.account(); as user) {
+          @let face = faceOf(user.username, user.picture);
+          <span class="flex h-5 w-5 items-center justify-center overflow-hidden rounded-full" [style.background]="face.background" aria-hidden="true">
+            <img [src]="face.picture" alt="" [class]="face.own ? 'size-full object-cover' : 'size-[80%] object-contain'" draggable="false" />
+          </span>
+        } @else {
+          <span
+            class="flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-[10px] font-bold text-background uppercase"
+            aria-hidden="true"
+          >
+            {{ ('local.chip' | t).charAt(0) }}
+          </span>
+        }
+        <!-- A username is held to 10ch; "This device" is the app's own words and
+             is shown whole ("Questo dispositivo" was cut, 12 November). -->
+        <span class="hidden truncate sm:inline" [style.max-width]="accounts.account() ? '10ch' : null">
+          {{ accounts.account()?.username ?? ('local.chip' | t) }}
+        </span>
+      </ng-template>
+    </div>
+  </header>
+
+  <!--
+    A bar and not a dialog: nobody opened the app to be asked about updates.
+    "Later" hides it for this run; the update still installs itself once the
+    machine is left alone, which is what gets a PC nobody closes updated.
+  -->
+  @if (update.ready() && !update.dismissed()) {
+    <div
+      role="status"
+      class="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-border bg-card-2 px-4 py-2 text-sm sm:px-6"
+    >
+      <p class="min-w-0 flex-1">
+        <span class="font-medium">{{ 'update.versionReady' | t: { version: update.ready() } }}</span>
+        <span class="text-muted-foreground">
+          {{ 'update.desktopHow' | t }}
+        </span>
+      </p>
+      <div class="flex shrink-0 items-center gap-2">
+        <button
+          hlmBtn
+ variant="primary"
+          size="sm"
+          type="button"
+          [disabled]="update.installing()"
+          (click)="update.restart()"
+        >
+          {{ (update.installing() ? 'update.restarting' : 'update.restartNow') | t }}
+        </button>
+        <button hlmBtn variant="quiet" size="sm" type="button" (click)="update.later()">
+          {{ 'common.later' | t }}
+        </button>
+      </div>
+    </div>
+  }
+
+  <!--
+    Android and the TV: the web app updating itself over the air.
+
+    It always has, and silently -- a bundle fetched in the background and used
+    from the next start -- so nobody could tell whether an update was
+    happening, had happened, or was waiting (22 September). Now it
+    says so while it downloads, and once it is ready offers the restart that
+    brings it in, which on a television is otherwise a trip through the system
+    settings.
+  -->
+  @if (webUpdate.downloading(); as coming) {
+    @if (!appUpdate.holdsBackWebUpdate()) {
+    <div
+      role="status"
+      data-web-update
+      class="flex shrink-0 items-center gap-2 border-b border-border bg-card-2 px-4 py-2 text-sm sm:px-6"
+    >
+      <span class="font-medium">{{ 'update.downloading' | t: { version: coming } }}</span>
+      <span class="text-muted-foreground">{{ 'update.keepWatching' | t }}</span>
+    </div>
+    }
+  } @else if (webUpdate.waiting() && !webUpdate.dismissed() && !appUpdate.holdsBackWebUpdate()) {
+    <div
+      role="status"
+      data-web-update
+      class="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-border bg-card-2 px-4 py-2 text-sm sm:px-6"
+    >
+      <p class="min-w-0 flex-1">
+        <span class="font-medium">{{ 'update.updateReady' | t: { version: webUpdate.waiting() } }}</span>
+        <span class="text-muted-foreground">
+          {{ 'update.webHow' | t }}
+        </span>
+      </p>
+      <div class="flex shrink-0 items-center gap-2">
+        <button hlmBtn variant="primary" size="sm" type="button" [disabled]="webUpdate.restarting()" (click)="webUpdate.restart()">
+          {{ (webUpdate.restarting() ? 'update.restarting' : 'update.restartNow') | t }}
+        </button>
+        <button hlmBtn variant="quiet" size="sm" type="button" (click)="webUpdate.later()">{{ 'common.later' | t }}</button>
+      </div>
+    </div>
+  }
+
+  <!--
+    Android: a newer app is out. Web code updates itself, but native code --
+    the player, its subtitle button -- only arrives with the APK, so this says
+    so and fetches it -- by itself on a television, where only Install is left
+    to press. Android's installer still asks before anything changes.
+  -->
+  @if (appUpdate.showing()) {
+    @if (appUpdate.available(); as app) {
+      <div
+        role="status"
+        data-app-update
+        class="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-border bg-card-2 px-4 py-2 text-sm sm:px-6"
+      >
+        <p class="min-w-0 flex-1">
+          <span class="font-medium">{{ 'update.appOut' | t: { version: app.version } }}</span>
+          <span class="text-muted-foreground">
+            @switch (appUpdate.phase()) {
+              @case ("downloading") {
+                {{ 'update.appDownloading' | t: { percent: appUpdate.percent() } }}
+              }
+              @case ("ready") {
+                {{ 'update.appReady' | t }}
+              }
+              @case ("manual") {
+                {{ 'update.appManual' | t: { link: appUpdate.shortLink() } }}
+              }
+              @case ("browser") {
+                {{ 'update.appBrowser' | t }}
+              }
+              @default {
+                {{ (appUpdate.size() ? 'update.appSized' : 'update.appPlain') | t: { size: appUpdate.size() } }}
+              }
+            }
+            {{ appUpdate.message() }}
+          </span>
+        </p>
+        <div class="flex shrink-0 items-center gap-2">
+          @if (appUpdate.phase() === "ready") {
+            <button hlmBtn variant="primary" size="sm" type="button" (click)="appUpdate.install()">{{ 'update.install' | t }}</button>
+          } @else {
+            <button hlmBtn variant="primary" size="sm" type="button" [disabled]="appUpdate.phase() === 'downloading'" (click)="appUpdate.download()">
+              {{ (appUpdate.phase() === 'downloading' ? 'update.downloadingShort' : 'update.download') | t }}
+            </button>
+          }
+          <button hlmBtn variant="quiet" size="sm" type="button" (click)="appUpdate.later()">{{ 'common.later' | t }}</button>
+        </div>
+      </div>
+    }
+  }
+
+  <!--
+    The navigation panel, and the page beside it.
+
+    On a television this is the navigation: there is no bar along the top, so
+    Left is how you leave a screen and this is what Left reaches. Here rather
+    than inside the browse screen, which is where it started, because every
+    page needs it -- a screen with no way to open one would be a screen with no
+    way out.
+
+    A row, so the panel pushes the page along rather than lying over it: the
+    same rule as the categories, and the reason the arrows never cross a gap.
+  -->
+  <div class="flex min-h-0 flex-1" data-shell-body (keydown)="onShellKey($event)">
+    <!--
+      The edge, on a screen that has no panel of its own.
+
+      The browse screen draws its own: 80 pixels of rail carrying the arrow and
+      the category you are in. Everywhere else was a page against the left edge
+      of the screen with nothing to say a press of Left would do anything at
+      all, which is a way out that only somebody who already knew would find.
+      Not focusable, for the same reason as the other one: it is what Left aims
+      at, never what a press lands on.
+    -->
+    @if (tv.isTelevision() && drawer.level() === "closed" && !drawer.offersCategories()) {
+      <span data-tv-drawer-rail aria-hidden="true">
+        <span data-tv-drawer-arrow>◄</span>
+        <span data-tv-drawer-name>{{ pageTitle() | t }}</span>
+      </span>
+    }
+
+    @if (drawer.level() === "navigation" && tv.isTelevision()) {
+      <nav
+        data-tv-nav-panel
+        class="flex min-h-0 shrink-0 flex-col rounded-2xl bg-card p-3"
+        data-focus-scope
+        (keydown)="onPanelKey($event)"
+      >
+        <span data-tv-nav-brand>
+          <app-tvinto-mark data-tv-nav-mark />
+          Tvinto
+        </span>
+
+        @for (section of sections; track section.path) {
+          <a
+            [routerLink]="section.path"
+            [attr.data-tv-nav-here]="isHere(section.path) ? '' : null"
+            data-tv-nav-item
+            (click)="drawer.shut()"
+          >
+            <span class="h-1.5 w-1.5 rounded-full" [class]="section.dot" aria-hidden="true"></span>
+            {{ section.label | t }}
+          </a>
+        }
+
+        <!-- SR-TV-1: a place to go, like the libraries above it, and the one
+             item with an icon, so it reads as a different kind of thing. -->
+        <a
+          routerLink="/search"
+          [attr.data-tv-nav-here]="isHere('/search') ? '' : null"
+          data-tv-nav-item
+          data-tv-nav-search
+          (click)="drawer.shut()"
+        >
+          <ng-icon name="lucideSearch" size="18" aria-hidden="true" />
+          {{ 'nav.search' | t }}
+        </a>
+
+        <span data-tv-nav-rule aria-hidden="true"></span>
+
+        @for (destination of destinations; track destination.path) {
+          <a
+            [routerLink]="destination.path"
+            data-tv-nav-item
+            data-tv-nav-quiet
+            (click)="drawer.shut()"
+          >
+            {{ destination.label | t }}
+          </a>
+        }
+
+        <!-- Starting the app again, which a television otherwise hides in its
+             system settings. Takes a waiting update with it. -->
+        <button type="button" data-tv-nav-item data-tv-nav-quiet data-tv-restart (click)="webUpdate.restart()">
+          {{ webUpdate.waiting() ? ('update.restartTo' | t: { version: webUpdate.waiting() }) : ('update.restartApp' | t) }}
+        </button>
+
+      </nav>
+    }
+
+    <!-- Scrolls itself, for the pages that do not (a show, Guides): otherwise
+         they ran on under the phone's tab bar, drawn over it. -->
+    <main class="min-h-0 min-w-0 flex-1 overflow-y-auto">
+      <router-outlet />
+    </main>
+  </div>
+
+  <!-- P-1 – P-7: the sections as tabs at the bottom, where a thumb is, with a
+       dot over the one you are in. Search is the fifth (SR-P-1); Guides,
+       which it replaced, is a row on Account. -->
+  <nav
+    class="relative z-40 flex shrink-0 border-t border-border bg-background pb-[env(safe-area-inset-bottom)] md:hidden"
+    [attr.aria-label]="'nav.sections' | t"
+    data-phone-tabs
+  >
+    @for (tab of tabs; track tab.path) {
+      <a
+        [routerLink]="tab.path"
+        [class.text-foreground]="isHere(tab.path)"
+        [attr.aria-current]="isHere(tab.path) ? 'page' : null"
+        class="relative flex min-h-14 flex-1 flex-col items-center justify-center gap-1 text-xs font-medium text-muted-foreground"
+      >
+        <span
+          class="h-1.5 w-1.5 rounded-full"
+          [class]="isHere(tab.path) ? tab.dot : 'bg-transparent'"
+          aria-hidden="true"
+        ></span>
+        {{ tab.label | t }}
+      </a>
+    }
+  </nav>
+</div>

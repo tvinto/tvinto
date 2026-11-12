@@ -1,0 +1,123 @@
+<!-- Choosing a copy (TV-28): your languages first, the rest folded, cinema recordings last. -->
+<ng-template #row let-copy let-dim="dim">
+  <button
+    type="button"
+    class="flex w-full items-center gap-4 rounded-lg bg-card px-4 py-3 text-left hover:bg-card-2"
+    [class.opacity-60]="dim"
+    [attr.data-focus-key]="'copy-' + copy.stream.stream_id"
+    data-copy-row
+    (click)="choose(copy)"
+  >
+    <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+      <span class="flex items-center gap-2">
+        <span class="font-semibold">{{ copy.languageName || ('film.unknownLanguage' | t) }}</span>
+        @if (copy.quality) {
+          <span class="rounded-sm border border-border-2 px-1.5 text-xs font-semibold">{{ copy.quality }}</span>
+        }
+      </span>
+      <span class="truncate text-sm text-dim-foreground">
+        {{ copy.category }}@if (copy.stream.stream_id | providerName; as provider) { · {{ provider }} }
+      </span>
+    </span>
+  </button>
+</ng-template>
+
+<div class="h-full overflow-y-auto" data-film-copies>
+  <div class="mx-auto flex max-w-[1600px] flex-col gap-6 px-4 py-6 sm:px-6" data-tv-wide>
+    <div class="flex flex-wrap items-center gap-3">
+      <button hlmBtn variant="quiet" size="sm" type="button" (click)="back()" data-screen-back>
+        <ng-icon name="lucideArrowLeft" size="16" />
+        {{ 'common.back' | t }}
+      </button>
+      <div class="min-w-0">
+        <h1 class="text-2xl font-bold tracking-tight">{{ 'film.copiesTitle' | t }}</h1>
+        @if (page(); as film) {
+          <p class="text-sm text-muted-foreground">{{ film.title }}</p>
+        }
+      </div>
+    </div>
+
+    @if (page(); as film) {
+      <div class="grid gap-8 lg:grid-cols-[18rem_minmax(0,1fr)]" data-copies-layout>
+        <!-- What this page is for, beside the list, never moving. -->
+        <div class="flex flex-col gap-3" data-copies-about>
+          <span class="relative block aspect-[2/3] w-40 overflow-hidden rounded-md bg-card-2 lg:w-full">
+            @if (film.poster && !failedIcons().has(film.poster)) {
+              <img [src]="film.poster" (error)="iconFailed(film.poster)" alt="" class="h-full w-full object-cover" />
+            } @else {
+              <span class="poster-placeholder absolute inset-0 flex border-l-4 border-vod p-2 text-xl font-bold text-vod">{{ film.title | channelMonogram }}</span>
+            }
+          </span>
+          <p class="font-semibold">{{ countLine() }}</p>
+        </div>
+
+        <div class="flex min-w-0 flex-col gap-6" data-copies-list>
+          @if (yours().length) {
+            <section class="flex flex-col gap-2">
+              <h2 class="nx-row-title">{{ 'film.yourLanguages' | t }}</h2>
+              @for (copy of yours(); track copy.stream.stream_id) {
+                <ng-container *ngTemplateOutlet="row; context: { $implicit: copy }" />
+              }
+            </section>
+          }
+
+          @if (othersShown().length) {
+            <section class="flex flex-col gap-2">
+              <h2 class="nx-row-title">{{ 'film.otherLanguages' | t }}</h2>
+              @for (group of othersShown(); track group.key) {
+                @for (copy of group.copies; track copy.stream.stream_id) {
+                  <ng-container *ngTemplateOutlet="row; context: { $implicit: copy }" />
+                }
+              }
+              @if (othersFolded().length) {
+                <button
+                  type="button"
+                  class="flex w-full items-center gap-4 rounded-lg border border-dashed border-border-2 px-4 py-3 text-left hover:bg-card"
+                  data-focus-key="copies-more-languages"
+                  (click)="moreLanguagesOpen.set(true)"
+                >
+                  <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span class="font-semibold">{{ 'film.moreLanguages' | t: { count: othersFolded().length } }}</span>
+                    <span class="truncate text-sm text-dim-foreground">{{ foldedNames() }}</span>
+                  </span>
+                  <span class="shrink-0 text-sm text-muted-foreground">{{ 'film.copyCount' | t: { count: foldedCount() } }}</span>
+                </button>
+              }
+            </section>
+          }
+
+          @if (cinema().length) {
+            <section class="flex flex-col gap-2">
+              <h2 class="nx-row-title">{{ 'film.cinema' | t }}</h2>
+              @if (cinemaOpen()) {
+                @for (copy of cinema(); track copy.stream.stream_id) {
+                  <ng-container *ngTemplateOutlet="row; context: { $implicit: copy, dim: true }" />
+                }
+              } @else {
+                <button
+                  type="button"
+                  class="flex w-full items-center gap-4 rounded-lg bg-card px-4 py-3 text-left opacity-70 hover:bg-card-2"
+                  data-focus-key="copies-cinema"
+                  (click)="cinemaOpen.set(true)"
+                >
+                  <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span class="font-semibold">{{ 'film.cinemaRow' | t: { count: cinema().length } }}</span>
+                    <span class="truncate text-sm text-dim-foreground">{{ 'film.cinemaWhy' | t }}@if (cinemaLanguages()) { · {{ cinemaLanguages() }} }</span>
+                  </span>
+                  <span class="shrink-0 text-sm text-muted-foreground">{{ 'film.show' | t }}</span>
+                </button>
+              }
+            </section>
+          }
+        </div>
+      </div>
+    } @else if (failed()) {
+      <p class="text-lg font-semibold">{{ 'film.notOpened' | t }}</p>
+    } @else {
+      <p class="flex items-center gap-2 text-sm text-muted-foreground">
+        <ng-icon name="lucideLoaderCircle" size="16" class="animate-spin" />
+        {{ 'sub.loading' | t }}
+      </p>
+    }
+  </div>
+</div>

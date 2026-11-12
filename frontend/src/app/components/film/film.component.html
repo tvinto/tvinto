@@ -1,0 +1,237 @@
+<!-- A film's own page (TV-27, D-19, P-16). -->
+<div class="relative h-full overflow-y-auto" data-film-page>
+  @if (page(); as film) {
+    <!-- NX-TV-3, NX-P-2: the backdrop to the edges, fading into the page from
+         the left and from below, so the words sit on the page's own ground. -->
+    <div class="nx-hero" data-film-backdrop aria-hidden="true">
+      @if (film.backdrop && !failedIcons().has(film.backdrop)) {
+        <img [src]="film.backdrop" (error)="iconFailed(film.backdrop)" alt="" />
+      } @else if (heroPoster(); as poster) {
+        <img [src]="poster" (error)="iconFailed(poster)" alt="" data-nx-hero-blur />
+      }
+    </div>
+
+    <div class="relative mx-auto flex max-w-[1600px] flex-col gap-6 px-4 py-6 sm:px-6" data-tv-wide>
+      <button hlmBtn variant="quiet" size="sm" type="button" class="self-start" (click)="back()" data-screen-back>
+        <ng-icon name="lucideArrowLeft" size="16" />
+        {{ 'common.back' | t }}
+      </button>
+      <div data-nx-hero-space></div>
+
+      <div class="flex max-w-[60rem] flex-col gap-4" data-film-top data-nx-top>
+        <h1 class="nx-title" data-film-title>{{ film.title }}</h1>
+        <!-- One line: year, length, genres, the age rating, TMDB's score. -->
+        @if (meta() || film.rating || film.vote !== null) {
+          <div class="nx-meta text-base" data-film-meta>
+            @if (meta()) {
+              <span>{{ meta() }}</span>
+            }
+            @if (film.rating) {
+              <span class="nx-age" data-film-rating>{{ film.rating }}+</span>
+              @if (film.id && ages.lockedLabel('movie', film.id)) {
+                <span class="font-semibold" data-film-locked>{{ 'lock.age.locked' | t }}</span>
+              }
+            }
+            @if (film.vote !== null) {
+              <span class="nx-score" data-film-scores>{{ 'film.tmdbScore' | t: { score: film.vote } }}</span>
+            }
+          </div>
+        }
+        @if (progress()) {
+          <div class="flex max-w-xl items-center gap-4" data-film-progress>
+            <span class="block h-1.5 w-40 shrink-0 overflow-hidden rounded-full bg-foreground/25 sm:w-56">
+              <span class="block h-full bg-primary-bright" [style.width.%]="watchedPercent()"></span>
+            </span>
+            <span class="text-sm text-muted-foreground">{{ stoppedAt() }}</span>
+          </div>
+        }
+        @if (film.overview) {
+          <p class="line-clamp-3 max-w-[48rem] text-base leading-relaxed" data-film-overview>{{ film.overview }}</p>
+        }
+
+        <!-- One row of pills, the player's own (NX-TV-3): what is used most, and
+             More for the rest, so the row never runs to two lines. -->
+        <div class="flex flex-wrap items-center gap-3 pt-2" data-film-actions>
+          @if (playCopy(); as copy) {
+            <button type="button" class="pill pill-primary" data-focus-key="film-play" data-film-play (click)="play()">
+              <ng-icon name="lucidePlay" />
+              @if (progress()) {
+                {{ 'film.resume' | t }}
+              } @else if (copy.cinema) {
+                {{ 'film.playCinema' | t }}
+              } @else {
+                {{ 'film.play' | t }}
+              }
+            </button>
+            @if (progress()) {
+              <button type="button" class="pill" data-focus-key="film-start-over" (click)="startOver()">
+                <ng-icon name="lucideRotateCcw" />{{ 'film.startOver' | t }}
+              </button>
+            }
+          }
+          <button type="button" class="pill" data-focus-key="film-favourite" [attr.aria-pressed]="favourite()" (click)="toggleFavourite()">
+            <ng-icon name="lucideStar" />{{ 'film.favourites' | t }}
+          </button>
+          @if (playCopy()) {
+            <button type="button" class="pill" data-focus-key="film-subtitles" data-film-subtitles (click)="addSubtitles()">
+              <ng-icon name="lucideCaptions" />{{ 'film.subtitles' | t }}
+            </button>
+          }
+          @if (moreActions().length) {
+            <button
+              type="button"
+              class="pill"
+              data-pill-round
+              data-focus-key="film-more"
+              data-film-more-button
+              [attr.aria-label]="'film.more' | t"
+              [title]="'film.more' | t"
+              (click)="moreOpen.set(true)"
+            >
+              <ng-icon name="lucideEllipsis" />
+            </button>
+          }
+        </div>
+        @if (copiesLine()) {
+          <p class="text-sm text-muted-foreground" data-film-copies-line>{{ copiesLine() }}</p>
+        }
+      </div>
+
+      <!-- With room and a pointer, the copies are on the page itself (D-19). -->
+      @if (film.copies.length > 1) {
+        <section class="flex w-full max-w-[34rem] flex-col gap-1.5" data-film-copies-inline>
+          <h2 class="nx-row-title">
+            {{ 'film.copiesTitle' | t }}
+            <span class="ml-1 font-normal text-dim-foreground normal-case">{{ film.copies.length }}</span>
+          </h2>
+          @for (copy of inlineCopies(); track copy.stream.stream_id) {
+            <button
+              type="button"
+              class="flex items-center gap-3 rounded-lg bg-[var(--glass-quiet)] px-3 py-2 text-left hover:bg-[var(--glass)]"
+              [class.opacity-60]="copy.cinema"
+              (click)="playChosen(copy)"
+            >
+              <span class="w-36 shrink-0 truncate font-semibold">{{ copy.languageName || ('film.unknownLanguage' | t) }}</span>
+              @if (copy.quality) {
+                <span class="shrink-0 rounded-sm border border-[var(--hairline)] px-1.5 text-xs font-semibold">{{ copy.quality }}</span>
+              }
+              <span class="min-w-0 flex-1 truncate text-sm text-dim-foreground">
+                @if (copy.cinema) { {{ 'film.cinemaShort' | t }} · }{{ copy.category }}
+              </span>
+              @if (copy.stream.stream_id | providerName; as provider) {
+                <span class="shrink-0 text-xs text-dim-foreground">{{ provider }}</span>
+              }
+            </button>
+          }
+          @if (film.copies.length > 10 && !allCopiesShown()) {
+            <button hlmBtn size="sm" type="button" class="self-start" (click)="allCopiesShown.set(true)">
+              {{ 'film.showAll' | t: { count: film.copies.length } }}
+            </button>
+          }
+        </section>
+      }
+
+      <!-- The series it belongs to, as a row of its films (NX-TV-4): each one
+           this library has opens its page; one it lacks stays a dashed outline.
+           Its name opens the collection's own page (TV-30). Absent when in none. -->
+      @if (collection(); as series) {
+        <section class="flex flex-col gap-2" data-film-collection>
+          <div class="flex items-baseline gap-3">
+            <h2 class="nx-row-title">{{ series.name }}</h2>
+            <button type="button" class="text-sm text-muted-foreground underline-offset-2 hover:underline" data-focus-key="film-collection" (click)="openCollection()">
+              {{ collectionLine() }}
+            </button>
+          </div>
+          <div class="flex gap-3 overflow-x-auto pb-2" data-tv-rail>
+            @for (part of series.parts; track part.item.id) {
+              @if (part.copies > 0) {
+                <button
+                  type="button"
+                  class="flex w-[7.875rem] shrink-0 flex-col gap-1.5 text-left"
+                  data-fy-poster
+                  [attr.data-focus-key]="'film-part-' + part.item.id"
+                  [title]="part.item.title"
+                  (click)="openLink(part)"
+                >
+                  <span class="relative block h-[11.8rem] w-full overflow-hidden rounded-md bg-card-2" data-fy-poster-image>
+                    @if (part.poster && !failedIcons().has(part.poster)) {
+                      <img [src]="part.poster" (error)="iconFailed(part.poster)" alt="" loading="lazy" class="h-full w-full object-cover" />
+                    } @else {
+                      <span class="poster-placeholder absolute inset-0 flex border-l-4 border-vod p-2 text-xl font-bold text-vod">{{ part.item.title | channelMonogram }}</span>
+                    }
+                  </span>
+                  <span class="block w-full truncate text-sm font-semibold">{{ part.item.title }}</span>
+                  <span class="block w-full truncate text-xs text-muted-foreground">@if (part.item.year) { {{ part.item.year }} } @else { &nbsp; }</span>
+                </button>
+              } @else {
+                <div class="flex w-[7.875rem] shrink-0 flex-col gap-1.5 text-left opacity-70" data-fy-poster data-collection-missing>
+                  <span class="flex h-[11.8rem] w-full flex-col justify-end gap-1 rounded-md border-2 border-dashed border-border-2 p-2" data-fy-poster-image>
+                    <span class="line-clamp-3 text-sm font-semibold">{{ part.item.title }}</span>
+                    <span class="text-xs text-dim-foreground">{{ 'film.notInLibrary' | t }}</span>
+                  </span>
+                  <span class="block w-full truncate text-sm text-dim-foreground">{{ part.item.title }}</span>
+                  <span class="block w-full truncate text-xs text-dim-foreground">@if (part.item.year) { {{ part.item.year }} } @else { &nbsp; }</span>
+                </div>
+              }
+            }
+          </div>
+        </section>
+      }
+
+      <!-- TMDB's recommendations, kept to the library; hidden when fewer than three are in it. -->
+      @if (moreLikeThis().length >= MORE_LIKE_THIS_MIN) {
+        <section class="flex flex-col gap-2" data-film-more>
+          <h2 class="nx-row-title">{{ 'film.moreLikeThis' | t }}</h2>
+          <div class="flex gap-3 overflow-x-auto pb-2" data-tv-rail>
+            @for (link of moreLikeThis(); track link.item.id) {
+              <button
+                type="button"
+                class="flex w-[7.875rem] shrink-0 flex-col gap-1.5 text-left"
+                data-fy-poster
+                [attr.data-focus-key]="'film-more-' + link.item.id"
+                [title]="link.item.title"
+                (click)="openLink(link)"
+              >
+                <span class="relative block h-[11.8rem] w-full overflow-hidden rounded-md bg-card-2" data-fy-poster-image>
+                  @if (link.poster && !failedIcons().has(link.poster)) {
+                    <img [src]="link.poster" (error)="iconFailed(link.poster)" alt="" loading="lazy" class="h-full w-full object-cover" />
+                  } @else {
+                    <span class="poster-placeholder absolute inset-0 flex border-l-4 border-vod p-2 text-xl font-bold text-vod">{{ link.item.title | channelMonogram }}</span>
+                  }
+                </span>
+                <span class="block w-full truncate text-sm font-semibold">{{ link.item.title }}</span>
+                <span class="block w-full truncate text-xs text-muted-foreground">@if (link.item.year) { {{ link.item.year }} } @else { &nbsp; }</span>
+              </button>
+            }
+          </div>
+        </section>
+      }
+
+      <!-- TMDB's notice, at the foot of every title page. -->
+      <p class="mt-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground" data-film-notice>
+        <img [src]="logo" alt="TMDB" class="h-3 w-auto" />
+        {{ 'describe.attribution' | t }}
+      </p>
+    </div>
+  } @else if (failed()) {
+    <div class="mx-auto flex max-w-[1600px] flex-col items-start gap-4 px-4 py-6 sm:px-6">
+      <p class="text-lg font-semibold">{{ 'film.notOpened' | t }}</p>
+      <button hlmBtn variant="primary" type="button" data-focus-key="film-back" (click)="back()">{{ 'common.back' | t }}</button>
+    </div>
+  } @else {
+    <p class="flex items-center gap-2 px-6 py-6 text-sm text-muted-foreground">
+      <ng-icon name="lucideLoaderCircle" size="16" class="animate-spin" />
+      {{ 'sub.loading' | t }}
+    </p>
+  }
+</div>
+
+@if (subtitleTarget(); as target) {
+  <app-subtitle-picker [item]="target.item" [name]="target.name" (closed)="subtitleTarget.set(null)" />
+}
+
+<!-- More (NX-TV-3): which copy, the trailer, and out of Continue watching -- the
+     panel every card's hold-OK opens, here about this film. -->
+@if (moreOpen() && page(); as film) {
+  <app-item-actions [name]="film.title" [subtitle]="meta()" [actions]="moreActions()" (chosen)="onMore($event)" (closed)="closeMore()" />
+}

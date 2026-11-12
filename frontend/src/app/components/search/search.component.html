@@ -1,0 +1,346 @@
+<!-- S-1. The query stays on screen while you look, which is why it is not in the
+     part that scrolls: on a phone the chips and the sort scroll away with the
+     results, and the query and Back do not. -->
+<div class="flex h-full flex-col gap-4 p-4 sm:p-5" data-search-page>
+  <!-- Not on a computer, whose field is the one in the top bar (SR-D-2). -->
+  <div class="flex shrink-0 items-center gap-3" data-search-head>
+    <!-- Not on a television, where Right or Back does this from anywhere. -->
+    <button hlmBtn variant="quiet" size="sm" type="button" (click)="back()" data-search-back data-screen-back>
+      <ng-icon name="lucideArrowLeft" size="16" />
+      <span data-search-back-label>{{ 'common.back' | t }}</span>
+    </button>
+
+    <div class="field-wrap flex-1" data-search-field>
+      <ng-icon name="lucideSearch" class="field-search-icon" aria-hidden="true" />
+      <input
+        #field
+        hlmInput
+        type="text"
+        [value]="query()"
+        (input)="onQueryInput($event)"
+        (keydown.enter)="onQueryEnter()"
+        (keyup.enter)="onQueryEnterUp()"
+        (keydown.escape)="onQueryEscape($event)"
+        [placeholder]="'search.placeholder' | t"
+        [attr.aria-label]="'search.aria' | t"
+        data-tv-down="[data-search-scope][aria-pressed='true']"
+        class="field-search field-clearable"
+      />
+      @if (query()) {
+        <button hlmBtn variant="quiet" size="icon-xs" type="button" class="field-clear" (click)="clear()" [attr.aria-label]="'search.clear' | t" data-search-clear>
+          <ng-icon name="lucideX" />
+        </button>
+      }
+    </div>
+
+    @if (query().trim().length >= 3) {
+      <span class="shrink-0 text-sm text-muted-foreground" data-search-total>
+        {{ 'search.results' | t: { count: counted() } }}
+      </span>
+    }
+  </div>
+
+  <!-- Where to look (SR-TV-2, SR-TV-3): Everything or one library, each with
+       what it found once there is a search. -->
+  <div class="flex shrink-0 gap-2 overflow-x-auto pb-1" role="group" [attr.aria-label]="'search.where' | t" data-search-scopes>
+    @for (chip of scopeChips(); track chip.label; let last = $last) {
+      <button
+        type="button"
+        class="chip"
+        [attr.data-tv-right]="last ? '[data-search-sort]' : null"
+        [attr.aria-pressed]="chip.chosen"
+        [attr.data-focus-key]="'search-scope-' + (chip.scope ?? 'all')"
+        data-search-scope
+        (click)="chooseScope(chip.scope)"
+      >
+        @if (chip.chosen) {
+          <ng-icon name="lucideCheck" aria-hidden="true" />
+        }
+        {{ chip.label }}
+        @if (chip.count !== null) {
+          <span class="tabular-nums opacity-70">{{ chip.count }}</span>
+        }
+      </button>
+    }
+  </div>
+
+  @if (working() && !counted()) {
+    <p class="flex items-center gap-2 text-sm text-muted-foreground">
+      <ng-icon name="lucideLoaderCircle" size="16" class="animate-spin" />
+      {{ 'search.lookingThrough' | t: { library: working() } }}
+    </p>
+  } @else if (query().trim().length < 3) {
+    @if (recent.list().length) {
+      <!-- The last few searches on this device, one press each (SR-TV-2). -->
+      <section class="flex flex-col gap-2" data-search-recent>
+        <h2 class="nx-row-title">{{ 'search.recent' | t }}</h2>
+        <div class="flex flex-wrap gap-2" data-tv-rail>
+          @for (term of recent.list(); track term) {
+            <button
+              hlmBtn
+              variant="secondary"
+              size="sm"
+              type="button"
+              [attr.data-focus-key]="'search-recent-' + term"
+              data-search-recent-term
+              (click)="searchAgain(term)"
+            >
+              {{ term }}
+            </button>
+          }
+        </div>
+      </section>
+    }
+  } @else if (nothingFound()) {
+    <!-- TV-10: what was asked, and what to do about it, rather than an empty page. -->
+    <div class="flex flex-col gap-2">
+      <p class="text-lg font-semibold">{{ 'arrange.nothing' | t: { text: query() } }}</p>
+      <p class="text-sm text-muted-foreground">
+        {{ 'search.nothingHelp' | t }}
+      </p>
+    </div>
+  } @else {
+    <div #results class="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto" data-search-results>
+      <!--
+        The chips and the sort: the row above the results, All selected by
+        default, and the sort with its current value spelled out.
+
+        Inside the part that scrolls, so that on a phone they go with the page
+        and the results get the screen back; on a television the page barely
+        scrolls and they are simply the row above. A count on every chip,
+        because the point of one is knowing what it costs before pressing it.
+      -->
+      <div class="flex shrink-0 items-center gap-2" data-search-tools>
+        <span class="shrink-0 text-sm text-muted-foreground" data-search-total-inline>
+          {{ 'search.results' | t: { count: counted() } }}
+        </span>
+
+        @if (facets().families.length || facets().categories.length > 1) {
+          <div class="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1" data-search-facets>
+            <button type="button" class="chip" [attr.aria-pressed]="!facetChosen()" (click)="facetChosen.set(null)">
+              @if (!facetChosen()) {
+                <ng-icon name="lucideCheck" aria-hidden="true" />
+              }
+              {{ 'search.all' | t: { count: total() } }}
+            </button>
+            @for (family of facets().families; track family.key) {
+              <button type="button" class="chip" [attr.aria-pressed]="chosenFamily() === family.key" (click)="chooseFacet('family', family.key)">
+                @if (chosenFamily() === family.key) {
+                  <ng-icon name="lucideCheck" aria-hidden="true" />
+                }
+                {{ family.label }} {{ family.count }}
+              </button>
+            }
+          </div>
+        } @else {
+          <span class="flex-1"></span>
+        }
+
+        <button hlmBtn size="sm" type="button" class="shrink-0" data-search-sort [attr.aria-label]="('search.sort' | t) + ' ' + sortLabel()" (click)="chooseSort()">
+          <ng-icon name="lucideArrowDownUp" aria-hidden="true" />
+          {{ sortLabel() }}
+        </button>
+      </div>
+
+      @if (working()) {
+        <p class="flex items-center gap-2 text-xs text-muted-foreground">
+          <ng-icon name="lucideLoaderCircle" size="14" class="animate-spin" />
+          {{ 'search.stillLooking' | t: { library: working() } }}
+        </p>
+      }
+
+      <!-- What is on, and coming, in this device's guides by title (feature 7). -->
+      @if (inGuide().length && guideShown()) {
+        <section class="flex flex-col gap-2" data-search-section="guide">
+          <h2 class="flex items-baseline gap-3">
+            <span class="nx-row-title">{{ 'search.inGuide' | t }}</span>
+            <span class="text-xs text-muted-foreground">{{ inGuide().length }}</span>
+          </h2>
+          <div class="flex gap-3 overflow-x-auto pb-2" data-search-row data-tv-rail data-search-row-kind="programme">
+            @for (row of guideRows(); track row.find.stream.stream_id + '@' + row.find.start) {
+              @let find = row.find;
+              <button
+                type="button"
+                appCardGestures
+                data-search-card
+                data-search-programme
+                class="flex w-[16rem] shrink-0 flex-col gap-1 rounded-lg bg-card p-3 text-left hover:bg-card-2"
+                [attr.data-focus-key]="'search-guide-' + find.stream.stream_id + '-' + find.start"
+                (activate)="openFind(find)"
+                (menu)="openFind(find)"
+              >
+                <span class="flex items-center gap-1.5 text-xs font-semibold" [class]="find.onNow ? 'text-live' : 'text-muted-foreground'">
+                  @if (row.reminded) {
+                    <ng-icon name="lucideBell" size="12" [attr.aria-label]="'remind.setShort' | t" data-reminded />
+                  }
+                  {{ row.when }}
+                </span>
+                <span class="line-clamp-2 text-sm font-semibold break-words">{{ find.title }}</span>
+                <span class="truncate text-xs text-muted-foreground">{{ find.stream.name | channelTitle }}</span>
+              </button>
+            }
+          </div>
+        </section>
+      }
+
+      @for (sectionRow of shownSections(); track sectionRow.section.type) {
+        @let section = sectionRow.section;
+        <section class="flex flex-col gap-2" [attr.data-search-section]="section.type">
+          <!-- The truncation in words, beside the heading. Never a fading edge:
+               a gradient says "there is more" and cannot say how much more.
+               Two forms, and the stylesheet shows one: the television's
+               "showing 5 of 137" beside the label, the phone's shorter
+               "2 of 137" pushed to the right, where the longer phrase would
+               not fit. -->
+          <h2 class="flex items-baseline gap-3">
+            <span class="nx-row-title">
+              {{ section.label }}
+            </span>
+            <span class="text-xs text-muted-foreground" data-search-count>
+              {{ sectionRow.truncation }}
+            </span>
+            <span class="ml-auto text-xs text-muted-foreground" data-search-count-phone>
+              {{ sectionRow.phoneTruncation }}
+            </span>
+          </h2>
+
+          @if (section.found.length) {
+            <div
+              class="flex gap-3 overflow-x-auto pb-2"
+              data-search-row
+              data-tv-rail
+              [attr.data-search-row-kind]="section.type === 'live' ? 'logo' : 'poster'"
+              [attr.data-search-row-fill]="section.columns ? '' : null"
+              [style.grid-template-columns]="section.columns ? 'repeat(' + section.columns + ', minmax(0, 1fr))' : null"
+            >
+              @for (stream of section.shown; track stream.stream_id) {
+                <button
+                  type="button"
+                  appCardGestures
+                  data-search-card
+                  class="shrink-0 overflow-hidden rounded-lg bg-card text-left hover:bg-card-2"
+                  [attr.data-focus-key]="'search-' + section.type + '-' + stream.stream_id"
+                  [class]="
+                    section.type === 'live'
+                      ? 'flex h-[5.5rem] w-[14.25rem] items-center gap-3 p-2.5'
+                      : 'flex w-[9rem] flex-col'
+                  "
+                  (activate)="open(section.type, stream, section.found)"
+                  (menu)="openMenu(section.type, stream, section.found)"
+                >
+                  @if (section.type === 'live') {
+                    <!-- The 16:9 logo card, and on a phone a 64px row. -->
+                    <span class="flex h-full w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-card-2" data-search-logo>
+                      @if (stream.stream_icon && !failedIcons().has(stream.stream_icon)) {
+                        <img
+                          [src]="stream.stream_icon"
+                          (error)="iconFailed(stream.stream_icon)"
+                          alt=""
+                          loading="lazy"
+                          class="h-full w-full object-contain"
+                        />
+                      } @else {
+                        <span class="text-sm font-bold text-muted-foreground">
+                          {{ stream.name | channelMonogram }}
+                        </span>
+                      }
+                    </span>
+                    <span class="min-w-0 flex-1">
+                      <span class="line-clamp-2 text-sm font-semibold">
+                        {{ stream.name | channelTitle }}
+                      </span>
+                      <!-- Which provider, when there are several to tell apart. -->
+                      @if (stream.stream_id | providerName; as provider) {
+                        <span class="block truncate text-xs text-dim-foreground" data-card-provider>{{ provider }}</span>
+                      }
+                    </span>
+                  } @else {
+                    <!-- The 2:3 poster. -->
+                    <span class="relative flex aspect-[2/3] w-full items-center justify-center overflow-hidden bg-card-2">
+                      @if (stream.stream_icon && !failedIcons().has(stream.stream_icon)) {
+                        <img
+                          [src]="stream.stream_icon"
+                          (error)="iconFailed(stream.stream_icon)"
+                          alt=""
+                          loading="lazy"
+                          class="h-full w-full object-cover"
+                        />
+                      } @else {
+                        <span class="text-lg font-bold text-muted-foreground">
+                          {{ stream.name | channelMonogram }}
+                        </span>
+                      }
+                      @if (ages.lockedStreamLabel(section.type, stream.stream_id); as rating) {
+                        <app-age-cover [rating]="rating" />
+                      }
+                    </span>
+                    <!-- Margin, not padding: a clamped line shows the top of the next one
+                         in its own bottom padding, which read as a title cut in half. -->
+                    <span class="m-2 line-clamp-2 text-sm font-semibold break-words">
+                      {{ stream.name | posterTitle }}
+                    </span>
+                    <!-- The year, which is what tells two films or shows of one name apart. -->
+                    <span class="-mt-1.5 flex min-w-0 gap-1 px-2 pb-2 text-xs">
+                      @if (stream.name | posterYear; as year) {
+                        <span class="shrink-0 text-muted-foreground">{{ year }}</span>
+                      }
+                      @if (stream.stream_id | providerName; as provider) {
+                        <span class="min-w-0 truncate text-dim-foreground" data-card-provider>{{ provider }}</span>
+                      }
+                    </span>
+                  }
+                </button>
+              }
+
+              <!-- The last card in the row rather than a control somewhere
+                   else, so a remote reaches it by carrying on right. -->
+              @if (section.more) {
+                <a
+                  hlmBtn
+                 
+                  [routerLink]="section.path"
+                  [queryParams]="{ q: query() }"
+                  data-search-show-all
+                  (click)="showAll()"
+                  [attr.data-focus-key]="'search-all-' + section.type"
+                  class="flex shrink-0 flex-col items-start justify-center gap-1 rounded-lg px-4 text-left"
+                  [class]="section.type === 'live' ? 'h-[5.5rem] w-[11rem]' : 'h-auto w-[9rem]'"
+                >
+                  <span class="text-sm font-semibold">
+                    {{ 'search.showAll' | t: { count: section.found.length + (section.capped ? '+' : '') } }}
+                  </span>
+                  <span class="text-xs text-muted-foreground">{{ section.label | lowercase }}</span>
+                </a>
+              }
+            </div>
+
+            <!-- The phone's Show all: a full-width button at the section's
+                 foot, "because a vertical list has no end-of-row to put it
+                 at". Offered whenever the phone is showing fewer than there
+                 are, which it is more often than the television is. -->
+            @if (section.more) {
+              <a
+                hlmBtn
+               
+                [routerLink]="section.path"
+                [queryParams]="{ q: query() }"
+                data-search-show-all-phone
+                (click)="showAll()"
+                class="w-full"
+              >
+                {{ 'search.showAll' | t: { count: section.found.length + (section.capped ? '+' : '') } }}
+                {{ section.label | lowercase }}
+              </a>
+            }
+          }
+        </section>
+      }
+    </div>
+  }
+</div>
+
+<!-- Holding OK, as on every card (31 October): play, star, or a
+     film's page -- a search result can be starred without opening it. -->
+@if (menu(); as target) {
+  <app-item-actions [name]="target.stream.name" [actions]="menuActions()" (chosen)="onMenu($event)" (closed)="closeMenu()" />
+}

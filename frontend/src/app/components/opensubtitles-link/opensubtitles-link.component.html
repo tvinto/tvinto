@@ -1,0 +1,87 @@
+<!-- ST-D-1, round 14 (DS-TV-3): OpenSubtitles as a group of rows, one state
+     on screen at a time. Without a sync service it is not shown at all,
+     rather than shown to say it needs one. -->
+@if (subtitles.state() !== 'needs-sync') {
+  <app-setting-group heading="OpenSubtitles" data-opensubtitles-link>
+    @switch (linking() ? 'linking' : subtitles.state()) {
+      @case ('checking') {
+        <app-setting-row label="OpenSubtitles" [sub]="'os.checking' | t" kind="static" />
+      }
+
+      @case ('unavailable') {
+        <app-setting-row label="OpenSubtitles" [sub]="subtitles.error() || ('os.notSetUp' | t)" kind="static" />
+      }
+
+      @case ('unlinked') {
+        <app-setting-row [label]="'os.link' | t" [sub]="'os.noAccount' | t" focusKey="os-link" (activate)="startLinking()" />
+      }
+
+      @case ('linking') {
+        <form class="setting-block flex flex-col gap-4" (submit)="$event.preventDefault(); signIn()">
+          <label class="flex flex-col gap-2">
+            <span hlmLabel>{{ 'os.username' | t }}</span>
+            <input
+              hlmInput
+              id="opensubtitlesUsername"
+              autocomplete="username"
+              autocapitalize="none"
+              spellcheck="false"
+              [value]="username()"
+              (input)="onInput('username', $event)"
+            />
+          </label>
+          <label class="flex flex-col gap-2">
+            <span hlmLabel>{{ 'os.password' | t }}</span>
+            <span class="flex items-center gap-3">
+              <input
+                hlmInput
+                id="opensubtitlesPassword"
+                autocomplete="current-password"
+                class="min-w-0 flex-1"
+                [type]="showPassword() ? 'text' : 'password'"
+                [value]="password()"
+                (input)="onInput('password', $event)"
+              />
+              <button hlmBtn variant="quiet" size="sm" type="button" [attr.aria-pressed]="showPassword()" (click)="showPassword.set(!showPassword())">
+                {{ (showPassword() ? 'sub.hide' : 'sub.show') | t }}
+              </button>
+            </span>
+          </label>
+          <p class="text-xs text-muted-foreground">{{ 'os.passwordNote' | t }}</p>
+          <div class="flex flex-wrap gap-3">
+            <button hlmBtn variant="primary" type="submit" [disabled]="subtitles.busy()">
+              @if (subtitles.busy()) {
+                <ng-icon name="lucideLoaderCircle" class="animate-spin" />
+                {{ 'os.signingIn' | t }}
+              } @else {
+                {{ 'os.signIn' | t }}
+              }
+            </button>
+            <button hlmBtn variant="quiet" type="button" [disabled]="subtitles.busy()" (click)="cancel()">{{ 'os.cancel' | t }}</button>
+          </div>
+        </form>
+      }
+
+      @case ('linked') {
+        <app-setting-row [label]="subtitles.username() ?? 'OpenSubtitles'" [sub]="linkedLine()" kind="static" data-allowance>
+          <button rowEnd hlmBtn variant="quiet" size="sm" type="button" [disabled]="subtitles.busy()" (click)="subtitles.unlink()">
+            {{ 'os.unlink' | t }}
+          </button>
+        </app-setting-row>
+      }
+
+      @case ('refused') {
+        <app-setting-row [label]="subtitles.username() ?? 'OpenSubtitles'" [sub]="'os.titleSignInAgain' | t" kind="static">
+          <span rowEnd class="flex gap-2">
+            <button hlmBtn variant="primary" size="sm" type="button" (click)="startLinking()">{{ 'os.linkAgain' | t }}</button>
+            <button hlmBtn variant="quiet" size="sm" type="button" [disabled]="subtitles.busy()" (click)="subtitles.unlink()">{{ 'os.unlink' | t }}</button>
+          </span>
+        </app-setting-row>
+      }
+
+      @case ('unreadable') {
+        <app-setting-row [label]="'os.linkAgain' | t" [sub]="'os.titleLinkAgain' | t" focusKey="os-link" (activate)="startLinking()" />
+      }
+    }
+  </app-setting-group>
+}

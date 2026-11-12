@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What the app may hand another app a file from: only a downloaded update,
+     for the system installer (update/AppUpdatePlugin.java). -->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <cache-path name="app_updates" path="app-updates/" />
+</paths>

@@ -1,0 +1,22 @@
+{
+  "name": "tvinto",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Change a Tvinto account from the command line, and let an AI agent do it safely",
+  "license": "GPL-3.0-only",
+  "bin": {
+    "tvinto": "dist/tvinto.js"
+  },
+  "scripts": {
+    "build": "esbuild src/main.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/tvinto.js --external:@napi-rs/keyring --banner:js=\"#!/usr/bin/env node\""
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@napi-rs/keyring": "2.1.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

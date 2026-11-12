@@ -1,0 +1,609 @@
+<!--
+  For You (FY-TV, FY-D, FY-P; with TMDB, FY-*-2). Rails in one order everywhere: Continue
+  watching, On now on your favourite channels, Popular this week (or Recently
+  added where there is no TMDB key), the ways in, Favourites. On a
+  desktop the ways in and the favourites move to a side column (FY-D); on a
+  television they are rows (FY-TV); on a phone every rail is a list (FY-P).
+  Every card in a rail is the same height, so Down lands on the next rail and
+  Left/Right never changes row. Holding OK, Menu, right-click or the ⋯ opens
+  the actions panel, which is where removing and unstarring live.
+-->
+<div class="relative h-full overflow-y-auto" data-for-you appSpotlightHost #spot="spotlightHost" [spotlightKeep]="!featured()">
+  <!-- NX-TV-2: down in the rows, the top of the screen is whatever has focus.
+       The billboard keeps room for it; without one (nothing to carry on with)
+       the page makes room once it shows, so no row is ever under it. -->
+  <app-spotlight [target]="spot.target()" />
+  @if (!featured() && spot.target()) {
+    <div data-nx-spot-room aria-hidden="true"></div>
+  }
+  <!-- NX-TV-1, NX-P-1: the billboard's picture, to the edges behind the top of the page. -->
+  @if (!dayOne() && featured(); as row) {
+    <div class="nx-hero" data-fy-hero aria-hidden="true">
+      @if (featuredShown()?.backdrop; as backdrop) {
+        <img [src]="backdrop" alt="" />
+      } @else if (row.entry.icon && !failedIcons().has(row.entry.icon)) {
+        <img [src]="row.entry.icon" alt="" data-nx-hero-blur (error)="iconFailed(row.entry.icon)" />
+      }
+    </div>
+  }
+  <div class="relative mx-auto flex max-w-[1600px] flex-col gap-6 px-4 py-6 sm:px-6" data-tv-wide>
+    @if (!dayOne() && featured(); as row) {
+      <!-- The billboard (NX-TV-1): the first film or show in Continue watching,
+           its kind and why it is here, the details, where it got to, two lines
+           about it, and Resume -- which is where focus starts, so opening the
+           app and pressing OK carries on watching. Nothing plays by itself. -->
+      <section class="flex max-w-[60rem] min-w-0 flex-col gap-4" data-fy-billboard>
+        <span class="text-xs font-extrabold tracking-[0.16em] text-[var(--primary-bright)] uppercase" data-fy-billboard-kicker>
+          {{ (row.entry.type === 'series' ? 'fy.show' : 'fy.film') | t }} · {{ 'fy.continue' | t }}
+        </span>
+        <h1 class="nx-title" data-fy-billboard-title>{{ row.entry.name | posterTitle }}</h1>
+        @if (featuredShown(); as shown) {
+          @if (shown.meta || shown.rating || shown.vote !== null) {
+            <div class="nx-meta text-base">
+              @if (shown.meta) {
+                <span>{{ shown.meta }}</span>
+              }
+              @if (shown.rating) {
+                <span class="nx-age">{{ shown.rating }}+</span>
+              }
+              @if (shown.vote !== null) {
+                <span class="nx-score">{{ 'film.tmdbScore' | t: { score: shown.vote } }}</span>
+              }
+            </div>
+          }
+        }
+        <div class="flex max-w-full min-w-0 items-center gap-4" data-fy-billboard-progress>
+          @if (row.entry.type === 'vod' && row.percent > 0) {
+            <span class="block h-1.5 w-32 shrink-0 overflow-hidden rounded-full bg-foreground/25 sm:w-48">
+              <span class="block h-full bg-primary-bright" [style.width.%]="row.percent"></span>
+            </span>
+            <span class="min-w-0 truncate text-sm text-muted-foreground">{{ row.leftAndWhen }}</span>
+          } @else {
+            <span class="min-w-0 truncate text-sm text-muted-foreground">{{ row.chip || ('fy.watched' | t: { when: row.when }) }}</span>
+          }
+        </div>
+        @if (featuredShown()?.overview; as overview) {
+          <p class="line-clamp-2 max-w-[48rem] text-base leading-relaxed" data-fy-billboard-overview>{{ overview }}</p>
+        }
+        <div class="flex flex-wrap items-center gap-3 pt-2">
+          <button type="button" class="pill pill-primary" data-focus-key="fy-billboard-resume" (click)="resume(row.entry)">
+            <ng-icon name="lucidePlay" />{{ 'film.resume' | t }}
+          </button>
+          <button type="button" class="pill" data-focus-key="fy-billboard-info" (click)="featuredInfo()">
+            <ng-icon name="lucideInfo" />{{ 'fy.moreInfo' | t }}
+          </button>
+        </div>
+      </section>
+    } @else {
+      <!-- No greeting (1 November): with nothing to carry on with,
+           the page starts at its rows. The heading is for screen readers. -->
+      <h1 class="sr-only">{{ 'nav.forYou' | t }}</h1>
+    }
+
+    <app-storage-banner />
+
+    @if (dayOne()) {
+      <!-- FY-TV · Day one: four equal doors rather than empty rails. -->
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-fy-doors>
+        <button type="button" class="flex min-h-32 flex-col gap-1 rounded-lg border-l-4 border-live bg-card p-5 text-left hover:bg-card-2" data-focus-key="fy-door-guide" (click)="browseGuide()">
+          <span class="text-lg font-bold">{{ 'fy.browseGuide' | t }}</span>
+        </button>
+        <button type="button" class="flex min-h-32 flex-col gap-1 rounded-lg border-l-4 border-vod bg-card p-5 text-left hover:bg-card-2" (click)="go('/movies')">
+          <span class="text-lg font-bold">{{ 'nav.movies' | t }}</span>
+        </button>
+        <button type="button" class="flex min-h-32 flex-col gap-1 rounded-lg border-l-4 border-series bg-card p-5 text-left hover:bg-card-2" (click)="go('/shows')">
+          <span class="text-lg font-bold">{{ 'nav.shows' | t }}</span>
+        </button>
+        <button type="button" class="flex min-h-32 flex-col gap-1 rounded-lg border-l-4 border-primary-bright bg-card p-5 text-left hover:bg-card-2" (click)="openSearch()">
+          <span class="text-lg font-bold">{{ 'nav.search' | t }}</span>
+        </button>
+      </div>
+    }
+    <!-- Day one too: the doors stand in for history, not for everything else.
+         Popular this week and what is new do not wait on anything being
+         watched (a new account's empty page, 2 November). -->
+    @if (!loading()) {
+      <div [class]="dayOne() ? 'grid gap-6' : 'grid gap-6 lg:grid-cols-[minmax(0,1fr)_18.75rem]'" data-fy-columns>
+        <div class="flex min-w-0 flex-col gap-6">
+          <!-- Continue watching: all three libraries, newest first. The kind is
+               in the top line rather than a badge. -->
+          @if (continueRail().length) {
+            <section class="flex flex-col gap-2">
+              <h2 class="nx-row-title">{{ 'fy.continue' | t }}</h2>
+              <div class="flex gap-3 overflow-x-auto pb-2" data-tv-rail data-fy-continue-rail>
+                @for (row of continueRows(); track row.entry.type + row.entry.itemId) {
+                  @let entry = row.entry;
+                  <!-- A picture, as every card is now (NX-TV-9): the poster -- a
+                       channel's logo on a quiet ground -- with how far it got
+                       along its foot; what it is and when, under it. -->
+                  <div class="relative flex shrink-0" data-fy-item>
+                    <button
+                      type="button"
+                      appCardGestures
+                      class="flex w-[7.875rem] shrink-0 flex-col gap-1.5 text-left"
+                      data-fy-poster
+                      [attr.data-focus-key]="'fy-recent-' + entry.type + '-' + entry.itemId"
+                      [attr.data-spot-kind]="entry.type"
+                      [attr.data-spot-id]="entry.type === 'series' ? row.showId : entry.itemId"
+                      [attr.data-spot-name]="entry.type === 'live' ? (entry.name | channelTitle) : (entry.name | posterTitle)"
+                      [attr.data-spot-poster]="entry.icon ?? ''"
+                      [attr.data-spot-line]="entry.type === 'vod' ? row.leftAndWhen : ('fy.watched' | t: { when: row.when })"
+                      [title]="entry.name"
+                      (activate)="resume(entry)"
+                      (menu)="openMenu({ kind: 'recent', entry })"
+                    >
+                      <span class="relative block h-[11.8rem] w-full overflow-hidden rounded-md bg-card-2" data-fy-poster-image>
+                        @if (entry.type === "live") {
+                          <span class="absolute inset-0 flex items-center justify-center p-3">
+                            @if ((entry.icon && !failedIcons().has(entry.icon))) {
+                              <img [src]="entry.icon" (error)="iconFailed(entry.icon)" alt="" loading="lazy" class="max-h-full w-full object-contain" />
+                            } @else {
+                              <span class="text-xl font-bold text-live">{{ (entry.name | channelMonogram) }}</span>
+                            }
+                          </span>
+                        } @else if ((entry.icon && !failedIcons().has(entry.icon))) {
+                          <img [src]="entry.icon" (error)="iconFailed(entry.icon)" alt="" loading="lazy" class="h-full w-full object-cover" />
+                        } @else {
+                          <span class="poster-placeholder absolute inset-0 flex border-l-4 p-2 text-xl font-bold" [class]="entry.type === 'series' ? 'border-series text-series' : 'border-vod text-vod'">
+                            {{ (entry.name | posterTitle | channelMonogram) }}
+                          </span>
+                        }
+                        @if (row.chip) {
+                          <span class="absolute inset-x-0 bottom-1 mx-auto w-max max-w-[92%] truncate rounded-t-sm bg-on-air px-1.5 text-[10px] font-extrabold tracking-wider text-white uppercase" data-fy-new-chip>{{ row.chip }}</span>
+                        }
+                        @if (entry.type === "live") {
+                          @if (row.onNow; as now) {
+                            <span class="absolute inset-x-0 bottom-0 h-1 bg-foreground/25">
+                              <span class="block h-full bg-on-air" [style.width.%]="now.percent"></span>
+                            </span>
+                          }
+                        } @else if (row.percent > 0) {
+                          <span class="absolute inset-x-0 bottom-0 h-1 bg-foreground/25" data-fy-meter>
+                            <span class="block h-full bg-primary-bright" [style.width.%]="row.percent"></span>
+                          </span>
+                        }
+                      </span>
+                      <span class="block w-full truncate text-sm font-semibold">
+                        @if (entry.type === "live") {
+                          {{ row.onNow ? row.onNow.title : (entry.name | channelTitle) }}
+                        } @else {
+                          {{ (entry.name | posterTitle) }}
+                        }
+                      </span>
+                      <span class="flex w-full min-w-0 text-xs text-muted-foreground">
+                        <span class="min-w-0 truncate">
+                          @if (entry.type === "live") {
+                            {{ (entry.name | channelTitle) }}@if (row.onNow; as now) { · {{ now.left }} }
+                          } @else if (entry.type === "series") {
+                            {{ 'fy.watched' | t: { when: row.when } }}
+                          } @else {
+                            {{ row.leftAndWhen }}
+                          }
+                        </span>
+                        @if (entry.itemId | providerName; as provider) {
+                          <span class="shrink-0 text-dim-foreground" data-card-provider>&nbsp;· {{ provider }}</span>
+                        }
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      class="absolute top-1 right-1 flex h-11 w-11 items-center justify-center text-muted-foreground"
+                      data-phone-only
+                      [attr.aria-label]="'section.actionsFor' | t: { name: entry.name }"
+                      (click)="openMenu({ kind: 'recent', entry })"
+                    >
+                      ···
+                    </button>
+                  </div>
+                }
+              </div>
+            </section>
+          }
+
+          <!-- New in your shows (FY-TV-2): shows in the history or the
+               favourites with an episode out today or this week, or one
+               announced for the next two weeks. Not drawn when there is none. -->
+          @if (newShows().length) {
+            <section class="flex flex-col gap-2" data-fy-new-shows>
+              <h2 class="nx-row-title">{{ 'fy.newInShows' | t }}</h2>
+              <div class="flex gap-3 overflow-x-auto pb-2" data-tv-rail>
+                @for (show of newShows(); track show.seriesId) {
+                  <!-- A poster, and what is new under it. -->
+                  <button
+                    type="button"
+                    appCardGestures
+                    class="flex w-[7.875rem] shrink-0 flex-col gap-1.5 text-left"
+                    data-fy-poster
+                    data-fy-new-show
+                    [attr.data-focus-key]="'fy-new-' + show.seriesId"
+                    data-spot-kind="series"
+                    [attr.data-spot-id]="show.seriesId"
+                    [attr.data-spot-name]="show.name | posterTitle"
+                    [attr.data-spot-poster]="show.poster"
+                    [attr.data-spot-line]="show.line"
+                    [title]="show.name"
+                    (activate)="openNewShow(show)"
+                  >
+                    <span class="relative block h-[11.8rem] w-full overflow-hidden rounded-md bg-card-2" data-fy-poster-image>
+                      @if (show.poster && !failedIcons().has(show.poster)) {
+                        <img [src]="show.poster" (error)="iconFailed(show.poster)" alt="" loading="lazy" class="h-full w-full object-cover" />
+                      } @else {
+                        <span class="poster-placeholder absolute inset-0 flex border-l-4 border-series p-2 text-xl font-bold text-series">{{ (show.name | posterTitle | channelMonogram) }}</span>
+                      }
+                    </span>
+                    <span class="block w-full truncate text-sm font-semibold">{{ (show.name | posterTitle) }}</span>
+                    <!-- What is new, under the poster: the row already says why it is here,
+                         and a badge on every poster said it again (30 October). -->
+                    <span class="block w-full truncate text-xs text-muted-foreground" data-fy-new-line>{{ show.line }}@if (show.announced) { · {{ 'fy.announced' | t }} }</span>
+                  </button>
+                }
+              </div>
+            </section>
+          }
+
+          <!-- On now on your favourite channels. A channel with no listing keeps
+               the hatched plate and still plays in one press. -->
+          @if (liveFavourites().length) {
+            <section class="flex flex-col gap-2">
+              <h2 class="nx-row-title">
+                {{ 'fy.onNow' | t }}
+              </h2>
+
+              @if (!hasGuide() && !guideOfferDismissed()) {
+                <!-- FY-D · Guide not downloaded: the rail degrades, it does not vanish. -->
+                <div class="poster-placeholder flex flex-wrap items-center gap-4 rounded-lg border border-border-2 p-4" data-fy-no-guide>
+                  <div class="min-w-[16rem] flex-1">
+                    <p class="font-semibold">{{ 'fy.noGuideHere' | t }}</p>
+                    <p class="text-sm text-muted-foreground">
+                      @if (guideSources.missingHere()[0]; as missing) {
+                        {{ 'fy.accountUses' | t: { label: guideName(missing.label) } }}
+                      } @else {
+                        {{ 'fy.noGuideAtAll' | t }}
+                      }
+                      {{ 'fy.withoutGuide' | t }}
+                    </p>
+                  </div>
+                  <div class="flex gap-2">
+                    <button hlmBtn variant="primary" size="sm" type="button" (click)="go('/guides')">{{ 'fy.openGuides' | t }}</button>
+                    <button hlmBtn variant="secondary" size="sm" type="button" (click)="guideOfferDismissed.set(true)">{{ 'guides.notNow' | t }}</button>
+                  </div>
+                </div>
+              }
+
+              <div class="flex gap-3 overflow-x-auto pb-2" data-tv-rail data-fy-rail>
+                @for (fav of liveFavouriteRows(); track fav.favourite.stream.stream_id) {
+                  @let favourite = fav.favourite;
+                  <div class="relative flex shrink-0" data-fy-item>
+                    <button
+                      type="button"
+                      appCardGestures
+                      class="relative flex h-[5.5rem] w-[14.25rem] items-center gap-3 overflow-hidden rounded-lg bg-card p-2.5 text-left transition-colors hover:bg-card-2"
+                      data-fy-card
+                      [class.poster-placeholder]="guideRead() && hasGuide() && !fav.onNow"
+                      [attr.data-focus-key]="'fy-now-' + favourite.stream.stream_id"
+                      [title]="favourite.stream.name"
+                      (activate)="openFavourite(favourite)"
+                      (menu)="openMenu({ kind: 'favourite', favourite })"
+                    >
+                      <span class="flex h-full w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-card-2" data-fy-thumb>
+                        @if ((favourite.stream.stream_icon && !failedIcons().has(favourite.stream.stream_icon))) {
+                          <img [src]="favourite.stream.stream_icon" (error)="iconFailed(favourite.stream.stream_icon)" alt="" loading="lazy" class="h-full w-full object-contain p-1.5" />
+                        } @else {
+                          <span class="text-sm font-bold" [class]="fav.onNow ? 'text-live' : 'text-muted-foreground'">
+                            {{ (favourite.stream.name | channelMonogram) }}
+                          </span>
+                        }
+                      </span>
+                      <span class="min-w-0 flex-1">
+                        @if (fav.onNow; as now) {
+                          <span class="block truncate font-semibold">{{ now.title }}</span>
+                          <span class="flex min-w-0 text-sm text-muted-foreground">
+                            <span class="min-w-0 truncate">{{ (favourite.stream.name | channelTitle) }} · {{ now.left }}</span>
+                            @if (favourite.stream.stream_id | providerName; as provider) {
+                              <span class="shrink-0 text-dim-foreground" data-card-provider>&nbsp;· {{ provider }}</span>
+                            }
+                          </span>
+                        } @else if (!hasGuide() || !guideRead()) {
+                          <span class="block truncate font-semibold">{{ (favourite.stream.name | channelTitle) }}</span>
+                          <span class="flex min-w-0 text-sm text-muted-foreground">
+                            <span class="min-w-0 truncate">{{ fav.number ? fav.number + " · " : "" }}{{ 'section.liveChannel' | t }}</span>
+                            @if (favourite.stream.stream_id | providerName; as provider) {
+                              <span class="shrink-0 text-dim-foreground" data-card-provider>&nbsp;· {{ provider }}</span>
+                            }
+                          </span>
+                        } @else {
+                          <span class="block truncate font-semibold text-muted-foreground">{{ 'fy.noGuide' | t }}</span>
+                          <span class="flex min-w-0 text-sm text-dim-foreground">
+                            <span class="min-w-0 truncate">{{ (favourite.stream.name | channelTitle) }}</span>
+                            @if (favourite.stream.stream_id | providerName; as provider) {
+                              <span class="shrink-0 text-dim-foreground" data-card-provider>&nbsp;· {{ provider }}</span>
+                            }
+                          </span>
+                        }
+                      </span>
+                      @if (fav.onNow; as now) {
+                        <span class="absolute inset-x-0 bottom-0 h-0.5 bg-black/40">
+                          <span class="block h-full bg-on-air" [style.width.%]="now.percent"></span>
+                        </span>
+                      }
+                    </button>
+                    <button
+                      type="button"
+                      class="absolute top-1 right-1 flex h-11 w-11 items-center justify-center text-muted-foreground"
+                      data-phone-only
+                      [attr.aria-label]="'section.actionsFor' | t: { name: favourite.stream.name }"
+                      (click)="openMenu({ kind: 'favourite', favourite })"
+                    >
+                      ···
+                    </button>
+                  </div>
+                }
+              </div>
+            </section>
+          }
+
+          <!-- Popular this week (FY-TV-2, FY-D-2, FY-P-2): what is trending on
+               TMDB, films and shows mixed, as far as this library has it. The
+               first row that isn't about you, so it comes after On now. A card
+               is the poster, the title, and the kind word in its colour with
+               the year. The rest of the list: two end cards on a television,
+               two links in the heading on a desktop, "See all" on a phone. -->
+          @if (popular().length) {
+            <section class="flex flex-col gap-2" data-fy-popular>
+              <div class="flex items-baseline gap-3">
+                <h2 class="nx-row-title">
+                  {{ 'fy.popularWeek' | t }}
+                  <span class="ml-1 font-normal text-dim-foreground normal-case">{{ 'fy.popularWeekWhere' | t }}</span>
+                </h2>
+                <span class="ml-auto flex gap-2" data-fy-popular-links>
+                  <a hlmBtn size="sm" [routerLink]="['/for-you/popular', 'movie']">{{ 'fy.allFilms' | t }}</a>
+                  <a hlmBtn size="sm" [routerLink]="['/for-you/popular', 'tv']">{{ 'fy.allShows' | t }}</a>
+                </span>
+                <a class="ml-auto min-h-11 items-center px-2 text-sm font-semibold text-muted-foreground" data-phone-only [routerLink]="['/for-you/popular', 'movie']">{{ 'fy.seeAll' | t }}</a>
+              </div>
+              <div class="flex gap-3 overflow-x-auto pb-2" data-tv-rail>
+                @for (card of popular(); track card.item.kind + card.item.id) {
+                  <button
+                    type="button"
+                    appCardGestures
+                    class="flex w-[7.875rem] shrink-0 flex-col gap-1.5 text-left"
+                    data-fy-poster
+                    [attr.data-focus-key]="'fy-popular-' + card.item.kind + '-' + card.item.id"
+                    [attr.data-spot-kind]="card.type"
+                    [attr.data-spot-id]="card.versions[0]?.stream_id ?? card.item.id"
+                    [attr.data-spot-name]="card.item.title"
+                    [attr.data-spot-poster]="card.poster"
+                    [attr.data-spot-line]="card.kindWord + (card.year ? ' · ' + card.year : '')"
+                    [title]="card.item.title"
+                    (activate)="openPopular(card)"
+                    (menu)="openMenu({ kind: 'popular', popular: card })"
+                  >
+                    <span class="relative block h-[11.8rem] w-full overflow-hidden rounded-md bg-card-2" data-fy-poster-image>
+                      @if (card.poster && !failedIcons().has(card.poster)) {
+                        <img [src]="card.poster" (error)="iconFailed(card.poster)" alt="" loading="lazy" class="h-full w-full object-cover" />
+                      } @else {
+                        <span class="poster-placeholder absolute inset-0 flex flex-col border-l-4 p-2" [class]="card.type === 'series' ? 'border-series' : 'border-vod'">
+                          <span class="text-xl font-bold" [class]="card.type === 'series' ? 'text-series' : 'text-vod'">{{ (card.item.title | channelMonogram) }}</span>
+                        </span>
+                      }
+                      @if (ages.lockedLabel(card.item.kind, card.item.id); as rating) {
+                        <app-age-cover [rating]="rating" />
+                      }
+                    </span>
+                    <span class="block w-full truncate text-sm font-semibold">{{ card.item.title }}</span>
+                    <span class="block w-full truncate text-xs text-muted-foreground" data-fy-kind-line>
+                      <span class="font-semibold" [class]="card.type === 'series' ? 'text-series' : 'text-vod'">{{ card.kindWord }}</span>@if (card.year) { · {{ card.year }} }
+                    </span>
+                  </button>
+                }
+                <!-- The end of the row, the size of a poster, so the row stays a straight line. -->
+                @for (end of popularEnds; track end.kind) {
+                  <a
+                    [routerLink]="['/for-you/popular', end.kind]"
+                    class="w-[7.875rem] shrink-0 flex-col gap-1.5 text-left"
+                    data-fy-poster
+                    data-fy-popular-end
+                    [attr.data-focus-key]="'fy-popular-all-' + end.kind"
+                  >
+                    <span class="relative flex h-[11.8rem] w-full flex-col justify-end gap-1 overflow-hidden rounded-md border-t-4 bg-card p-3" [class]="end.kind === 'tv' ? 'border-series' : 'border-vod'" data-fy-poster-image>
+                      <span class="text-base font-bold leading-tight">{{ end.label | t }}</span>
+                      <span class="text-xs text-muted-foreground">{{ 'fy.thisWeek' | t }}</span>
+                    </span>
+                  </a>
+                }
+              </div>
+            </section>
+          } @else if (popularLoading()) {
+            <!-- Holding its place while the row is found (TV-34); nothing here can take focus. -->
+            <section class="flex flex-col gap-2" data-fy-popular-loading aria-hidden="true">
+              <h2 class="nx-row-title">{{ 'fy.popularWeek' | t }}</h2>
+              <div class="flex gap-3 overflow-hidden pb-2" data-tv-rail>
+                @for (tile of LOADING_TILES; track tile) {
+                  <span class="flex w-[7.875rem] shrink-0 flex-col gap-1.5" data-fy-poster>
+                    <span class="block h-[11.8rem] w-full rounded-md bg-card" data-fy-poster-image></span>
+                  </span>
+                }
+              </div>
+            </section>
+            <app-slow-wait [waiting]="popularLoading()" what="slow.popular" />
+          }
+
+          <!-- The ways in, as a row, on a television and a phone (FY-TV, FY-P);
+               on day one the doors above are them. -->
+          @if (!dayOne()) {
+          <section class="grid grid-cols-2 gap-3 lg:grid-cols-4" data-fy-inline>
+            <button type="button" class="flex items-center gap-3 rounded-lg border-l-4 border-live bg-card px-5 py-4 text-left hover:bg-card-2" data-fy-way (click)="browseGuide()">
+              <span class="flex-1 font-semibold">{{ 'fy.browseGuide' | t }}</span><span class="text-muted-foreground" aria-hidden="true">→</span>
+            </button>
+            <button type="button" class="flex items-center gap-3 rounded-lg border-l-4 border-vod bg-card px-5 py-4 text-left hover:bg-card-2" data-fy-way (click)="go('/movies')">
+              <span class="flex-1 font-semibold">{{ 'nav.movies' | t }}</span><span class="text-muted-foreground" aria-hidden="true">→</span>
+            </button>
+            <button type="button" class="flex items-center gap-3 rounded-lg border-l-4 border-series bg-card px-5 py-4 text-left hover:bg-card-2" data-fy-way (click)="go('/shows')">
+              <span class="flex-1 font-semibold">{{ 'nav.shows' | t }}</span><span class="text-muted-foreground" aria-hidden="true">→</span>
+            </button>
+            <button type="button" class="flex items-center gap-3 rounded-lg border-l-4 border-primary-bright bg-card px-5 py-4 text-left hover:bg-card-2" data-fy-way (click)="openSearch()">
+              <span class="flex-1 font-semibold">{{ 'nav.search' | t }}</span><span class="text-muted-foreground" aria-hidden="true">→</span>
+            </button>
+          </section>
+          }
+          <!-- Opening the guide reads this device's library first, which can take a while. -->
+          <app-slow-wait [waiting]="openingGuide()" what="slow.guide" />
+
+          <!-- Recently added: poster, title and category only -- the app holds
+               no year, running time or season counts for them. Where there is
+               no "Popular now": a device without a TMDB key. -->
+          @if (!popular().length && !popularLoading() && added().length) {
+            <section class="flex flex-col gap-2">
+              <h2 class="nx-row-title">
+                {{ 'fy.recentlyAdded' | t }}
+                <span class="ml-1 font-normal text-dim-foreground normal-case">{{ 'fy.byDate' | t }}</span>
+              </h2>
+              <div class="flex gap-3 overflow-x-auto pb-2" data-tv-rail>
+                @for (item of added(); track item.type + item.stream.stream_id) {
+                  <button
+                    type="button"
+                    appCardGestures
+                    class="flex w-[7.875rem] shrink-0 flex-col gap-1.5 text-left"
+                    data-fy-poster
+                    [attr.data-focus-key]="'fy-added-' + item.type + '-' + item.stream.stream_id"
+                    [attr.data-spot-kind]="item.type"
+                    [attr.data-spot-id]="item.stream.stream_id"
+                    [attr.data-spot-name]="item.stream.name | posterTitle"
+                    [attr.data-spot-poster]="item.stream.stream_icon ?? ''"
+                    [attr.data-spot-line]="item.category"
+                    [title]="item.stream.name"
+                    (activate)="openAdded(item)"
+                    (menu)="openMenu({ kind: 'added', item })"
+                  >
+                    <span class="relative block h-[11.8rem] w-full overflow-hidden rounded-md bg-card-2" data-fy-poster-image>
+                      @if ((item.stream.stream_icon && !failedIcons().has(item.stream.stream_icon))) {
+                        <img [src]="item.stream.stream_icon" (error)="iconFailed(item.stream.stream_icon)" alt="" loading="lazy" class="h-full w-full object-cover" />
+                      } @else {
+                        <span class="poster-placeholder absolute inset-0 flex flex-col border-l-4 p-2" [class]="item.type === 'series' ? 'border-series' : 'border-vod'">
+                          <span class="text-xl font-bold" [class]="item.type === 'series' ? 'text-series' : 'text-vod'">{{ (item.stream.name | posterTitle | channelMonogram) }}</span>
+                        </span>
+                      }
+                    </span>
+                    <span class="block w-full truncate text-sm font-semibold">{{ (item.stream.name | posterTitle) }}</span>
+                    <span class="block w-full truncate text-xs text-muted-foreground">{{ item.category }}</span>
+                  </button>
+                }
+              </div>
+            </section>
+          }
+
+          <!-- Favourites as a row, on a television and a phone. -->
+          @if (favourites().length) {
+            <section class="flex flex-col gap-2" data-fy-inline>
+              <h2 class="nx-row-title">
+                {{ 'cat.favourites' | t }} <span class="ml-1 text-muted-foreground">{{ favourites().length }}</span>
+              </h2>
+              <div class="flex gap-3 overflow-x-auto pb-2" data-tv-rail>
+                @for (favourite of favourites().slice(0, FAVOURITES_SHOWN); track favourite.type + favourite.stream.stream_id) {
+                  <button
+                    type="button"
+                    appCardGestures
+                    class="flex h-[5.5rem] w-[14.25rem] shrink-0 items-center gap-3 overflow-hidden rounded-lg bg-card p-2.5 text-left hover:bg-card-2"
+                    data-fy-card
+                    [attr.data-focus-key]="'fy-fav-' + favourite.type + '-' + favourite.stream.stream_id"
+                    (activate)="openFavourite(favourite)"
+                    (menu)="openMenu({ kind: 'favourite', favourite })"
+                  >
+                    <span class="flex h-full w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-card-2" data-fy-thumb>
+                      @if ((favourite.stream.stream_icon && !failedIcons().has(favourite.stream.stream_icon))) {
+                        <img [src]="favourite.stream.stream_icon" (error)="iconFailed(favourite.stream.stream_icon)" alt="" loading="lazy" class="h-full w-full" [class]="favourite.type === 'live' ? 'object-contain p-1.5' : 'object-cover'" />
+                      } @else {
+                        <span class="text-sm font-bold text-muted-foreground">{{ (favourite.stream.name | channelMonogram) }}</span>
+                      }
+                    </span>
+                    <span class="min-w-0 flex-1 truncate font-semibold">{{ (favourite.stream.name | posterTitle) }}</span>
+                  </button>
+                }
+                @if (favourites().length > FAVOURITES_SHOWN) {
+                  <button type="button" class="flex h-[5.5rem] w-[14.25rem] shrink-0 items-center justify-center rounded-lg border border-dashed border-border-2 text-muted-foreground" data-fy-card (click)="moreFavourites()">
+                    {{ 'fy.more' | t: { count: favourites().length - FAVOURITES_SHOWN } }}
+                  </button>
+                }
+              </div>
+            </section>
+          }
+        </div>
+
+        <!-- FY-D: the side column, on a desktop only. -->
+        @if (!dayOne()) {
+        <aside class="hidden flex-col gap-6 lg:flex" data-fy-side>
+          <section class="flex flex-col gap-2">
+            <h2 class="nx-row-title">{{ 'fy.quickWays' | t }}</h2>
+            <button type="button" class="flex items-center rounded-md border-l-4 border-live bg-card px-4 py-3 text-left text-sm font-semibold hover:bg-card-2" (click)="browseGuide()">
+              <span class="flex-1">{{ 'fy.browseGuide' | t }}</span><span class="text-muted-foreground">→</span>
+            </button>
+            <button type="button" class="flex items-center rounded-md border-l-4 border-vod bg-card px-4 py-3 text-left text-sm font-semibold hover:bg-card-2" (click)="go('/movies')">
+              <span class="flex-1">{{ 'nav.movies' | t }}</span><span class="text-muted-foreground">→</span>
+            </button>
+            <button type="button" class="flex items-center rounded-md border-l-4 border-series bg-card px-4 py-3 text-left text-sm font-semibold hover:bg-card-2" (click)="go('/shows')">
+              <span class="flex-1">{{ 'nav.shows' | t }}</span><span class="text-muted-foreground">→</span>
+            </button>
+            <button type="button" class="flex items-center rounded-md border-l-4 border-primary-bright bg-card px-4 py-3 text-left text-sm font-semibold hover:bg-card-2" (click)="openSearch()">
+              <span class="flex-1">{{ 'nav.search' | t }}</span><span class="text-muted-foreground">→</span>
+            </button>
+          </section>
+
+          @if (favourites().length) {
+            <section class="flex flex-col gap-2">
+              <h2 class="nx-row-title">{{ 'cat.favourites' | t }}</h2>
+              @for (favourite of favourites().slice(0, 6); track favourite.type + favourite.stream.stream_id) {
+                <button
+                  type="button"
+                  appCardGestures
+                  class="flex h-12 items-center gap-3 overflow-hidden rounded-md bg-card px-2 text-left hover:bg-card-2"
+                  (activate)="openFavourite(favourite)"
+                  (menu)="openMenu({ kind: 'favourite', favourite })"
+                >
+                  <span class="flex h-9 w-12 shrink-0 items-center justify-center overflow-hidden rounded-sm bg-card-2">
+                    @if ((favourite.stream.stream_icon && !failedIcons().has(favourite.stream.stream_icon))) {
+                      <img [src]="favourite.stream.stream_icon" (error)="iconFailed(favourite.stream.stream_icon)" alt="" loading="lazy" class="h-full w-full" [class]="favourite.type === 'live' ? 'object-contain p-1' : 'object-cover'" />
+                    } @else {
+                      <span class="text-xs font-bold text-muted-foreground">{{ (favourite.stream.name | channelMonogram) }}</span>
+                    }
+                  </span>
+                  <span class="min-w-0 flex-1 truncate text-sm font-semibold">
+                    {{ (favourite.stream.name | posterTitle) }}
+                    @if ((favourite.stream.name | channelTags)) {
+                      <span class="text-[10px]">{{ (favourite.stream.name | channelTags) }}</span>
+                    }
+                  </span>
+                </button>
+              }
+              @if (favourites().length > 6) {
+                <button type="button" class="rounded-md border border-border-2 px-4 py-3 text-sm text-muted-foreground hover:bg-card" (click)="moreFavourites()">
+                  {{ 'fy.more' | t: { count: favourites().length - 6 } }}
+                </button>
+              }
+            </section>
+          }
+        </aside>
+        }
+      </div>
+    } @else {
+      <p class="flex items-center gap-2 text-sm text-muted-foreground">
+        <ng-icon name="lucideLoaderCircle" size="16" class="animate-spin" />
+        {{ 'sub.loading' | t }}
+      </p>
+    }
+  </div>
+</div>
+
+@if (menu()) {
+  <app-item-actions
+    [name]="menuName()"
+    [icon]="menuIcon()"
+    [film]="menuFilm()"
+    [actions]="menuActions()"
+    (chosen)="onMenuAction($event)"
+    (closed)="closeMenu()"
+  />
+}
+
+@if (subtitleTarget(); as target) {
+  <app-subtitle-picker [item]="target.item" [name]="target.name" (closed)="subtitleTarget.set(null)" />
+}

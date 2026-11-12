@@ -1,0 +1,281 @@
+<!-- A fixed-height column: toolbar and status keep their size, the list takes
+     the rest and scrolls. Without min-h-0 the list grows to its content and
+     pushes the whole browse layout past the card. -->
+<div
+  class="flex min-h-0 flex-1 flex-col gap-2 rounded-lg bg-card p-2"
+  [attr.data-managing]="managing() ? '' : null"
+>
+  <div class="flex items-center gap-2">
+    <div class="field-wrap flex-1">
+      <ng-icon name="lucideSearch" class="field-search-icon" aria-hidden="true" />
+      <input
+        hlmInput
+        type="text"
+        [value]="filter()"
+        (input)="onFilterInput($event)"
+        [placeholder]="(compact() ? 'cat.filterShort' : 'cat.filter') | t"
+        [title]="'cat.filterTitle' | t"
+        class="field-search field-clearable"
+      />
+      @if (filter()) {
+        <button hlmBtn variant="quiet" size="icon-xs" type="button" class="field-clear" (click)="clearFilter()" [attr.aria-label]="'arrange.clearFilter' | t">
+          <ng-icon name="lucideX" />
+        </button>
+      }
+    </div>
+
+    @if (managing()) {
+      <!-- TV-22: "Lock now" as soon as anything is locked, beside Done. -->
+      @if (lock.anyLocked()) {
+        <button hlmBtn size="sm" type="button" data-lock-now (click)="toggleLockNow()">
+          {{ (lock.engaged() ? 'lock.unlock' : 'lock.lockNow') | t }}
+        </button>
+      }
+      <button hlmBtn variant="primary" size="sm" type="button" (click)="stopManaging()">
+        {{ 'lock.done' | t }}
+      </button>
+    } @else {
+      <!-- Not for a kid, whose order and categories are set from above. -->
+      @if (canChangeSetup()) {
+      <button
+        hlmBtn
+       
+        size="sm"
+        type="button"
+        (click)="startArranging()"
+        [disabled]="!categories().length"
+        [title]="'arrange.categories' | t"
+        [attr.aria-label]="'arrange.categories' | t"
+      >
+        <ng-icon name="lucideArrowUpDown" size="14" />
+        <!-- The word is the first thing to go in the narrow column: it is
+             what leaves the filter box too little room to say what it is. -->
+        @if (!compact()) {
+          {{ 'cat.arrange' | t }}
+        }
+      </button>
+      @if (type()) {
+        <button
+          hlmBtn
+         
+          size="sm"
+          type="button"
+          data-manage-categories
+          (click)="startManaging()"
+          [title]="'lock.manage' | t"
+          [attr.aria-label]="'lock.manage' | t"
+        >
+          <ng-icon name="lucideEyeOff" size="14" />
+          @if (!compact()) {
+            {{ 'lock.manage' | t }}
+          }
+        </button>
+      }
+      }
+      <!-- Only once something is locked: before that there is nothing for it
+           to do, and a padlock on every list would ask a question nobody had. -->
+      @if (lock.anyLocked()) {
+        <button
+          hlmBtn
+         
+          size="sm"
+          type="button"
+          data-lock-now
+          (click)="toggleLockNow()"
+          [title]="(lock.engaged() ? 'lock.unlock' : 'lock.lockNow') | t"
+          [attr.aria-label]="(lock.engaged() ? 'lock.unlock' : 'lock.lockNow') | t"
+        >
+          <ng-icon [name]="lock.engaged() ? 'lucideLockOpen' : 'lucideLock'" size="14" />
+        </button>
+      }
+    }
+  </div>
+
+  <p class="px-1 text-xs text-muted-foreground" data-picker-caption>
+    @if (filter()) {
+      {{ 'cat.showing' | t: { shown: visibleCategories().length, total: totalCount() } }}
+    } @else if ((compact() || managing()) && selectedPosition(); as chosen) {
+      <span class="block text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">{{ 'cat.categories' | t }}</span>
+      <!-- The caption is the way back to the open category: pressed, the list
+           scrolls to it and focus lands on it. -->
+      <button
+        type="button"
+        data-jump-to-open
+        class="-mx-1 mt-0.5 flex w-[calc(100%+0.5rem)] items-center gap-1.5 rounded-sm px-1 py-0.5 text-left hover:bg-[var(--glass-quiet)] hover:text-foreground pointer-coarse:min-h-11"
+        [title]="'lock.jump' | t: { name: chosen.name }"
+        [attr.aria-label]="'lock.jump' | t: { name: chosen.name }"
+        (click)="jumpToSelected()"
+      >
+        <span class="min-w-0 flex-1 truncate">{{ 'cat.positionOf' | t: { position: chosen.position, total: totalCount() } }} · {{ chosen.name }}</span>
+        <ng-icon name="lucideLocateFixed" size="14" class="shrink-0" />
+      </button>
+    } @else {
+      {{ 'arrange.countCategories' | t: { count: totalCount() } }}
+    }
+  </p>
+
+  <!-- Hide and lock's column heads (TV-22, D-16): the toggles sit in fixed
+       columns, so Up and Down run straight down one of them. -->
+  @if (managing()) {
+    <div class="flex items-end gap-2 px-1 text-xs text-muted-foreground" data-manage-head>
+      <span class="min-w-0 flex-1 truncate">{{ 'lock.everyCategory' | t }}</span>
+      <span class="w-[var(--manage-toggle)] shrink-0 text-center">{{ 'lock.inList' | t }}</span>
+      <span class="w-[var(--manage-toggle)] shrink-0 text-center">{{ 'lock.lockColumn' | t }}</span>
+    </div>
+  }
+
+  <!-- Pinned above the scroller rather than inside it, so it stays reachable
+       however far down the list you are. -->
+  @if (showFavoritesRow()) {
+    <button
+      type="button"
+      class="flex w-full shrink-0 items-center gap-2 rounded-md px-2 text-left text-sm transition-colors"
+      [style.height.px]="ROW_HEIGHT_PX()"
+      [class]="
+        selectedId() === favoritesId()
+          ? 'bg-[var(--glass)] font-bold text-foreground'
+          : 'text-muted-foreground hover:bg-[var(--glass-quiet)] hover:text-foreground'
+      "
+      [attr.aria-current]="selectedId() === favoritesId() ? 'true' : null"
+      (click)="select(favoritesId())"
+    >
+      <span class="text-favorite">★</span>
+      <span class="min-w-0 flex-1 truncate">{{ 'cat.favourites' | t }}</span>
+      <!-- A plain pill sized by its text. The helm badge has a fixed 20px
+           height and hides its overflow, which cut the number off top and
+           bottom -- worse on a television, where the text is scaled up. -->
+      <span
+        class="min-w-[1.75em] shrink-0 rounded-full border px-[0.5em] py-[0.125em] text-center text-xs leading-normal font-medium tabular-nums"
+        [class]="selectedId() === favoritesId() ? 'border-transparent bg-[var(--glass-strong)]' : 'border-[var(--hairline)]'"
+      >
+        {{ favoritesCount() }}
+      </span>
+    </button>
+  }
+
+  @if (visibleCategories().length > 0) {
+    <!-- Virtualised: a provider with hundreds of categories would otherwise
+         render every row; building all of them in one change-detection pass
+         is what made the list hang. -->
+    <cdk-virtual-scroll-viewport [itemSize]="ROW_HEIGHT_PX()" class="min-h-0 flex-1 overflow-x-hidden pr-1" data-category-list>
+      <ul>
+        <!-- data-focus-key names the category rather than the row, so a remote
+             keeps its place when this row is recycled. See
+             TvNavigationService. It sits on the li rather than on the button
+             because a row being hidden or locked carries more than one control,
+             and which one was being held is worth keeping too. -->
+        <ng-container *cdkVirtualFor="let entry of shownRows(); trackBy: trackByRow">
+        @if (entry.header; as group) {
+          <!-- A provider's header, as TiviMate heads each playlist: its name,
+               how many categories, and a press folds or unfolds them. Only
+               with more than one provider (see `grouped`). -->
+          <li class="flex items-center" [style.height.px]="ROW_HEIGHT_PX()" [attr.data-focus-key]="'provider-' + (group.tag || 'first')">
+            <button
+              type="button"
+              data-provider-group
+              class="flex min-w-0 flex-1 items-center gap-1.5 self-stretch rounded-lg px-1.5 text-left text-xs font-semibold tracking-wider text-muted-foreground uppercase hover:bg-[var(--glass-quiet)]"
+              [attr.aria-expanded]="!group.collapsed"
+              (click)="toggleGroup(group.tag)"
+            >
+              <ng-icon [name]="group.collapsed ? 'lucideChevronRight' : 'lucideChevronDown'" size="14" class="shrink-0" />
+              <span class="min-w-0 flex-1 truncate normal-case tracking-normal text-foreground">{{ group.label }}</span>
+              <!-- Kept when folded, so a folded group still says what is in it. -->
+              <span class="shrink-0 font-normal tracking-normal normal-case tabular-nums text-muted-foreground">
+                @if (providerKinds()[group.tag]; as kind) {
+                  {{ (kind === 'm3u' ? 'providers.m3u' : kind === 'stalker' ? 'onboarding.portal' : 'providers.xtream') | t }} ·
+                }
+                {{ group.count }}
+              </span>
+            </button>
+          </li>
+        } @else {
+        <li
+          [attr.data-focus-key]="'category-' + entry.category.category_id"
+          class="flex items-center gap-2 rounded-md pr-1 text-sm transition-colors"
+          [style.height.px]="ROW_HEIGHT_PX()"
+          [class]="
+            selectedId() === entry.category.category_id && !managing()
+              ? 'bg-[var(--glass)] font-bold text-foreground'
+              : 'text-muted-foreground hover:bg-[var(--glass-quiet)] hover:text-foreground'
+          "
+        >
+
+          <!--
+            `self-stretch` is the whole target.
+
+            The row round this is a flex line with `items-center`, so a button
+            that declares no height gets the height of one line of text: 20px,
+            inside a 32px row, on a phone. WCAG 2.2 asks 24, and a finger asks
+            for rather more. Stretching it makes the whole row tappable, which
+            is what it already looked like.
+
+            Measured on a 390-wide viewport: thirteen targets under the minimum,
+            every one of them this button.
+          -->
+          @if (managing()) {
+            <span
+              class="min-w-0 flex-1 truncate px-2"
+              [class.pl-6]="grouped()"
+              [class.text-dim-foreground]="entry.hidden"
+              [class.line-through]="entry.hidden"
+              [title]="entry.category.category_name"
+            >
+              {{ entry.category.category_name }}
+            </span>
+            <!-- Labelled toggles, not icons (TV-22): a bare eye cannot say
+                 whether it shows the state or the action, and from across a
+                 room an open and a shut padlock are nearly the same shape.
+                 "On" is a bright outline and bold text, never an accent. -->
+            <span class="flex shrink-0 items-center gap-2 self-stretch py-1">
+              <button
+                type="button"
+                data-manage-toggle
+                class="h-full w-[var(--manage-toggle)] rounded-md text-xs transition-colors"
+                [class]="entry.hidden ? 'border-2 border-foreground font-bold text-foreground' : 'border border-[color-mix(in_oklch,var(--foreground)_26%,transparent)] text-muted-foreground'"
+                [attr.aria-pressed]="entry.hidden"
+                [attr.aria-label]="(entry.hidden ? 'lock.show' : 'lock.hide') | t: { name: entry.category.category_name }"
+                (click)="toggleHidden(entry.category.category_id)"
+              >
+                {{ (entry.hidden ? 'lock.hidden' : 'lock.shown') | t }}
+              </button>
+              <button
+                type="button"
+                data-manage-toggle
+                class="h-full w-[var(--manage-toggle)] rounded-md text-xs transition-colors"
+                [class]="entry.locked ? 'border-2 border-foreground font-bold text-foreground' : 'border border-[color-mix(in_oklch,var(--foreground)_26%,transparent)] text-muted-foreground'"
+                [attr.aria-pressed]="entry.locked"
+                [attr.aria-label]="(entry.locked ? 'lock.unlockOne' : 'lock.lockOne') | t: { name: entry.category.category_name }"
+                (click)="toggleLocked(entry.category.category_id, entry.category.category_name)"
+              >
+                {{ (entry.locked ? 'lock.locked' : 'lock.open') | t }}
+              </button>
+            </span>
+          } @else {
+            <button
+              type="button"
+              class="min-w-0 flex-1 self-stretch truncate px-2 text-left"
+              [class.pl-6]="grouped()"
+              [title]="entry.category.category_name"
+              [attr.aria-current]="selectedId() === entry.category.category_id ? 'true' : null"
+              (click)="select(entry.category.category_id)"
+            >
+              {{ entry.category.category_name }}
+            </button>
+          }
+        </li>
+        }
+        </ng-container>
+      </ul>
+    </cdk-virtual-scroll-viewport>
+  } @else {
+    <p class="min-h-0 flex-1 px-2 py-6 text-center text-sm text-muted-foreground">
+      @if (filter()) {
+        {{ 'arrange.nothing' | t: { text: filter() } }}
+      } @else {
+        <!-- Categories load per stream type, so this is the state before one
+             is picked rather than an empty result. -->
+        {{ 'cat.chooseType' | t }}
+      }
+    </p>
+  }
+</div>

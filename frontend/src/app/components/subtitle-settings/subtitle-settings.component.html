@@ -1,0 +1,57 @@
+<!-- Round 14 (DS-TV-3): the subtitle settings as rows. The two languages open
+     the panel, where they were browser dropdowns that a television drew as
+     Android's own list; how they look opens under its row. -->
+<app-setting-group [heading]="'subs.title' | t" data-subtitle-settings>
+  <app-setting-row
+    [label]="'subs.auto' | t"
+    kind="switch"
+    [checked]="current().subtitlesEnabled"
+    focusKey="subs-auto"
+    (activate)="set('subtitlesEnabled', !current().subtitlesEnabled)"
+  />
+  <app-setting-row
+    [label]="'subs.subtitleLanguage' | t"
+    [value]="languageName(current().subtitleLanguage)"
+    focusKey="subs-language"
+    (activate)="chooseLanguage('subtitleLanguage')"
+  />
+  <app-setting-row
+    [label]="'subs.audioLanguage' | t"
+    [value]="languageName(current().audioLanguage)"
+    focusKey="subs-audio"
+    (activate)="chooseLanguage('audioLanguage')"
+  />
+  <app-setting-row [label]="'subs.look' | t" [value]="lookLine()" focusKey="subs-look" (activate)="lookOpen.set(!lookOpen())" />
+  @if (lookOpen()) {
+    <div class="setting-block flex flex-col gap-5" data-subtitle-look>
+      <!-- The sample, over something video-dark whatever the theme. -->
+      <div class="flex h-24 items-end justify-center rounded-xl bg-[oklch(0.2_0.03_250)] p-3" aria-hidden="true">
+        <span class="rounded-sm px-2 py-0.5 leading-snug" [style]="previewStyle()">{{ 'subs.sample' | t }}</span>
+      </div>
+      <div class="flex flex-col gap-2">
+        <span class="field-label">{{ 'subs.size' | t }}</span>
+        <app-choice-chips [label]="'subs.sizeGroup' | t" [choices]="scaleChoices()" [value]="current().subtitleScale" (valueChange)="$event !== null && set('subtitleScale', $event)" />
+      </div>
+      <div class="flex flex-col gap-2">
+        <span class="field-label">{{ 'subs.colour' | t }}</span>
+        <app-choice-chips [label]="'subs.colourGroup' | t" [choices]="colourChoices()" [value]="current().subtitleColour" (valueChange)="$event !== null && set('subtitleColour', $event)" />
+      </div>
+      <div class="flex flex-col gap-2">
+        <span class="field-label">{{ 'subs.background' | t }}</span>
+        <app-choice-chips
+          [label]="'subs.backgroundGroup' | t"
+          [choices]="backgroundChoices()"
+          [value]="current().subtitleBackground"
+          (valueChange)="$event !== null && set('subtitleBackground', $event)"
+        />
+      </div>
+      <div class="flex flex-col gap-2">
+        <span class="field-label">{{ 'subs.edge' | t }}</span>
+        <app-choice-chips [label]="'subs.edgeGroup' | t" [choices]="edgeChoices()" [value]="current().subtitleEdge" (valueChange)="$event !== null && set('subtitleEdge', $event)" />
+      </div>
+      <div>
+        <button hlmBtn variant="quiet" size="sm" type="button" (click)="reset()">{{ 'subs.reset' | t }}</button>
+      </div>
+    </div>
+  }
+</app-setting-group>

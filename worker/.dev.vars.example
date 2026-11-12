@@ -1,0 +1,14 @@
+# Secrets for `npx wrangler dev`, on this machine only. Copy to .dev.vars,
+# which git ignores, and fill in. A deployed service gets its own with
+# `npx wrangler secret put <NAME>` -- never these.
+
+# Required. Any long random string; the README has a one-line way to make one.
+# Every account's salt is made from it, so it stays the same once accounts
+# exist.
+ACCOUNT_SALT_SECRET=
+
+# Optional: descriptions and pictures from TMDB, and subtitles from
+# OpenSubtitles. Free keys from those sites. Without them the app says
+# those are not set up, and everything else works.
+TMDB_API_KEY=
+OPENSUBTITLES_API_KEY=

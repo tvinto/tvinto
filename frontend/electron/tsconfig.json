@@ -1,0 +1,23 @@
+{
+  "compileOnSave": true,
+  "include": ["./src/**/*", "./capacitor.config.ts", "./capacitor.config.js"],
+  // Tests run under the frontend's Jest, which has the types for them; this
+  // build has not, and a spec has no business in the installer.
+  "exclude": ["./src/**/*.spec.ts"],
+  "compilerOptions": {
+    "outDir": "./build",
+    "importHelpers": true,
+    "target": "ES2017",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "typeRoots": ["./node_modules/@types"],
+    "allowJs": true,
+    "rootDir": ".",
+    // The scaffold does not build without this: electron, chokidar and
+    // builder-util-runtime declare types that disagree with the installed
+    // @types/node, and none of it is ours to fix. Checking our own code is the
+    // point; checking other people's shipped declarations only hides it.
+    "skipLibCheck": true
+  }
+}

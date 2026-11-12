@@ -1,0 +1,19 @@
+{
+  // Type-checking only: esbuild bundles (package.json) and checks no types,
+  // and the tests, which run in the backend's Jest, reach only what they import.
+  //   ../backend/node_modules/.bin/tsc -p cli --noEmit
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "lib": ["ES2022", "DOM"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "moduleResolution": "node",
+    "types": ["node"],
+    "typeRoots": ["../backend/node_modules/@types"]
+  },
+  "include": ["src/**/*.ts", "e2e-local.ts"],
+  "exclude": ["src/**/*.test.ts"]
+}

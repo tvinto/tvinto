@@ -1,0 +1,3600 @@
+/* =========================================================================
+   IPTV Xtream Loader — global styles
+   Tailwind v4 + spartan/ui (helm) design tokens, matching the GPSya and
+   MeteoDrive token setup so the three apps share one visual language.
+   ========================================================================= */
+
+/* Inter from the app itself rather than Google on every launch: the
+   stylesheet import blocked the first paint behind a request to another
+   server, and a television opens the app far more often than it has anything
+   new to fetch. Split by script (unicode-range), so a device downloads only
+   the files for the letters on screen; latin-ext carries č, ć, đ, š, ž. */
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/preflight.css' layer(base);
+@import 'tailwindcss/utilities.css';
+
+/*
+ * When the wide layout applies: wide enough, and not truly short.
+ *
+ * `md` was width alone once, and a phone turned sideways -- 844 CSS pixels
+ * wide, 390 tall -- got the desktop layout with the guide squeezed into the
+ * sliver left over. The answer then was to call a sideways phone a phone,
+ * which cost it the thing it is turned sideways *for*: the guide across the
+ * screen. So the height that matters is smaller, and the chrome gets out of
+ * the way instead -- see the short-screen block at the end of this file, which
+ * slims the header and the tab bar so the guide has the room.
+ *
+ * 380px, because a sideways phone is 390 and the smallest one worth drawing
+ * for is 360 tall. The same condition is in WIDE_LAYOUT_QUERY
+ * (utils/layout.utils.ts) and in the media queries below; change them
+ * together.
+ *
+ * A television is exempt from the height, and that is not a nicety. Android
+ * shrinks the WebView to make room for the on-screen keyboard: 960x540 became
+ * 960x300 on the emulator, measured. Short and wide is the sideways phone this
+ * variant guards against, so every `md:` rule switched off mid-keystroke, the
+ * sidebar holding the focused field is `hidden md:flex`, and `display: none`
+ * took the field out of the document -- which takes focus with it, so Android
+ * closed the keyboard it had just opened. The filter could not be typed into
+ * at all. A set is never a phone held sideways, so it is never asked.
+ *
+ * The cost is this one media block written twice: 1.4KB of 87KB built. (This
+ * file was `.scss` until the exemption needed writing: Sass ran before
+ * Tailwind and rejected the `&` below as a parent selector with no parent,
+ * and nothing here was ever Sass.)
+ */
+@custom-variant md {
+  @media (min-width: 48rem) and (min-height: 380px) {
+    @slot;
+  }
+  @media (min-width: 48rem) {
+    html.tv & {
+      @slot;
+    }
+  }
+}
+
+@import '@spartan-ng/brain/hlm-tailwind-preset.css';
+
+/* ---- Design tokens ----------------------------------------------------- */
+/* Light is the spartan slate palette. Dark reproduces the navy the app has
+   always used, so switching to tokens did not change how it looks. */
+
+:root {
+  color-scheme: light;
+
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  /* Every rounded corner in the app comes from this one number: the spartan
+     preset derives Tailwind's whole scale from it, so `rounded-sm` is 0.6 of
+     it, `rounded-lg` is it, `rounded-xl` is 1.4 of it, and so on.
+
+     Down from 0.625rem, which made a card's corners 14px and read as soft
+     where the app wants dense -- most of what is on screen is a rectangle of
+     information, and a rectangle with a 14px corner spends four of its own
+     corners saying nothing. At 6px the corner is still there and stops being
+     the first thing about a card. */
+  --radius: 0.375rem;
+  /* A faint slate, not white. With the page and a card both pure white, a card
+     drawn without a border -- the favourite tiles, the Browse and Arrange
+     cards, the continue cards -- simply was not there in light mode. */
+  --background: oklch(0.96 0.008 250);
+  --foreground: oklch(0.129 0.042 264.695);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.129 0.042 264.695);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.129 0.042 264.695);
+  --primary: oklch(0.543 0.124 264.706);
+  --primary-foreground: oklch(0.99 0.005 260);
+  --secondary: oklch(0.968 0.007 247.896);
+  --secondary-foreground: oklch(0.208 0.042 265.755);
+  --muted: oklch(0.968 0.007 247.896);
+  --muted-foreground: oklch(0.554 0.046 257.417);
+  --accent: oklch(0.968 0.007 247.896);
+  --accent-foreground: oklch(0.208 0.042 265.755);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.984 0.003 247.858);
+  --border: oklch(0.929 0.013 255.508);
+  --input: oklch(0.929 0.013 255.508);
+
+  /* The ring is the cursor, so it is the highest contrast thing on the screen
+     and not a tint of the accent. Dark here, near-white in dark mode; against
+     white it measures 12.7:1 where the pale slate it replaces was under 2. */
+  --ring: oklch(0.32 0.06 262);
+
+  /* The surface ladder. Light mode has nowhere to go above white, so it steps
+     down instead: card is the page, and each rung is a shade of slate. The
+     third rung is the slate `--muted` already is, deliberately -- muted text
+     has been sitting on that exact value since the app was written, so using
+     it here introduces no pair that was not already on screen. */
+  --background-2: oklch(0.968 0.007 247.896);
+  --card-2: oklch(0.984 0.004 247.9);
+  --card-3: oklch(0.968 0.007 247.896);
+  --border-2: oklch(0.869 0.02 252);
+
+  /* Below muted: for things present but not being offered -- a count beside a
+     name, the position a row was moved off. Quieter than muted and still
+     legible at any size: 5.1:1 on a card and 4.6:1 on the third rung.
+
+     It was two steps lighter than this and read as "large text only", which is
+     a rule nobody keeps: axe caught it at 4.2:1 under a ten-pixel label the
+     same afternoon it was written. A token whose safe use has to be remembered
+     is a token that will be misused. */
+  --dim-foreground: oklch(0.54 0.035 258);
+
+  /* Dark text for laying on an accent fill. The accents sit mid-lightness in
+     both themes, so this is the same colour in both. */
+  --ink: oklch(0.16 0.03 260);
+
+  /* The accent that is never a text background: focus halo, meter fill, a rule
+     down the side of something. In light mode "brighter" means deeper, because
+     the ground it has to beat is white.
+
+     Which is why it has a foreground of its own rather than borrowing --ink.
+     The two themes take this colour in opposite directions -- pale in dark,
+     deep in light -- so the one colour that reads on it does too, and a chip
+     written as `bg-primary-bright text-ink` would be 7:1 on the television and
+     2.7:1 here. Measured, after writing exactly that. */
+  --primary-bright: oklch(0.47 0.16 268);
+  --primary-bright-foreground: oklch(0.99 0.005 260);
+
+  /* App-specific: stream kinds, guide state, and the favourite marker. */
+  --live: oklch(0.55 0.17 149);
+  --vod: oklch(0.58 0.19 264);
+  --series: oklch(0.6 0.17 305);
+  --on-air: oklch(0.62 0.2 27);
+  --favorite: oklch(0.75 0.16 85);
+  --shadow: 0 10px 30px rgb(0 0 0 / 0.12);
+
+  /* The player's glass: the ground of
+     a pill, a chip, a field, a row under a pointer. Mixed from the words'
+     colour, so it is a light veil in dark mode and a dark one in light, from
+     this one definition: the mixes resolve where they are used. */
+  --glass-quiet: color-mix(in oklch, var(--foreground) 8%, transparent);
+  --glass: color-mix(in oklch, var(--foreground) 14%, transparent);
+  --glass-strong: color-mix(in oklch, var(--foreground) 22%, transparent);
+  --hairline: color-mix(in oklch, var(--foreground) 9%, transparent);
+  /* What sits on the white of a focused pill or row: the page's own colour,
+     and a step of it for the quieter words. */
+  --on-focus: var(--background);
+  --on-focus-dim: color-mix(in oklch, var(--background) 68%, var(--foreground));
+}
+
+:root.dark {
+  color-scheme: dark;
+
+  /* Derived from the palette the app shipped with: #091426 page, #0f1d36
+     card, #1e335a border, #e6eefc text. */
+  --background: oklch(0.192 0.04 259.753);
+  --foreground: oklch(0.947 0.021 261.771);
+  --card: oklch(0.233 0.052 261.174);
+  --card-foreground: oklch(0.947 0.021 261.771);
+  --popover: oklch(0.233 0.052 261.174);
+  --popover-foreground: oklch(0.947 0.021 261.771);
+
+  /* Down from 0.627 0.164 271.529, and this is the one number in the file that
+     was a defect rather than a preference.
+
+     `--primary` is a *text background*: every primary button and the selected
+     category row put --primary-foreground on it. On the old value that measured
+     3.50:1 where WCAG AA asks 4.5 -- agreed on by Lighthouse, by axe, and by a
+     calculation from these coordinates through linear sRGB. It is 5.07:1 now.
+     Two days of looking at these screens did not catch it; a contrast checker
+     caught it in a second, which is the argument for running one.
+
+     Do not raise it back for looking flat. The brighter blue survives below as
+     --primary-bright, which is the right colour everywhere it is not underneath
+     words. */
+  --primary: oklch(0.545 0.19 271.5);
+  --primary-foreground: oklch(0.99 0.005 260);
+  --secondary: oklch(0.266 0.07 262.234);
+  --secondary-foreground: oklch(0.947 0.021 261.771);
+  --muted: oklch(0.266 0.07 262.234);
+  /* Grey, where it was a strong blue (0.752 0.126 267.888). The player and
+     round 13 write everything secondary in a near-neutral grey, and blue
+     words on every settings page were most of why those pages looked like
+     another app. 9.1:1 on the page. */
+  --muted-foreground: oklch(0.77 0.018 262);
+  --accent: oklch(0.325 0.075 261.756);
+  --accent-foreground: oklch(0.947 0.021 261.771);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.984 0.003 247.858);
+  --border: oklch(0.325 0.075 261.756);
+  --input: oklch(0.221 0.055 260.626);
+
+  /* Near-white, where it used to be a mid blue barely a shade off the card it
+     was drawn on. Focus is the only cursor a television has: there is no
+     pointer, nothing lights up under a hand, and the single ring is the whole
+     answer to "where am I". It is 16.9:1 against the page. */
+  --ring: oklch(0.97 0.015 262);
+
+  /* The surface ladder: page, card, and two rungs above it.
+     A dialog sits on a card, a focused row lifts off the list it is in, and a
+     panel over both needs somewhere higher again. With one card colour those
+     three are drawn by adding borders, which is how a focused item ended up
+     wearing rings inside rings. Depth is cheaper as lightness than as lines.
+
+     --background-2 goes the other way, below the page: a well for something
+     recessed into a surface, like the number field in Arrange. */
+  --background-2: oklch(0.168 0.036 260);
+  --card-2: oklch(0.272 0.058 261);
+  --card-3: oklch(0.31 0.062 261);
+  --border-2: oklch(0.42 0.08 262);
+
+  /* Below muted, for what is present without being offered. Raised from 0.6,
+     which measured 4.3:1 on a card and 3.3:1 on the third rung and was written
+     down as "large text only" -- then used under a ten-pixel label within the
+     hour. It clears AA on every rung now, 4.6:1 at the worst of them, and is
+     still a clear step below --muted-foreground. */
+  --dim-foreground: oklch(0.67 0.02 262);
+
+  /* Dark text for laying on an accent fill -- 5.7:1 on --live, 10.3:1 on
+     --favorite. The accents changed job in this pass, from a colour text was
+     written in to a colour a chip is filled with, which is why they came down
+     in lightness rather than up: something has to be legible on top of them. */
+  --ink: oklch(0.16 0.03 260);
+
+  /* Never a text background: white on it is 2.8:1. Focus halo, meter fill,
+     hairline rules, a link on a dark ground. If a word is genuinely needed on
+     it, --primary-bright-foreground is the colour -- 7.0:1 here, and it flips
+     to near-white in light mode where this colour goes deep instead of pale. */
+  --primary-bright: oklch(0.7 0.16 271.5);
+  --primary-bright-foreground: var(--ink);
+
+  --live: oklch(0.62 0.16 149);
+  --vod: oklch(0.62 0.18 264);
+  --series: oklch(0.66 0.16 305);
+  --on-air: oklch(0.66 0.2 27);
+  --favorite: oklch(0.8 0.15 85);
+  --shadow: 0 10px 30px rgb(0 0 0 / 0.45);
+}
+
+/* Expose the app tokens as Tailwind colour utilities (bg-live, text-on-air,
+   bg-card-2, text-dim-foreground…).
+
+   The spartan preset does this for its own tokens and not for these, so a
+   token that is not listed here can only be reached by writing
+   `var(--whatever)` in a style attribute -- which is how a component ends up
+   with a colour nothing else in the app shares. If a token is added above, add
+   it here in the same breath. */
+@theme inline {
+  --color-live: var(--live);
+  --color-vod: var(--vod);
+  --color-series: var(--series);
+  --color-on-air: var(--on-air);
+  --color-favorite: var(--favorite);
+
+  --color-background-2: var(--background-2);
+  --color-card-2: var(--card-2);
+  --color-card-3: var(--card-3);
+  --color-border-2: var(--border-2);
+  --color-dim-foreground: var(--dim-foreground);
+  --color-ink: var(--ink);
+  --color-primary-bright: var(--primary-bright);
+  --color-primary-bright-foreground: var(--primary-bright-foreground);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html,
+  body {
+    height: 100%;
+    width: 100%;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  /* Tailwind v4's preflight no longer sets this; restore the pointer cursor. */
+  button:not(:disabled),
+  [role='button']:not(:disabled),
+  a[href] {
+    cursor: pointer;
+  }
+  /* A control's label is not text to copy. Holding a button on the phone
+     selected its words and brought up Android's Copy / Share bar -- and on a
+     card, holding is how the actions panel opens, so the two fought.
+     Content stays selectable; in this layer, so
+     a `select-text` on a control still wins. */
+  button,
+  [role='button'],
+  a[href],
+  [appcardgestures] {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+}
+
+/* Pressing answers at once, before anything else has happened: a card tapped
+   on the phone showed nothing until the next screen appeared.
+   In on the press, back at once on release, which
+   takes the element's own transition, not this one. Not on a television,
+   where OK sets no :active and every press is a remote's. */
+:root:not(.tv) :where(button, [role='button'], a[href]):active:not(:disabled):not([aria-disabled='true']) {
+  scale: 0.97;
+  transition: scale 120ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* ---- Focus, for a remote control ---------------------------------------
+   The interface was built for a pointer: it reveals itself on hover, and hover
+   is the one thing a television has not got. Rather than pair each of the
+   thirty-odd hover rules with a focus twin and rely on nobody forgetting the
+   next one, focus is made visible once, here, for everything.
+
+   :focus-visible rather than :focus, so a mouse click does not leave a ring
+   behind. A D-pad press arrives as a key event, which is exactly the case
+   :focus-visible exists to catch.
+
+   One ring, and nothing else: a near-white edge. It had a soft accent halo
+   outside it too, and the two read as two borders (23 October).
+   It costs no layout, so a focused card is exactly the size it was, which
+   matters because the D-pad navigates by where things are.
+
+   An `outline`, and the box-shadow cleared: the helm components draw a
+   focus ring of their own with box-shadow (`focus-visible:ring-3`), which
+   beside this one was the second border. Unlayered, this beats them. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  box-shadow: none;
+  border-radius: calc(var(--radius) - 2px);
+  /* The ring arrives with the key, not 150 ms after it: the colour
+     transitions the cards carry include the outline's colour.
+     It may still fade on the way out. */
+  transition-property: color, background-color, border-color, opacity;
+}
+
+/* A field turns its own border the ring colour as it takes focus; the
+   outline goes over that border rather than outside it, or the two make a
+   double line. */
+:where(input, select, textarea):focus-visible {
+  outline-offset: -1px;
+}
+
+/* On a television, plain :focus -- and a thick ring inside the element's edge.
+
+   Two deliberate departures, both learned by measuring rather than assuming.
+
+   :focus rather than :focus-visible, because :focus-visible is a heuristic
+   about whether the browser believes a keyboard is in use and it does not
+   match focus moved by script -- which is exactly how focus moves here, since
+   the D-pad is read and applied in a handler. Relying on it would mean the ring
+   never appearing on the one device that cannot manage without it. The
+   distinction it draws is between a click and a keypress, and a television has
+   no pointer, so nothing is lost by dropping it.
+
+   The ring is an outline inset by its own width. It was a box-shadow outside
+   the element, which every scroll container clipped (see the rule itself).
+   The helm buttons' `outline-none` does not stop it: this rule is unlayered
+   and more specific. Chromium's outline follows the border radius.
+
+   Thicker than the pointer version, with a drop shadow outside that lifts
+   the focused thing off the list behind it. Three metres is a long way
+   for a two-pixel line, and the ring is the only cursor on this device.
+
+   A caution for anyone measuring this over the DevTools protocol, which cost an
+   hour here: when the Electron window does not hold the operating system's
+   focus, `document.hasFocus()` is false and `:focus` stops matching, so every
+   ring on the page computes to whatever the component underneath sets and the
+   rule looks broken. It is not. Send `Page.bringToFront` and settle before
+   reading a computed style, or the measurement invents a bug and the fix for it
+   invents another. */
+/* In rem, which under `.tv` is design pixels ÷ 16 (see "The television
+   scale"): the board's 4px ring, at the board's size. */
+/* The ring is an outline drawn inside the element's edge, and only the drop
+   shadow is outside. A ring drawn outside was cut off by every scroll
+   container it sat in -- the top bar's links, the category list, the first
+   card of a rail -- so what you were about to select showed as a broken
+   bracket. An outline paints over the element's own content, so an inset one
+   is never hidden by a poster either, which an inset box-shadow would be. */
+/* And nothing a remote moves between fades: the cards' colour transition and
+   the buttons' took the ring 150 ms to arrive on every press, the buttons'
+   with its wide shadow -- a cursor that lags the key.
+   Unlayered, so it beats the utilities that set them. */
+.tv :where(a, button, input, select, textarea, summary, [tabindex]) {
+  transition: none;
+}
+.tv :where(a, button, input, select, textarea, summary, [tabindex]):focus {
+  /* Three design pixels, slightly soft: the posters' quieter focus (round
+     13, "more demure") on everything else too, so one cursor looks the same
+     on every screen (31 October). */
+  outline: 0.1875rem solid color-mix(in oklch, var(--ring) 88%, transparent);
+  outline-offset: -0.1875rem;
+  box-shadow: 0 1.125rem 2.5rem -0.75rem oklch(0.1 0.02 260 / 0.9);
+}
+
+/* Card controls, gone entirely -- they live in the actions panel now.
+
+   They were first pinned to the top of a card, which put them above its centre,
+   so reaching one meant pressing Up, and Up in a grid is the row above. Then
+   they were dropped to the bottom, reached by pressing Down twice. That worked
+   in the grid, where the bottom of a card is empty, and was wrong everywhere
+   else: in the two rails the bottom of a card is its name, so the star sat on
+   top of the first letter of every favourite and the cross sat on the channel's
+   own title.
+
+   Both attempts were the same mistake, which is trying to fit three separate
+   targets a centimetre across onto a card being aimed at with a remote from
+   across a room. Holding the card opens a panel with all of it on -- see
+   `CardGesturesDirective` -- so on a television the card is the only thing to
+   aim at, and it is also the only thing that takes focus, which is what put an
+   end to a card wearing rings inside rings.
+
+   A pointer has none of these difficulties, so a mouse keeps its one-click
+   star and its guide button. Right-click there opens the same panel. */
+.tv [data-card-action] {
+  display: none;
+}
+
+/* Room to see what is coming.
+
+   TvNavigationService takes the scrolling away from `focus()` and does it with
+   `scrollIntoView({ block: 'nearest' })`, which moves the list the least it can
+   -- so the row arrived on ends up flush against the edge it came in from, and
+   there is no way to tell whether the list goes on without pressing down and
+   finding out. `scroll-padding` is the property that says where a scroll
+   container's useful area really begins, and `nearest` honours it, so this
+   keeps a strip of the next row showing.
+
+   A percentage rather than a length, because the same rule serves a grid of
+   168px cards and a sidebar of 32px rows. Measured on the emulator: a tenth of
+   a 400px list leaves 40px of the next row visible, and the walk down it moves
+   one row per press rather than nothing, nothing, nothing, half a screen.
+
+   Every scrolling thing, not only the virtualised ones: the reason is the
+   D-pad, not the scroller. */
+.tv :where(cdk-virtual-scroll-viewport, .overflow-y-auto, .overflow-auto) {
+  scroll-padding-block: 10%;
+}
+
+/* The same for the rails, which scroll the other way. Without it the card
+   arrived at is jammed against the side of the screen, and the one before it is
+   sliced in half by the edge -- which on a rail of logos is most of what there
+   is to recognise a channel by. */
+.tv :where(.overflow-x-auto, .overflow-auto) {
+  scroll-padding-inline: 10%;
+}
+
+/* Room for the focus ring inside a rail.
+
+   A rail scrolls sideways, and a scrolling box clips whatever is drawn outside
+   it -- which on a television is the ring: 4 design pixels of edge and an
+   11-pixel halo around the card, cut off along the first card's left and top.
+   Padding the rail by the halo, and pulling it back out by the same amount,
+   leaves the cards where they were and gives the ring somewhere to be. */
+.tv [data-tv-rail],
+.tv [data-tv-ring-room] {
+  padding: 0.75rem;
+  margin: -0.75rem;
+}
+
+/* Overscan, all but given up on.
+
+   Television panels used to crop the edges of the picture, by as much as 5% on
+   older sets, and this was 27px by 48px of margin against that. On a 960px
+   viewport that is a tenth of the width spent on a hazard that flat panels
+   made rare -- and it was being spent on the one screen where the whole point
+   is fitting a guide on. Every set sold in the last decade shows the picture
+   it is sent.
+
+   Not zero: a hairline, so that a focus ring on something at the very edge is
+   not clipped by the panel's own bezel.
+
+   If a set does crop, this is the number to raise, and the symptom is the
+   navigation bar losing its first and last item. */
+.tv body,
+body.tv {
+  padding: 0.5rem; /* 8 design pixels */
+}
+
+/* And the page inside it is the height of the padded body, not of the screen.
+   A `100dvh` child of a body padded by 4 CSS pixels is 8 pixels taller than
+   the body, which is a scrollbar on every screen that scrolls nothing anybody
+   wanted to see: scrollHeight 304 against clientHeight 300, measured on the
+   emulator.
+
+   The padding subtracted rather than `height: 100%`, which was tried first and
+   is worse than the fault. A percentage height needs a parent with a definite
+   one, and the chain above this is `app-root > .app-container > app-shell`,
+   two custom elements and a box with only a minimum. So it resolved to `auto`,
+   the shell took the height of its contents, and the guide screen went from
+   four pixels of stray scroll to five thousand -- measured, the same way.
+
+   `html` on the front of both so they outrank the shell's own `h-dvh` and the
+   app component's scoped `min-height: 100vh`, which is a class selector like
+   this one and would otherwise win on being written later. */
+html.tv [data-shell-root] {
+  height: calc(100dvh - 1rem);
+}
+html.tv .app-container {
+  min-height: calc(100dvh - 1rem);
+}
+
+/* The television scale.
+   ------------------------------------------------------------------------
+   One rule decides how big everything on a television is: the root font size,
+   set so that 1rem is sixteen pixels *of the design*, whatever the device.
+
+   The TV boards are drawn at 1920×1080 and their numbers are pixels of that
+   screen. A television's WebView is not 1920 CSS pixels wide: a 1080p set at
+   xhdpi reports a viewport of 960 with a devicePixelRatio of 2, a tvdpi box
+   1440 at 1.33. The first version of this section wrote the boards' numbers as
+   CSS pixels -- 24px type, a 24px root -- and on the emulator every one of them
+   came out twice its size: header tabs 48 screen pixels against the board's
+   28, the page title 96 against 44. It looked right on a monitor at a desk,
+   which is exactly where nobody reads a television. Measured, 13 September.
+
+   So the scale comes from the viewport: 100vw is the design's 1920, and one
+   design pixel is 100vw / 1920. Every size under `.tv` is then written in rem
+   as design pixels ÷ 16, and Tailwind's own spacing, radii and type -- all rem
+   -- land on the same scale with nothing further to do. That last part is
+   deliberate and is the opposite of what the first version said: it kept
+   spacing out of the scaling on purpose, and then set the root anyway, so
+   padding had grown by half again while the comment promised it had not.
+
+   All three selectors, and the middle one matters: `TvNavigationService` puts
+   the class on <html>, and body carries a font size of its own from the base
+   layer that would otherwise win for everything inside. */
+.tv {
+  /* --ui-scale is the display size chosen on Account (DisplaySizeService):
+     everything on a television is in rem, so it all grows together. */
+  font-size: calc(100vw * 16 / 1920 * var(--ui-scale, 1));
+}
+
+.tv body,
+body.tv {
+  font-size: 1.5rem; /* 24 */
+  line-height: 1.35;
+}
+
+/* Icons, which the scale above does not reach on its own.
+
+   `<ng-icon size="18">` becomes an inline `--ng-icon__size: 18px`, a CSS pixel
+   size -- so once everything around them was scaled to the design, every icon
+   was left at twice its proportion, and the search icon sat on top of the
+   first letters of its own placeholder. Each size the templates use is mapped
+   here to design pixels at one and a half times, the same step the body text
+   takes from 14 on a desktop to 24 on a television. The attribute stays on the
+   element, which is what makes it selectable; an icon with no size is 1em and
+   already follows the text. */
+.tv ng-icon[size='12'] { width: 1.125rem; height: 1.125rem; }
+.tv ng-icon[size='14'] { width: 1.3125rem; height: 1.3125rem; }
+.tv ng-icon[size='16'] { width: 1.5rem; height: 1.5rem; }
+.tv ng-icon[size='18'] { width: 1.6875rem; height: 1.6875rem; }
+.tv ng-icon[size='20'] { width: 1.875rem; height: 1.875rem; }
+.tv ng-icon[size='22'] { width: 2.0625rem; height: 2.0625rem; }
+.tv ng-icon[size='24'] { width: 2.25rem; height: 2.25rem; }
+.tv ng-icon[size='26'] { width: 2.4375rem; height: 2.4375rem; }
+.tv ng-icon[size='28'] { width: 2.625rem; height: 2.625rem; }
+.tv ng-icon[size='32'] { width: 3rem; height: 3rem; }
+
+/* A button that is unavailable for now but keeps its focus: marked
+   aria-disabled rather than disabled, because a disabled button drops focus
+   to the page and leaves a remote with nothing to move from (the Guides
+   page while a guide loads). It looks like a disabled one, focus ring and all. */
+[data-slot='button'][aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Controls, at the boards' height: the helm button and input are the pill and
+   the field now (round 14), sized for a television in "The pieces" below.
+   What is left here is for the browser's own select, until the last of them
+   is replaced by the panel. */
+.tv select {
+  height: 3.5rem;
+}
+
+/* A narrow field's placeholder ends in an ellipsis rather than mid-word
+   ("Taken from the addre", Guides' name field, the TV walk of 26 October). */
+[data-slot='input'] {
+  text-overflow: ellipsis;
+}
+
+/* Type, at three metres, in design pixels: the floor is 24 and the rest of the
+   ramp is the boards'. Line height goes with every size because Tailwind's
+   text utilities carry their own, and a size changed alone overlaps its rows. */
+.tv .text-\[10px\] {
+  font-size: 1.25rem; /* 20 */
+  line-height: 1.3;
+}
+.tv .text-\[11px\] {
+  font-size: 1.25rem; /* 20 */
+  line-height: 1.3;
+}
+.tv .text-xs {
+  font-size: 1.375rem; /* 22 */
+  line-height: 1.3;
+}
+.tv .text-sm {
+  font-size: 1.5rem; /* 24 */
+  line-height: 1.3;
+}
+.tv .text-base {
+  font-size: 1.625rem; /* 26 */
+  line-height: 1.3;
+}
+.tv .text-lg {
+  font-size: 1.875rem; /* 30 */
+  line-height: 1.25;
+}
+.tv .text-xl {
+  font-size: 2.125rem; /* 34 */
+  line-height: 1.2;
+}
+.tv .text-2xl {
+  font-size: 2.5rem; /* 40 */
+  line-height: 1.15;
+}
+.tv .text-3xl {
+  font-size: 2.75rem; /* 44, the boards' page title */
+  line-height: 1.1;
+}
+
+/* The header's section tabs are 28 on every TV board, a step above body text.
+   Qualified with the class so it outranks `.tv .text-sm` above. */
+.tv header nav a.text-sm {
+  font-size: 1.75rem; /* 28 */
+  line-height: 1.25;
+}
+
+/* The guide table, at television proportions (TV-1).
+
+   The channel column is 400 there and 240 on a desktop. A lane holds two lines
+   -- the title, then its times, minutes left and the hint -- at 24 and 22, so
+   it is 96 where the single-line lane was 80. The channel's tile is the
+   board's 72 by 56.
+
+   Class selectors for the column, because the arbitrary-value class is already
+   the only place that number is written down; matching on it keeps the two
+   definitions in one file each rather than one file and a data attribute. */
+.tv .grid-cols-\[240px_1fr\] {
+  grid-template-columns: 25rem 1fr; /* 400 */
+}
+
+.tv [data-tv-guide-lane] {
+  height: 6rem; /* 96 */
+}
+
+/* A guide row, exactly: the lane and its border. The virtual scroller places
+   rows by GUIDE_ROW_HEIGHT_PX, so a row must be this and nothing else. */
+.tv [data-tv-guide-row] {
+  height: calc(6rem + 1px);
+}
+
+/* The time header above the rows leaves room for the rows' scrollbar, so its
+   half-hours sit over the same widths as the lanes. Padding, not a scrollbar
+   gutter of its own: a gutter needs the header to clip what overflows it, and
+   the now-time label hangs half over the first row by design -- clipped, it
+   showed as half a red box (24 September). The styled scrollbar is
+   8px and only where there is a mouse; a television and a touch screen have
+   none to make room for. */
+/* Sideways as well: the lanes hold four hours and show two. The scroller's own
+   stylesheet hides the other axis of a vertical list, which left the later
+   hours out of reach -- to a mouse, and to the remote, whose navigation only
+   moves on to what a scroller can bring into view. */
+cdk-virtual-scroll-viewport.cdk-virtual-scroll-viewport[data-tv-guide-rows] {
+  overflow-x: auto;
+}
+
+[data-tv-guide-rows] {
+  scrollbar-gutter: stable;
+  /* The lanes scroll sideways under the channel column, which stays put
+     (sticky). A programme moved to is scrolled clear of it, not under it. */
+  scroll-padding-inline-start: 240px;
+}
+.tv [data-tv-guide-rows] {
+  scroll-padding-inline-start: 27rem; /* the 400 column, and a strip of what came before */
+  /* Moving right past the edge brings a good stretch of what is next into
+     view, rather than the programme arrived at jammed against the edge. */
+  scroll-padding-inline-end: 20%;
+}
+
+/* A channel with no guide: the note and its button stay beside the channel
+   column however far the lanes are scrolled. */
+[data-guide-hatch-shown] {
+  position: sticky;
+  left: 240px;
+}
+.tv [data-guide-hatch-shown] {
+  left: 25rem;
+}
+@media (pointer: fine) {
+  html:not(.tv) [data-tv-guide-head] {
+    padding-right: 8px;
+  }
+}
+
+.tv [data-tv-guide-logo] {
+  width: 4.5rem; /* 72 */
+  height: 3.5rem; /* 56 */
+}
+
+.tv [data-tv-panel-logo] {
+  width: 4.5rem;
+  height: 3.5rem;
+}
+
+/* Dialogs become pages on a television.
+
+   "Every TV dialog is drawn as a full-surface page, never an overlay -- an
+   overlay has no geometry the arrows can use" (the boards, 3a). The same
+   markup serves both: `data-tv-page` on the backdrop and
+   `data-tv-page-surface` on the card, and under `.tv` the card fills the
+   screen and loses what made it a card. A Back button marked `data-tv-only`
+   stands in for the corner cross, which is `data-desktop-only`. */
+/* The arrange dialog's rows away from a television: as tall as they are, and
+   shrinking with the card when they would not fit. Its card has only a
+   maximum height, so a viewport left to flex-1 drew at nothing. */
+html:not(.tv) [data-arrange-rows] {
+  flex: 0 1 auto;
+  height: var(--arrange-rows-height);
+}
+/* The rows as wide as the list, inside its padding. The virtual list's
+   wrapper is placed absolutely and sized to its widest row, so a long
+   category name pushed the rows past the card and took the arrows off the
+   edge (a user's 835 categories, 2 November). */
+[data-arrange-rows] {
+  overflow-x: hidden;
+}
+/* Stated more specifically than the CDK's own `min-width: 100%`, which
+   otherwise wins and keeps the right edge flush with the card. */
+[data-arrange-rows].cdk-virtual-scroll-orientation-vertical > .cdk-virtual-scroll-content-wrapper {
+  left: 1rem;
+  right: 1rem;
+  min-width: 0;
+}
+
+.tv [data-tv-page] {
+  padding: 0;
+  background: var(--background);
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.tv [data-tv-page-surface] {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--background);
+}
+
+[data-tv-only] {
+  display: none !important;
+}
+.tv [data-tv-only] {
+  display: inline-flex !important;
+}
+.tv [data-desktop-only] {
+  display: none !important;
+}
+
+/* Reading a description whole, on a television, without a stop for the D-pad.
+   A "More" button is one more place for focus to land on the way to what the
+   remote is for (2 October), so there is none: a show's and a
+   film's description are shown whole -- a television has the room -- and an
+   episode's is read by holding OK on its card. */
+.tv [data-read-more] {
+  display: none !important;
+}
+
+.tv [data-whole-on-tv] {
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  display: block;
+  overflow: visible;
+}
+
+/* The programme guide's two columns, at the board's proportions: 760 and the
+   rest. The listing scrolls on its own so the left column stays put. */
+.tv [data-tv-epg] {
+  grid-template-columns: 47.5rem minmax(0, 1fr);
+  height: 100%;
+}
+
+/* The guide picker's columns (TV-8): 660 for the facts, the rest for the list.
+   The page does not scroll; the list inside it does. */
+.tv [data-tv-picker] {
+  grid-template-columns: 41.25rem minmax(0, 1fr);
+  overflow: hidden;
+}
+
+/* Show detail on a television: the show across the top, its seasons and
+   episodes in a row underneath (26 September), where TV-6 had them
+   in a column on the right. A smaller poster, so the episodes are on screen
+   without scrolling. `:root` because the desktop layout reaches a television
+   through `html.tv .md:grid-cols-*`, which a plain `.tv` rule loses to. */
+:root.tv [data-tv-show] {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2rem;
+}
+
+/* An episode: a 16:9 picture 320 wide, then its name and length. */
+.tv [data-tv-episode-card] {
+  width: 20rem;
+}
+.tv [data-tv-episode-thumb] {
+  aspect-ratio: 16 / 9;
+}
+.tv [data-tv-episode-number] {
+  font-size: 3rem;
+  line-height: 1;
+}
+.tv [data-tv-episode-caption] {
+  font-size: 1.25rem;
+}
+
+/* A name too long for its box, sliding while focused (MarqueeDirective). Still,
+   the text is inline so the box's ellipsis applies to it; moving, it is an
+   inline block, since a transform does nothing to an inline -- and the
+   ellipsis goes, or the end of the name would slide into view as "…". */
+[data-marquee].marquee-on {
+  text-overflow: clip;
+}
+[data-marquee].marquee-on > * {
+  display: inline-block;
+  animation: marquee var(--marquee-duration, 6s) ease-in-out infinite alternate;
+}
+@keyframes marquee {
+  0%, 15% {
+    transform: translateX(0);
+  }
+  85%, 100% {
+    transform: translateX(var(--marquee-shift, 0));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-marquee].marquee-on > * {
+    animation: none;
+  }
+}
+
+/* A page the board draws edge to edge, which the desktop caps for reading. */
+.tv [data-tv-wide] {
+  max-width: none;
+  padding: 1.5rem 3rem;
+}
+
+.tv [data-tv-show-poster] {
+  width: 13.5rem; /* 216: the episodes row fits under it */
+}
+
+/* A channel with no guide: a deliberate band, not an outline that reads as a
+   rendering fault (TV-1). Everywhere, not only on a television. */
+.guide-hatch {
+  background-color: var(--card);
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0 0.5rem,
+    color-mix(in oklch, var(--border) 45%, transparent) 0.5rem 0.75rem
+  );
+}
+
+/* No filter field on a television (TV-1), where a text box is a place for the
+   ring to land and raise nothing useful; "Search" beside it opens the search
+   page. It shows while it holds something -- a search page's Show all. */
+.tv [data-tv-filter]:not([data-open]) {
+  display: none;
+}
+
+/* The rails, widened to hold a name at 24px.
+
+   A card is 210px in the history rail and 170px in Favourites, both sized for
+   a 14px name. At 24px those hold about nine characters, and every channel
+   here begins "HR| " -- so the rail became a row of identical prefixes with
+   the distinguishing part cut off. Measured: nine truncated labels on the
+   front page.
+
+   The proportions are the canvas's, which draws TV cards at 300-400px wide.
+   The thumbnail wells grow with them so a logo does not sit in a letterbox. */
+.tv .w-\[210px\] {
+  width: 21.25rem; /* 340 */
+}
+
+.tv .w-\[170px\] {
+  width: 18.125rem; /* 290 */
+}
+
+.tv .h-\[118px\] {
+  height: 11.25rem; /* 180 */
+}
+
+.tv .h-\[96px\] {
+  height: 9.375rem; /* 150 */
+}
+
+/* The channel grid's card. `SectionComponent.GRID_ROW_HEIGHT_PX` and its
+   minimum card width carry the same numbers for the virtual scroller, and must
+   change with these.
+
+   Shorter than the desktop's proportions and with a bigger logo: on a desktop
+   the card also holds a star and a guide button, which a television hides
+   (`[data-card-action]`), and at 64 design pixels a logo was a speck in the
+   middle of an empty card. */
+.tv .h-\[168px\] {
+  height: 13.5rem; /* 216 */
+}
+
+.tv [data-tv-grid-tile] {
+  height: 8.5rem; /* 136, leaving 80 for the name and what is on */
+}
+
+.tv [data-tv-grid-logo] {
+  height: 6.5rem; /* 104 */
+  width: 11rem; /* 176 */
+}
+
+/* Every screen packed as tight as it reads.
+
+   A television is looked at from three metres away, which argues for large
+   text, and holds a guide of thirty channels, which argues for fitting them
+   on. The resolution of that is to keep the type the size it is and take the
+   space out of everything that is not type: the pane's own inset, the gap
+   between the categories and the channels, the card padding around the
+   sidebar. Nested boxes each with their own padding were costing about eighty
+   pixels before a single channel name began. */
+.tv [data-tv-pane] {
+  padding: 0.25rem;
+  gap: 0.25rem;
+}
+
+.tv [data-tv-columns] {
+  gap: 0;
+}
+
+/* The categories stay, as TV-1 and TV-2 draw them.
+
+   They used to shrink to a strip whenever focus left them, to give the guide
+   the width. The boards keep them: at the TV scale a 480-pixel sidebar, a
+   400-pixel channel column and four hours of guide all fit in 1920, and a
+   category list that vanishes takes with it the one thing that says where you
+   are. While the actions panel is docked (TV-3) the sidebar narrows to 360 and
+   the panel takes 620.
+
+   Beside the channels, never over them: focus moves by geometry, and a drawer
+   lying on top of the channel names made Right from a category go to the
+   search box in the far corner. */
+.tv [data-tv-columns] {
+  grid-template-columns: 30rem minmax(0, 1fr); /* 480 */
+}
+
+.tv [data-tv-columns][data-docked] {
+  grid-template-columns: 22.5rem minmax(0, 1fr) 38.75rem; /* 360, the guide, 620 */
+}
+
+/* The drawer (TV-N-1).
+   ------------------------------------------------------------------------
+   The note above says the categories stay beside the channels and never over
+   them, because a panel lying on top of a row made Right from a category land
+   underneath it. That still holds, and this is not the thing it refused: the
+   stack *pushes*. The guide shrinks and slides, so every row on screen stays a
+   row on screen and the arrows never cross a gap.
+
+   Widths are the boards', in design pixels: 80 of rail against 1840 of guide;
+   560 and the guide 480 narrower; then 480 of navigation, 520 of categories
+   and a 920 stub. What gives way is the time window, never the rows.
+
+   The opacity steps are the depth, and there are three because the stack is
+   three deep: active, one back at 62%, two back at 34%. Dim enough to say
+   "not here", legible enough to still answer what is in Sport. */
+.tv [data-tv-columns][data-drawer='closed'] {
+  grid-template-columns: 5rem minmax(0, 1fr); /* 80, and the guide takes 1840 */
+}
+
+.tv [data-tv-columns][data-drawer='categories'] {
+  grid-template-columns: 35rem minmax(0, 1fr); /* 560 */
+}
+
+.tv [data-tv-columns][data-drawer='categories'] > section {
+  opacity: 0.62;
+}
+
+/* Left twice: 480 of navigation, 520 of categories, and the guide down to a
+   920 stub. It pushes rather than stacks, so all three are on screen and the
+   arrows never cross a gap; the three opacities are the depth of the stack,
+   made literal.
+
+   Two columns here, not three: the navigation is the shell's now, drawn beside
+   the whole page rather than inside this grid, so what is left to divide is the
+   categories and the stub. */
+.tv [data-tv-columns][data-drawer='navigation'] {
+  grid-template-columns: 32.5rem minmax(0, 1fr); /* 520, and the stub */
+}
+
+/* The actions panel docked (TV-3) while the drawer is in any state: its own
+   620 column on the right, whatever the left is doing. Written after the
+   drawer's rules, which have the same weight and came later -- so docking
+   gave two columns for three children, the panel wrapped onto a second row
+   inside the 80-pixel rail, and the guide lost its rows below the first two
+   (Hold OK on a programme, 25 September). */
+.tv [data-tv-columns][data-docked][data-drawer='closed'] {
+  grid-template-columns: 5rem minmax(0, 1fr) 38.75rem;
+}
+
+.tv [data-tv-columns][data-docked][data-drawer='categories'] {
+  grid-template-columns: 35rem minmax(0, 1fr) 38.75rem;
+}
+
+.tv [data-tv-columns][data-docked][data-drawer='navigation'] {
+  grid-template-columns: 32.5rem minmax(0, 1fr) 38.75rem;
+}
+
+.tv [data-tv-nav-panel] {
+  width: 30rem; /* 480 */
+}
+
+/* The way back is Right, or Back, from anywhere -- so a button that only says
+   so takes a place in the D-pad's path and a press to step over. Both of them
+   go: the browse screen's, which named the section it came from, and the one
+   on Guides. */
+.tv [data-screen-back] {
+  display: none;
+}
+
+.tv [data-tv-columns][data-drawer='navigation'] [data-tv-sidebar] {
+  opacity: 0.62;
+}
+
+.tv [data-tv-columns][data-drawer='navigation'] > section {
+  opacity: 0.34;
+}
+
+/* No navigation bar on a television, anywhere.
+
+   TV-N-1c takes it off the guide because its contents are the panel. The bar
+   turned out to have no business on any television screen: every item in it is
+   in the drawer, two Lefts away from wherever you are, and a row of links
+   across the top of a set is a row the D-pad has to walk through to reach
+   anything below it. It was the first half of the fault that started this
+   audit.
+
+   The browse screen's own heading goes only while the navigation is open,
+   where the panel replaces it. Written with `:has` so the panel can say that
+   about an ancestor it does not own.
+
+   It goes from every television screen, not just this one. Every item in it is
+   in the drawer, two Lefts from wherever you are, and a row of links across the
+   top of a set is a row the D-pad has to walk through to reach anything below
+   it -- the first half of the fault that started this audit. That is only safe
+   because the drawer lives in the shell now: a page that could not open one
+   would be a page with no way out of it. */
+.tv [data-shell-header],
+.tv:has([data-tv-columns][data-drawer='navigation']) [data-tv-title-row] {
+  display: none;
+}
+
+.tv [data-tv-nav-panel] {
+  gap: 0.5rem;
+  margin-right: 0.5rem;
+}
+
+.tv [data-tv-nav-brand] {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem 1rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.tv [data-tv-nav-mark] {
+  height: 2.5rem;
+  width: 2.5rem;
+}
+
+/* The menu's places (round 14): grey, the one you are on white and bold,
+   focus the white fill -- the player's pills, where they were a blue fill. */
+.tv [data-tv-nav-item] {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 999px;
+  padding: 0.875rem 1.25rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+.tv [data-tv-nav-item][data-tv-nav-here] {
+  color: var(--foreground);
+  font-weight: 800;
+}
+.tv [data-tv-nav-item]:focus {
+  outline: none;
+  box-shadow: none;
+  background: var(--foreground);
+  color: var(--on-focus);
+}
+
+.tv [data-tv-nav-quiet] {
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+
+.tv [data-tv-nav-rule] {
+  margin: 0.75rem 1rem;
+  border-top: 1px solid var(--border-2);
+}
+
+/* Restart sits at the foot of the panel, apart from the places to go. */
+.tv [data-tv-restart] {
+  width: 100%;
+  margin-top: auto;
+  text-align: left;
+}
+
+/* The drawer's collapsed rail: an affordance and a label, and nothing
+   focusable, so that Left has something to aim at and no press ever lands *on*
+   it. The name is set vertically because 80 pixels is the width of about three
+   characters.
+
+   Deliberately not `data-tv-rail`, which this first borrowed and which already
+   means something else: a horizontal rail of cards, on For You, in the search
+   results and at the top of every section. Giving that name a second meaning
+   with `flex-direction: column` on it turned every card rail in the app into a
+   single column. */
+.tv [data-tv-drawer-rail] {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  color: var(--dim-foreground);
+}
+
+/* In the browse screen the rail is a grid cell already 80 wide, and `flex: 1`
+   makes it fill that cell's height. In the shell it is a flex child of a row,
+   where the same rule would let it eat the page -- so there it is given the
+   width the cell would have given it. */
+.tv [data-shell-body] > [data-tv-drawer-rail] {
+  flex: 0 0 5rem; /* 80 */
+  width: 5rem;
+}
+
+.tv [data-tv-drawer-arrow] {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.tv [data-tv-drawer-name] {
+  writing-mode: vertical-rl;
+  min-height: 0;
+  overflow: hidden;
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted-foreground);
+}
+
+.tv [data-tv-sidebar] {
+  padding: 0.25rem;
+  margin-right: 0.5rem;
+  overflow: hidden;
+}
+
+.tv [data-tv-actions-column] {
+  margin-left: 0.5rem;
+}
+
+/* Selected is not focused (TV-2). With focus in the guide, the chosen category
+   keeps its glass and white words and the rest of the list dims; the white
+   fill is reserved for where the cursor is, so it is never in two places.
+   No blue edge since round 14: white and grey, as in the player. */
+.tv [data-tv-sidebar]:not(:focus-within) [aria-current='true'] {
+  background: var(--glass);
+  color: var(--foreground);
+  box-shadow: none;
+}
+
+.tv [data-tv-sidebar]:not(:focus-within) button:not([aria-current='true']) {
+  color: var(--dim-foreground);
+}
+
+/* The player, once it has the whole screen.
+
+   The container is normally held at 16:9 by an aspect-video utility, which in
+   full screen leaves the picture floating at its windowed proportions in the
+   middle of a black field. Dropping the ratio lets it fill what it was given. */
+:fullscreen {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  background: #000;
+}
+
+/* Dialogs render in the CDK overlay container; lift it above the app chrome. */
+.cdk-overlay-container {
+  z-index: 1200;
+}
+
+/* Styled scrollbars where there is a mouse to hold them. On a touch screen
+   they replaced Android's own -- thin, and gone when the page stops moving --
+   with a permanent bar down the side of every list, which the phone walk
+   photographed on the Movies grid (22 September). */
+@media (pointer: fine) {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* No scrollbars on a television. Nothing there can take hold of one, no board
+   draws one, and at the TV scale every rail wore a thick bar under it and the
+   page a strip down its right edge. What is off to the side is shown by the
+   card cut off at the edge, and the remote scrolls by moving focus. Both
+   properties: once `scrollbar-width` is set, Chromium ignores the
+   ::-webkit-scrollbar rules above, and the WebView may be either side of that. */
+html.tv,
+html.tv * {
+  scrollbar-width: none;
+}
+html.tv ::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* Poster grids (TV-5, TV-13): six 200x300 posters per row on a 24px gutter,
+   two lines under each. `GRID_ROW_HEIGHT_PX` in the section reads the same
+   numbers. */
+.tv [data-tv-poster-row] {
+  gap: 1.5rem;
+  padding-bottom: 1.5rem;
+  /* Room for the focus ring, which the scroller would otherwise cut off the
+     first and last columns. */
+  padding-inline: 0.75rem;
+}
+
+.tv [data-tv-poster-card] {
+  height: 25rem; /* 400 */
+  gap: 0.5rem;
+}
+
+/* The title and year under the poster, clear of the ring. The ring is drawn
+   inside the card's edge (see the focus rule), and these lines ran to that
+   edge, so on the focused card the ring sat on their first letter: "Don't Say
+   Good Luck" read "on't Say Good Luck" (the QA walk, 21 September). The
+   poster keeps the full width -- a ring over artwork is what the board draws. */
+.tv [data-tv-poster-card] > span {
+  padding-inline: 0.625rem;
+}
+
+.tv [data-tv-poster] {
+  height: 18.75rem; /* 300 */
+}
+
+/* A poster card's ring is on the poster, not round the whole card.
+
+   Drawn round the card, the poster painted over its upper part and what was
+   left was a white box round the title and year -- "too big", a user said
+   (26 September). On the poster it frames the artwork, as the boards draw it,
+   and the words underneath stay plain. A layer over the poster rather than an
+   outline on it: the artwork and the no-artwork plate are drawn over the
+   poster's own outline, and an outline outside it is cut off by the rail. */
+.tv :is([data-tv-poster-card], [data-tv-favourite-poster] > button, [data-fy-poster], [data-tv-episode-card]):focus {
+  outline: none;
+  box-shadow: none;
+}
+.tv :is([data-tv-poster-card], [data-tv-favourite-poster] > button, [data-fy-poster], [data-tv-episode-card]):focus
+  :is([data-tv-poster], [data-fy-poster-image], [data-tv-episode-thumb])::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /* Quiet (NX-TV-9): a thin, soft edge, and the picture lifts a little --
+     "more demure, not a huge white border" (30 October). */
+  border: 0.125rem solid color-mix(in oklch, var(--ring) 70%, transparent);
+  border-radius: inherit;
+  pointer-events: none;
+}
+.tv :is([data-tv-poster-card], [data-tv-favourite-poster] > button, [data-fy-poster], [data-tv-episode-card]):focus
+  :is([data-tv-poster], [data-fy-poster-image], [data-tv-episode-thumb]) {
+  transform: scale(1.04);
+  box-shadow: 0 0.75rem 1.75rem oklch(0 0 0 / 0.45);
+  z-index: 1;
+}
+
+/* A missing poster: a hatched plate with a coloured spine and big initials --
+   deliberate, so a row with gaps still reads as a row. It once also said "no
+   artwork", which the plate already says (26 September). */
+.poster-placeholder {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--card-2) 0 0.75rem,
+    var(--card) 0.75rem 1.5rem
+  );
+}
+
+/* The shows front page (TV-12): a 410-wide Continue card with a small poster
+   in it, 180x270 favourite posters, and the Browse tile beside them. */
+.tv [data-tv-continue] {
+  width: 25.625rem; /* 410 */
+}
+
+.tv [data-tv-continue-poster] {
+  width: 6.5rem;
+  height: 9.75rem;
+}
+
+.tv [data-tv-favourite-poster] {
+  width: 11.25rem; /* 180 */
+}
+
+.tv [data-tv-favourite-poster] [data-tv-poster] {
+  height: 16.875rem; /* 270 */
+}
+
+.tv [data-tv-browse-tile] {
+  min-width: 25rem;
+}
+
+/* Arrange (TV-14): the rows, and a 460-wide keypad column beside them. The
+   position box is 120x72 with the ring on it, the step buttons 72 square. */
+.tv [data-tv-arrange] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28.75rem;
+  gap: 1.25rem;
+  padding: 1rem 3rem 2rem;
+}
+
+.tv [data-tv-arrange] [data-keypad] {
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  padding: 0;
+}
+
+.tv [data-tv-keypad-grid] {
+  max-width: none;
+  gap: 0.5rem;
+}
+
+.tv [data-tv-keypad-grid] > button {
+  height: 5.25rem;
+  font-size: 1.5rem;
+}
+
+.tv [data-tv-arrange-row]:not(.bg-card-3) {
+  background: var(--card);
+}
+
+/* The row's height and the gap below it come from ROW_HEIGHT_PX in the
+   component now -- 5.5rem of row and 0.5rem of gap, 96 design pixels, which is
+   what the virtual scroller places its rows from. A `min-height` here would
+   fight the height the scroller hands the box, and the `margin-bottom` this
+   used to carry is invisible to the scroller's arithmetic: rows would sit on
+   top of one another. The gap is the item box's padding instead. */
+.tv [data-tv-arrange-row] {
+  gap: 1rem;
+  font-size: 1.125rem;
+}
+
+.tv [data-tv-arrange-item] {
+  padding-bottom: 0.5rem;
+}
+
+.tv [data-tv-arrange-position] {
+  width: 7.5rem;
+  height: 4.5rem;
+  align-self: center;
+  text-align: center;
+  font-size: 1.25rem;
+}
+
+.tv [data-tv-arrange-steps] > button {
+  width: 4.5rem;
+  height: 4.5rem;
+}
+
+/* A page's header on a television: room for the ring on Back, and the
+   screen's own margins rather than a dialog's. */
+.tv [data-tv-page-header] {
+  padding: 1.5rem 3rem 1rem;
+}
+
+.tv [data-tv-arrange-steps] > button:not(:disabled) {
+  background: var(--card-3);
+}
+
+/* Show detail: the synopsis beside the poster on a television (TV-6), under it
+   on a desktop and a phone (D-5, P-5); seasons as "S3" on a television and a
+   phone, "Season 3" with room for it. */
+[data-plot-beside] {
+  display: none;
+}
+.tv [data-plot-beside] {
+  display: block;
+}
+.tv [data-plot-below] {
+  display: none;
+}
+[data-season-long] {
+  display: none;
+}
+@media (min-width: 768px) and (min-height: 380px) {
+  :root:not(.tv) [data-season-long] {
+    display: inline;
+  }
+  :root:not(.tv) [data-season-short] {
+    display: none;
+  }
+}
+
+/* A block only a television shows: the guide picker's CHANNEL heading, which a
+   desktop dialog carries in its title instead (D-6). */
+[data-tv-only-block] {
+  display: none;
+}
+.tv [data-tv-only-block] {
+  display: block;
+}
+
+/* The phone (P-1 – P-7). Width decides, and never on a television, whose
+   CSS width is wide anyway. */
+[data-phone-only] {
+  display: none;
+}
+@media (max-width: 767px), (max-height: 379px) {
+  :root:not(.tv) [data-phone-only] {
+    display: flex;
+  }
+  :root:not(.tv) [data-desktop-rail] {
+    display: none;
+  }
+  :root:not(.tv) [data-tv-poster-card] {
+    height: 236px;
+  }
+  :root:not(.tv) [data-tv-poster-card] [data-tv-poster] {
+    height: 165px;
+  }
+}
+
+/* No blur behind the header on a television. `backdrop-blur` re-samples
+   everything under the bar on every frame that moves beneath it, which a TV's
+   graphics chip pays for while a list scrolls, and there it blurs nothing:
+   the page under the header is a solid colour. */
+.tv header {
+  backdrop-filter: none;
+  background: var(--background);
+}
+
+/* But not a show's own "TV Shows" line, which sits on the show's backdrop:
+   given the bar's ground it was a dark band the width of the screen across
+   the top of the picture (a user's TV, 24 October). */
+.tv [data-show-page] header {
+  background: transparent;
+}
+
+/* For You (FY-TV, FY-D, FY-P).
+
+   The ways in and the favourites are rows on a television and a phone and a
+   side column on a desktop, so each is drawn twice and one copy shown. */
+[data-fy-inline] {
+  display: none;
+}
+:root.tv [data-fy-inline],
+:root:not(.tv) [data-for-you] [data-fy-inline] {
+  display: grid;
+}
+:root.tv section[data-fy-inline],
+:root:not(.tv) [data-for-you] section[data-fy-inline]:not(.grid) {
+  display: flex;
+}
+@media (min-width: 1024px) {
+  :root:not(.tv) [data-for-you] [data-fy-inline],
+  :root:not(.tv) [data-for-you] section[data-fy-inline]:not(.grid) {
+    display: none;
+  }
+}
+.tv [data-fy-side] {
+  display: none;
+}
+.tv [data-fy-columns] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* A television's cards at FY-TV's size: 340x150, the ways in a row of four.
+   Continue watching is posters now (NX-TV-2), sized as every poster is. */
+.tv [data-for-you] [data-fy-card] {
+  width: 21.25rem; /* 340 */
+  height: 9.375rem; /* 150 */
+}
+.tv [data-fy-thumb] {
+  width: 6rem;
+}
+/* Browse by (TV-32): the full lists open from the chips on a television,
+   so the headings' links are left to a desktop and a phone. */
+.tv [data-discover-all] {
+  display: none;
+}
+
+.tv [data-fy-poster] {
+  width: 12.5rem; /* 200 */
+}
+.tv [data-fy-poster-image] {
+  height: 18.75rem; /* 300 */
+}
+/* Popular this week (FY-TV-2, FY-D-2, FY-P-2): the way to the rest of the list
+   differs by surface -- two end cards on a television, two links in the
+   heading on a desktop, one "See all" on a phone. */
+[data-fy-popular-end] {
+  display: none;
+}
+.tv [data-fy-popular-end] {
+  display: flex;
+}
+.tv [data-fy-popular-links] {
+  display: none;
+}
+
+/* A film's page (TV-27, D-19, P-16): the copies are a button that opens them
+   on a television and a phone, and a list on the page itself on a desktop. */
+[data-film-copies-inline] {
+  display: none;
+}
+:root:not(.tv) [data-film-copies-inline] {
+  display: flex;
+}
+:root:not(.tv) [data-film-copy-button] {
+  display: none;
+}
+@media (max-width: 767px), (max-height: 379px) {
+  :root:not(.tv) [data-film-copies-inline] {
+    display: none;
+  }
+  :root:not(.tv) [data-film-copy-button] {
+    display: inline-flex;
+  }
+}
+
+/* Choosing a copy (TV-28): what the page is for on the left, never moving, the list on the right. */
+.tv [data-copies-layout] {
+  grid-template-columns: 16rem minmax(0, 1fr);
+}
+
+/* The full list (TV-26): eight posters of 192 x 288 on a television. */
+[data-popular-grid] {
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+}
+.tv [data-popular-grid] {
+  grid-template-columns: repeat(8, 12rem);
+  gap: 1.5rem;
+}
+.tv [data-popular-grid] [data-fy-poster] {
+  width: 12rem;
+}
+.tv [data-popular-grid] [data-fy-poster-image] {
+  height: 18rem;
+}
+
+/* The meter for "looking further": it moves, so a wait never looks like a hang. */
+/* Moved by transform, not `left`, which was a layout every frame on a TV
+   already busy loading. A third of the track wide,
+   so from just off the left to just off the right is -100% to 300%. */
+.popular-meter {
+  left: 0;
+  animation: popular-meter 1.4s ease-in-out infinite;
+}
+@keyframes popular-meter {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(300%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .popular-meter { animation: none; transform: none; width: 100%; opacity: 0.5; }
+}
+@media (max-width: 767px), (max-height: 379px) {
+  :root:not(.tv) [data-fy-popular-links] {
+    display: none;
+  }
+  :root:not(.tv) [data-fy-popular] [data-fy-poster] {
+    width: 6.875rem;
+  }
+  :root:not(.tv) [data-fy-popular] [data-fy-poster-image] {
+    height: 10.3rem;
+  }
+  :root:not(.tv) [data-popular-grid] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.tv [data-fy-way] {
+  padding-block: 1.75rem;
+}
+.tv [data-for-you] section.grid[data-fy-inline] {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* A phone: every rail a list, in the same order (FY-P). */
+@media (max-width: 767px), (max-height: 379px) {
+  :root:not(.tv) [data-for-you] [data-fy-rail] {
+    flex-direction: column;
+    overflow: visible;
+  }
+  /* A short list per rail, as FY-P draws it; the rest is a tab away. */
+  :root:not(.tv) [data-for-you] [data-fy-rail] > :nth-child(n + 5) {
+    display: none;
+  }
+  :root:not(.tv) [data-for-you] [data-fy-rail] > [data-fy-item],
+  :root:not(.tv) [data-for-you] [data-fy-rail] > [data-fy-card],
+  :root:not(.tv) [data-for-you] [data-fy-item] > [data-fy-card] {
+    width: 100%;
+  }
+}
+
+/* FY-D · Light theme: a white card on a near-white page gains a 1px border
+   rather than relying on being lighter than its ground. */
+:root:not(.dark) [data-for-you] :is([data-fy-card], [data-fy-way], [data-fy-side] button, [data-fy-doors] button) {
+  border-top: 1px solid var(--border-2);
+  border-right: 1px solid var(--border-2);
+  border-bottom: 1px solid var(--border-2);
+}
+:root:not(.dark) [data-for-you] [data-fy-card] {
+  border-left: 1px solid var(--border-2);
+}
+
+/* A phone held sideways: the phone layout, with every bar as thin as it can be,
+   because 390 CSS pixels of height is what there is and each row of chrome is
+   a row of channels fewer. */
+/*
+ * A phone turned sideways, in the wide layout.
+ *
+ * 390 pixels of height, and the chrome above the two columns was taking 125 of
+ * them: a 45px header, a title on its own line, a count line, and a toolbar
+ * that wrapped. What was left showed one category and two channels, which is
+ * not a guide -- it is a rumour of one. So on a short wide screen the chrome
+ * gives way: the title row is one line, the counts step aside (the same numbers
+ * are in the list itself), and everything is tighter. The nav stays, because
+ * the phone's tab bar is hidden in this layout and it is the only way out.
+ */
+@media (min-width: 768px) and (max-height: 459px) {
+  :root:not(.tv) [data-shell-header] {
+    padding-top: 0.125rem;
+    padding-bottom: 0.125rem;
+  }
+  :root:not(.tv) [data-tv-pane] {
+    padding-top: 0.375rem;
+    padding-bottom: 0.375rem;
+    gap: 0.375rem;
+  }
+  :root:not(.tv) [data-tv-title-row] {
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+  }
+  :root:not(.tv) [data-tv-title-row] h1 {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+  /* The count is in the list under it; the room is worth more than the line. */
+  :root:not(.tv) [data-browse-counts] {
+    display: none;
+  }
+  :root:not(.tv) [data-tv-sidebar] {
+    padding: 0.375rem;
+  }
+  :root:not(.tv) [data-tv-columns] {
+    gap: 0.5rem;
+  }
+  /* One line of controls, so the two columns start 40 pixels higher. */
+  :root:not(.tv) [data-desktop-rail] {
+    flex-wrap: nowrap;
+  }
+  :root:not(.tv) [data-tv-filter] {
+    width: 11rem;
+  }
+  /* Arranging channels by hand is not what a sideways phone is for. */
+  :root:not(.tv) [data-arrange-streams] {
+    display: none;
+  }
+  /* "1 of 834 · HR| CROATIA" is the title of the screen as well; here it is a
+     category's worth of height saying it twice. */
+  :root:not(.tv) [data-tv-sidebar] [data-picker-caption] {
+    display: none;
+  }
+}
+
+@media (max-height: 459px) {
+  :root:not(.tv) [data-shell-header] {
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+  }
+  :root:not(.tv) [data-phone-tabs] a {
+    min-height: 2.5rem;
+    flex-direction: row;
+    gap: 0.375rem;
+  }
+  :root:not(.tv) [data-tv-pane] {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    gap: 0.5rem;
+  }
+  :root:not(.tv) [data-phone-chips] {
+    width: auto;
+    margin-left: auto;
+  }
+}
+
+/*
+ * A list that scrolls down should not also scroll across.
+ *
+ * `cdk-virtual-scroll-viewport` sets `overflow: auto` on both axes, so a row
+ * a fraction of a pixel too wide -- a long programme name, a scrollbar of its
+ * own -- gives the phone's channel list a horizontal bar under it and lets the
+ * whole list slide sideways. The text truncates; this is what makes the
+ * truncation the end of it.
+ */
+/* Two classes, because the CDK's own rule is one and loads after this file. */
+.cdk-virtual-scroll-viewport.cdk-virtual-scroll-orientation-vertical {
+  overflow-x: hidden;
+}
+
+/*
+ * The CDK's content wrapper is absolutely placed with no right edge, so it is
+ * as wide as its widest row wants to be: one long channel name made every row
+ * 1,287px wide in a 354px list, and the names were cut off at the list's edge
+ * instead of ending in an ellipsis. Held to the list's width, `truncate` works.
+ * Not the guide's, whose rows are wider than its viewport on purpose.
+ */
+[data-phone-channel-list] .cdk-virtual-scroll-content-wrapper {
+  width: 100%;
+}
+
+/*
+ * A clamped title limits its lines, not its width: a name with no spaces
+ * ("FILMWITHOUTANYSPACES...") ran off the poster on one line, cut off with no
+ * ellipsis. Broken anywhere, it wraps and the clamp ends it.
+ */
+[class*='line-clamp-'] {
+  overflow-wrap: anywhere;
+}
+
+/*
+ * The guide's preview header, a fixed height with every line used: at the
+ * television's tight line heights a truncated line cut off its own descenders
+ * ("Lonq Channel"). The padding takes the clip down past them and the margin
+ * gives the space back, so nothing moves.
+ */
+.tv [data-preview-info] .truncate {
+  padding-block: 0.15em;
+  margin-block: -0.15em;
+}
+
+/* The search results page on a phone (S-1).
+   ------------------------------------------------------------------------
+   Same content as the television, one vertical scroll. Each section keeps its
+   own shape: channels as 64px rows, since a logo in a grid wastes the width;
+   films and shows as a three-column 2:3 grid. Two channels and three posters,
+   which is what fits without either section's Show all being pushed out of
+   reach -- the row is drawn with the television's count and the extras are
+   hidden here, so a phone turned into the wide layout shows them again.
+
+   The count moves to the right of each heading in its shorter form, and Show
+   all becomes a full-width button at each section's foot, because a vertical
+   list has no end-of-row to put a trailing card at. */
+/* A filled row, in the wide layout. The component measures the row and divides
+   it into as many equal columns as cards fit, Show all in the last, so the row
+   ends at the right edge rather than a third of the way short of it; the cards
+   give up the fixed widths they are drawn with and take a column each. No
+   sideways scroll, because nothing is wider than the row it is in. */
+[data-search-row][data-search-row-fill] {
+  display: grid;
+  overflow: visible;
+}
+
+[data-search-row][data-search-row-fill] > [data-search-card],
+[data-search-row][data-search-row-fill] > [data-search-show-all] {
+  width: auto;
+  min-width: 0;
+}
+
+/* Every card rail on a set is padded and pulled back by the same amount, so a
+   focus ring has room inside a box that clips because it scrolls sideways. A
+   filled row does not scroll, and the negative margin put it 6 pixels past the
+   edge of the results -- which then scrolled sideways by exactly that, the bar
+   along the bottom of the page. The room goes on the results instead, where it
+   serves every row at once. */
+.tv [data-search-row][data-search-row-fill] {
+  padding: 0;
+  margin: 0;
+}
+
+/* No clear button in the query on a television: S-1 draws none, and it sat
+   inside the field where no press could reach it (the QA walk). The keyboard
+   that OK raises clears the field there. */
+.tv [data-search-clear] {
+  display: none;
+}
+
+.tv [data-search-results] {
+  padding: 0 0.75rem 0.75rem;
+}
+
+[data-search-count-phone],
+[data-search-show-all-phone],
+[data-search-total-inline] {
+  display: none;
+}
+
+@media (max-width: 767px), (max-height: 379px) {
+  :root:not(.tv) [data-search-count],
+  :root:not(.tv) [data-search-show-all],
+  :root:not(.tv) [data-search-total],
+  :root:not(.tv) [data-search-back-label] {
+    display: none;
+  }
+
+  :root:not(.tv) [data-search-count-phone],
+  :root:not(.tv) [data-search-total-inline] {
+    display: inline;
+  }
+
+  :root:not(.tv) [data-search-show-all-phone] {
+    display: inline-flex;
+    height: 3rem; /* 48 */
+  }
+
+  /* The count and the sort on one line, the chips on the next: at 390 pixels
+     the three together do not fit, and the chips are the ones that can scroll
+     sideways without losing anything. */
+  :root:not(.tv) [data-search-tools] {
+    flex-wrap: wrap;
+  }
+
+  :root:not(.tv) [data-search-tools] [data-search-sort] {
+    margin-left: auto;
+  }
+
+  :root:not(.tv) [data-search-tools] [data-search-facets] {
+    order: 3;
+    flex-basis: 100%;
+  }
+
+  :root:not(.tv) [data-search-row-kind='logo'] {
+    flex-direction: column;
+    overflow: visible;
+    gap: 0.5rem;
+    padding-bottom: 0;
+  }
+
+  :root:not(.tv) [data-search-row-kind='logo'] > [data-search-card] {
+    width: 100%;
+    height: 4rem; /* 64 */
+  }
+
+  :root:not(.tv) [data-search-row-kind='poster'] {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: visible;
+    padding-bottom: 0;
+  }
+
+  :root:not(.tv) [data-search-row-kind='poster'] > [data-search-card] {
+    width: auto;
+  }
+
+  :root:not(.tv) [data-search-row-kind='logo'] > [data-search-card]:nth-child(n + 3),
+  :root:not(.tv) [data-search-row-kind='poster'] > [data-search-card]:nth-child(n + 4) {
+    display: none;
+  }
+}
+
+/* SR-D-2: on a computer the field is the one in the top bar, which shows from
+   this width; the page's own would be a second box saying the same words. */
+@media (min-width: 768px) {
+  :root:not(.tv) [data-search-head],
+  :root:not(.tv) [data-library-search] {
+    display: none;
+  }
+}
+
+/* The chips scroll sideways on a phone when they do not fit (SR-P-2), without
+   a scrollbar drawn under them: the chip cut at the edge says there is more. */
+[data-search-scopes] {
+  scrollbar-width: none;
+}
+
+/* SR-TV-2: the chips under a field as wide as the page. The field, the
+   magnifier and the chips are the pieces' own sizes (round 14). */
+.tv [data-search-scopes] {
+  gap: 0.75rem;
+}
+
+/* The category list's rows are as wide as the column, never as wide as the
+   longest name. The virtual scroller's wrapper is absolutely positioned and
+   sizes to its content, so one long name made every row wider than the
+   column -- invisible while a row is only a name that truncates, but with Hide
+   and lock the toggles at the end of each row were pushed out of sight, 67
+   pixels past the edge on the desktop (28 September). */
+[data-category-list] .cdk-virtual-scroll-content-wrapper {
+  width: 100%;
+}
+
+/* A wrong PIN: the dots shake once (TV-24). Nothing moves for anyone who has
+   asked for less motion; the words under the dots still say it. */
+@keyframes pin-wobble {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(7px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(3px); }
+}
+.pin-wobble {
+  animation: pin-wobble 360ms ease-in-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pin-wobble {
+    animation: none;
+  }
+}
+
+/* Hide and lock (TV-22, D-16, P-12). The toggles' width, one value for the
+   heads and the rows so they stay in columns; the column itself widens while
+   the mode is on -- 840 on a television, 380 on a desktop. */
+[data-managing] {
+  --manage-toggle: 4.5rem;
+}
+.tv [data-managing] {
+  --manage-toggle: 7.5rem;
+}
+.tv [data-tv-columns][data-drawer='categories']:has([data-managing]) {
+  grid-template-columns: 52.5rem minmax(0, 1fr); /* 840 */
+}
+@media (min-width: 768px) {
+  :root:not(.tv) [data-tv-columns]:has([data-managing]) {
+    grid-template-columns: 380px minmax(0, 1fr);
+  }
+}
+
+/* ---- Dialogs, sheets and the actions panel arrive --------------------------
+   They appeared at once, which on a phone and a desktop reads as a jump.
+   Now the backdrop fades in;
+   a dialog rises from 96% as it fades; a phone's sheet slides up from the
+   edge it sits on; the desktop's actions panel slides in from the right,
+   where it sits. Enter only -- they go at once, which is the faster half.
+   Keyframes rather than @starting-style, which the desktop's Chromium 116
+   does not have. Not on a television: a remote opens these many times an
+   evening, and there they stay instant. Reduced motion keeps the fade. */
+@keyframes enter-fade {
+  from { opacity: 0; }
+}
+@keyframes enter-dialog {
+  from { opacity: 0; scale: 0.96; }
+}
+@keyframes enter-up {
+  from { translate: 0 100%; }
+}
+@keyframes enter-from-right {
+  from { translate: 100% 0; }
+}
+:root:not(.tv) [data-enter] {
+  animation: enter-fade 150ms ease-out;
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root:not(.tv) [data-enter='dialog'] > :first-child {
+    animation: enter-dialog 200ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  @media (max-width: 767px) {
+    :root:not(.tv) :is([data-enter='sheet'], [data-enter='panel']) > :first-child {
+      animation: enter-up 260ms cubic-bezier(0.32, 0.72, 0, 1);
+    }
+  }
+  @media (min-width: 768px) {
+    :root:not(.tv) [data-enter='sheet'] > :first-child {
+      animation: enter-dialog 200ms cubic-bezier(0.23, 1, 0.32, 1);
+    }
+    :root:not(.tv) [data-enter='panel'] > :first-child {
+      animation: enter-from-right 260ms cubic-bezier(0.32, 0.72, 0, 1);
+    }
+  }
+}
+
+/* Signing in on a television: as wide as the screen and on it whole, not a
+   phone's column running off the bottom (25 October). Who and
+   where on the left -- the app, the heading, the server, the language -- and
+   the form on the right, at the height of the two. The order in the page is
+   the phone's, so only the grid differs. */
+/* The body's padding taken off, as for the shell (above), or the page is
+   4 pixels taller than the screen and scrolls. */
+html.tv [data-login-page] {
+  min-height: calc(100dvh - 1rem);
+}
+.tv [data-login-card] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas:
+    'brand form'
+    'more form';
+  grid-template-rows: auto 1fr;
+  column-gap: 6rem; /* 96 */
+  row-gap: 2rem; /* 32 */
+  max-width: 90rem; /* 1440 */
+  padding: 4rem; /* 64 */
+}
+.tv [data-login-brand] {
+  grid-area: brand;
+  align-items: flex-start;
+  margin-bottom: 0;
+  text-align: left;
+}
+.tv [data-login-form] {
+  grid-area: form;
+  align-self: center;
+}
+.tv [data-login-more] {
+  grid-area: more;
+  align-self: end;
+}
+.tv [data-login-more] > :first-child {
+  margin-top: 0;
+}
+.tv [data-login-more] > :not([data-server]) {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+/* The first launch (OnboardingComponent; design round 10).
+
+   A phone: the step fills the screen and its buttons sit at the bottom, where
+   a thumb is. A computer: one centred column, the step on a card, as its
+   sign-in page. A television: two columns, as its sign-in page -- where and
+   which step on the left, the step on a card on the right -- on the screen
+   whole. */
+:root:not(.tv) [data-onboarding-page] {
+  align-items: center;
+}
+@media (max-width: 767px) {
+  :root:not(.tv) [data-onboarding-page] {
+    align-items: stretch;
+  }
+  :root:not(.tv) [data-onboarding] {
+    min-height: calc(100dvh - 2.5rem);
+  }
+}
+@media (min-width: 768px) {
+  :root:not(.tv) [data-onboarding-step] {
+    flex: none;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 2rem;
+  }
+}
+html.tv [data-onboarding-page] {
+  min-height: calc(100dvh - 1rem);
+  align-items: center;
+  padding: 0;
+}
+.tv [data-onboarding] {
+  display: grid;
+  grid-template-columns: 32rem minmax(0, 1fr); /* 512 and the rest */
+  column-gap: 6rem; /* 96 */
+  align-items: center;
+  max-width: 100rem; /* 1600 */
+  padding-inline: 4rem; /* 64 */
+}
+.tv [data-onboarding-intro] {
+  gap: 3rem; /* 48 */
+}
+.tv [data-onboarding-step] {
+  flex: none;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 3.5rem; /* 56 */
+  gap: 2rem; /* 32 */
+}
+html.tv [data-onboarding] input {
+  height: 4.5rem; /* 72 */
+  font-size: 1.625rem; /* 26 */
+}
+.tv [data-onboarding-summary] > div > span:first-child {
+  width: 14rem; /* 224: "Starting up" on one line */
+}
+
+/* ---------------------------------------------------------------------------
+   Round 13: the screens around the player in the player's own language --
+   pictures to the edges, words on fades, one row of pill buttons.
+   --------------------------------------------------------------------------- */
+
+/* ---------------------------------------------------------------------------
+   The pieces. Every
+   control in the app is one of these, the player's own: the pill, the chip,
+   the setting row and its switch, the field, the panel's row, the tag. On a
+   television focus is the white fill on all of them -- one look for "here",
+   the player's -- and only cards keep the quiet ring.
+
+   Unlayered, like the focus rules, so they are what a control looks like:
+   a size or a colour written on one button in a template is a departure from
+   the system, and the stages of the plan take those out rather than let them
+   win.
+   --------------------------------------------------------------------------- */
+
+/* The pill (PX-TV-1): an icon and a word on glass, round when it has no word.
+   The main action is solid on a phone and the desktop; on a television every
+   pill is glass at rest and focus is the solid fill -- no ring, as in the
+   player. `hlmBtn` draws this (libs/ui/button). */
+.pill {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 2.75rem; /* 44 */
+  min-width: 0;
+  padding-inline: 1.25rem;
+  border: 0;
+  border-radius: 999px;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  background: var(--glass);
+  color: var(--foreground);
+  cursor: pointer;
+}
+.pill:hover {
+  background: var(--glass-strong);
+}
+.pill-primary,
+.pill-primary:hover {
+  background: var(--foreground);
+  color: var(--background);
+}
+/* Something a person seldom needs, or a word inside a sentence: no glass until
+   a pointer or focus finds it. */
+.pill-quiet {
+  background: transparent;
+}
+.pill-quiet:hover {
+  background: var(--glass-quiet);
+}
+/* What cannot be undone: a red icon, not a red pill (DS-TV-8). Focus is white
+   on every pill, and a red one would be the one that changed colour when
+   focused. A pill with no icon says it in red words instead. */
+.pill-destructive ng-icon {
+  color: var(--on-air);
+}
+.pill-destructive:not(:has(ng-icon)),
+.tv .pill-destructive:not(:has(ng-icon)) {
+  color: var(--on-air);
+}
+.pill-sm {
+  height: 2.25rem; /* 36 */
+  padding-inline: 1rem;
+  font-size: 0.875rem;
+}
+.pill-xs {
+  height: 2rem; /* 32 */
+  padding-inline: 0.75rem;
+  font-size: 0.8125rem;
+  gap: 0.375rem;
+}
+.pill-round,
+.pill[data-pill-round] {
+  width: 2.75rem;
+  padding-inline: 0;
+}
+.pill-round.pill-sm {
+  width: 2.25rem;
+}
+.pill-round.pill-xs {
+  width: 2rem;
+}
+/* As wide as what it is in: the answers in a dialog, a sheet's buttons. */
+.pill-block {
+  display: flex;
+  width: 100%;
+}
+.pill ng-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: none;
+}
+.pill-sm ng-icon,
+.pill-xs ng-icon {
+  width: 1rem;
+  height: 1rem;
+}
+/* A star that is on is filled. */
+.pill[aria-pressed='true'] ng-icon svg {
+  fill: currentColor;
+}
+.pill:disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+.pill[aria-disabled='true'] {
+  opacity: 0.4;
+}
+
+.tv .pill {
+  height: 4.75rem; /* 76 */
+  min-height: 0;
+  padding-inline: 1.5rem;
+  gap: 0.875rem;
+  font-size: 1.75rem; /* 28 */
+  background: color-mix(in oklch, var(--foreground) 16%, transparent);
+  color: var(--foreground);
+}
+.tv .pill-quiet {
+  background: transparent;
+}
+.tv .pill-sm {
+  height: 4rem; /* 64 */
+  padding-inline: 1.25rem;
+  gap: 0.75rem;
+  font-size: 1.5rem; /* 24 */
+}
+.tv .pill-xs {
+  height: 3.5rem; /* 56 */
+  padding-inline: 1.125rem;
+  gap: 0.625rem;
+  font-size: 1.375rem; /* 22 */
+}
+.tv .pill-round,
+.tv .pill[data-pill-round] {
+  width: 4.75rem;
+  padding-inline: 0;
+}
+.tv .pill-round.pill-sm {
+  width: 4rem;
+}
+.tv .pill-round.pill-xs {
+  width: 3.5rem;
+}
+.tv .pill ng-icon {
+  width: 2.125rem;
+  height: 2.125rem;
+}
+.tv .pill-sm ng-icon,
+.tv .pill-xs ng-icon {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+/* The chip: one of a few choices (DS-TV-1). Outlined, never filled, so a
+   choice is a different kind of thing from an action, which is a filled pill
+   -- the welcome page's language and Get started looked alike when a chosen
+   chip was filled the way a button is (1 November). At rest a thin
+   edge and grey words; on, a white edge, white words and a check (or, chosen
+   in an order, its place). `app-choice-chips` and `app-order-chips` draw
+   these (src/app/ui). */
+.chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.375rem;
+  height: 2.25rem; /* 36 */
+  padding-inline: 0.875rem;
+  border: 1px solid color-mix(in oklch, var(--foreground) 26%, transparent);
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+.chip:hover {
+  border-color: color-mix(in oklch, var(--foreground) 55%, transparent);
+  color: var(--foreground);
+}
+/* The edge doubled with an inner shadow, so being on does not change the
+   chip's size and move its neighbours. */
+.chip[aria-checked='true'],
+.chip[aria-pressed='true'] {
+  border-color: var(--foreground);
+  box-shadow: inset 0 0 0 1px var(--foreground);
+  color: var(--foreground);
+  font-weight: 700;
+}
+.chip:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.chip ng-icon {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+}
+/* A chip that is on and draws no mark of its own gets the check, so the rule
+   holds wherever a chip is written by hand (a facet, a filter): a check marks
+   the one that is on. Drawn with a mask, in the chip's own colour. */
+.chip:is([aria-checked='true'], [aria-pressed='true']):not(:has(ng-icon, [data-chip-place]))::before {
+  content: '';
+  flex: none;
+  width: 1em;
+  height: 1em;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.chip [data-chip-place] {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+.tv .chip {
+  border-width: 2px;
+  height: 3.5rem; /* 56 */
+  padding-inline: 1.375rem;
+  gap: 0.625rem;
+  font-size: 1.5rem; /* 24 */
+}
+.tv .chip ng-icon {
+  width: 1.625rem;
+  height: 1.625rem;
+}
+
+/* Settings as rows (DS-TV-2): a group under a plain heading, its rows with a
+   hairline between them. `app-setting-group` and `app-setting-row`. */
+.setting-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+}
+.setting-group-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--foreground);
+}
+.setting-group-rows {
+  display: flex;
+  flex-direction: column;
+}
+/* A hairline above every row but the first. The rows are often a settings
+   component's own (Display size, Storage), inside a host drawn as
+   `display: contents`, so "first" is looked for one level down as well. A
+   `.setting-block` is something in the list that is not a row: a form
+   opened under its row. */
+.setting-group-rows :is(app-setting-row, .setting-block) {
+  border-top: 1px solid var(--hairline);
+}
+.setting-group-rows > :is(app-setting-row, .setting-block):first-child,
+.setting-group-rows > :first-child > :is(app-setting-row, .setting-block):first-child {
+  border-top: 0;
+}
+.setting-block {
+  padding-block: 0.75rem;
+}
+.tv .setting-block {
+  padding-block: 1.25rem;
+}
+/* A row that says something and holds its own controls (Display size's
+   chips): on a phone the controls go under the words when they do not fit. */
+div.setting-row {
+  flex-wrap: wrap;
+}
+.tv .setting-group {
+  gap: 0.625rem;
+}
+.tv .setting-group-title {
+  font-size: 1.875rem; /* 30 */
+}
+
+/* A row is as wide as its group plus its own padding either side, so its words
+   line up with the heading while the white of focus has room round them. */
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: calc(100% + 1.5rem);
+  min-height: 3.5rem; /* 56 */
+  margin-inline: -0.75rem;
+  padding: 0.625rem 0.75rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: transparent;
+  color: var(--foreground);
+  text-align: start;
+}
+button.setting-row:hover {
+  background: var(--glass-quiet);
+}
+.setting-row-text {
+  display: flex;
+  /* From nothing, so a long grey line wraps inside the words rather than
+     pushing the row's own controls under them; they go under only when the
+     words would be narrower than this. */
+  flex: 1 1 0;
+  min-width: min(14rem, 100%);
+  flex-direction: column;
+  gap: 0.125rem;
+}
+.setting-row-label {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-width: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.tv .setting-row-label {
+  gap: 0.875rem;
+}
+.setting-row-sub {
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+  overflow-wrap: anywhere;
+}
+.setting-row-value {
+  flex: none;
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+.setting-row-end {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--muted-foreground);
+}
+.setting-row-end ng-icon {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+.setting-row[aria-disabled='true'] {
+  opacity: 0.4;
+}
+.tv .setting-row {
+  width: calc(100% + 3rem);
+  min-height: 5.5rem; /* 88 */
+  margin-inline: -1.5rem;
+  padding: 0.75rem 1.5rem;
+  gap: 1.25rem;
+}
+.tv .setting-row-label {
+  font-size: 1.75rem; /* 28 */
+}
+.tv .setting-row-sub {
+  font-size: 1.375rem; /* 22 */
+}
+.tv .setting-row-value {
+  font-size: 1.625rem; /* 26 */
+}
+.tv .setting-row-end ng-icon {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+/* The switch, inside its row: the row is the control (role="switch"), this is
+   only its picture. White when on, glass when off; on a focused row, where
+   the ground is white, the colours turn round. */
+.switch {
+  position: relative;
+  flex: none;
+  width: 2.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--foreground) 26%, transparent);
+}
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 0.1875rem;
+  left: 0.1875rem;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 50%;
+  background: var(--foreground);
+}
+[aria-checked='true'] > .setting-row-end > .switch {
+  background: var(--foreground);
+}
+[aria-checked='true'] > .setting-row-end > .switch::after {
+  left: auto;
+  right: 0.1875rem;
+  background: var(--background);
+}
+.tv .switch {
+  width: 4.25rem; /* 68 */
+  height: 2.375rem; /* 38 */
+}
+.tv .switch::after {
+  top: 0.25rem;
+  left: 0.25rem;
+  width: 1.875rem;
+  height: 1.875rem;
+}
+.tv [aria-checked='true'] > .setting-row-end > .switch::after {
+  left: auto;
+  right: 0.25rem;
+}
+
+/* The panel's row (FilmUi.ChoiceRow): a check for the one that is on. */
+.choice-row {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  width: 100%;
+  min-height: 3rem; /* 48 */
+  padding: 0.5rem 0.875rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: transparent;
+  color: var(--muted-foreground);
+  font-size: 1rem;
+  font-weight: 500;
+  text-align: start;
+}
+.choice-row:hover {
+  background: var(--glass-quiet);
+  color: var(--foreground);
+}
+.choice-row[aria-checked='true'] {
+  color: var(--foreground);
+  font-weight: 700;
+}
+.choice-row-mark {
+  display: flex;
+  flex: none;
+  width: 1.25rem;
+}
+.choice-row-mark ng-icon {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+/* A person's picture before their name (the header's profiles), or a round
+   icon for the row beside them that is not a person. */
+.choice-row-face {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--glass);
+}
+.choice-row-face img {
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+}
+.choice-row-face img.choice-row-face-own {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.choice-row-face-icon ng-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+.choice-row[aria-checked='true'] .choice-row-face {
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--foreground);
+}
+.tv .choice-row-face {
+  width: 4.5rem;
+  height: 4.5rem;
+}
+.tv .choice-row[aria-checked='true'] .choice-row-face {
+  box-shadow: 0 0 0 3px var(--background), 0 0 0 6px var(--foreground);
+}
+.tv .choice-row:focus .choice-row-face {
+  box-shadow: 0 0 0 3px var(--on-focus);
+}
+.tv .choice-row-face-icon ng-icon {
+  width: 2rem;
+  height: 2rem;
+}
+.choice-row-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.choice-row-detail {
+  flex: none;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+.tv .choice-row {
+  min-height: 4.375rem; /* 70 */
+  padding: 0.5rem 1.375rem;
+  gap: 1.125rem;
+  font-size: 1.75rem; /* 28 */
+}
+.tv .choice-row-mark {
+  width: 1.875rem;
+}
+.tv .choice-row-mark ng-icon {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+.tv .choice-row-detail {
+  font-size: 1.375rem;
+}
+
+/* The actions panel's rows: a panel row with the action's icon where a choice
+   has its check, and a grey line under the name when it has one. */
+.action-row {
+  color: var(--foreground);
+  font-weight: 600;
+}
+.action-row-hint {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--muted-foreground);
+  white-space: normal;
+}
+.action-row-danger,
+.action-row-danger:hover {
+  color: var(--on-air);
+}
+.tv .action-row-hint {
+  font-size: 1.375rem;
+}
+.tv .choice-row:focus .action-row-hint {
+  color: var(--on-focus-dim);
+}
+
+/* The field: glass, no border, white with dark words while it is typed into.
+   `hlmInput` draws this (libs/ui/input); `hlmLabel` its name above it. */
+.field {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  height: 2.75rem; /* 44 */
+  padding-inline: 0.875rem;
+  border: 0;
+  border-radius: 0.625rem;
+  background: color-mix(in oklch, var(--foreground) 10%, transparent);
+  color: var(--foreground);
+  font-size: 1rem;
+  text-overflow: ellipsis;
+}
+.field::placeholder {
+  color: var(--dim-foreground);
+}
+.field:disabled {
+  opacity: 0.4;
+}
+.field:focus-visible {
+  outline-offset: 0;
+  border-radius: 0.625rem;
+}
+/* Off a television a field taking focus is where the caret is: a quiet edge,
+   not the near-white cursor ring a remote needs. */
+:root:not(.tv) .field:focus-visible {
+  outline-color: color-mix(in oklch, var(--foreground) 35%, transparent);
+}
+.field-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+.tv .field {
+  height: 4.75rem; /* 76 */
+  padding-inline: 1.5rem;
+  border-radius: 0.875rem;
+  font-size: 1.75rem; /* 28 */
+}
+.tv .field-label {
+  font-size: 1.375rem; /* 22 */
+}
+
+/* A field with its magnifier inside it (DS-TV-5), and room at the end for a
+   clear button when it has one. The icon is the wrapper's; it turns dark with
+   the field when the field goes white on a television. */
+/* In the components layer, unlike the pieces: it is only a box, and a
+   utility on it (`hidden md:flex`, the top bar's search on a phone) must
+   win. Unlayered, its display beat `hidden` and the computer's search field
+   came up in the phone's header (1 November). */
+@layer components {
+  .field-wrap {
+    position: relative;
+    display: flex;
+    min-width: 0;
+  }
+}
+.field-search {
+  padding-left: 2.5rem;
+}
+.field-clearable {
+  padding-right: 2.75rem;
+}
+.field-search-icon {
+  position: absolute;
+  top: 50%;
+  left: 0.875rem;
+  width: 1.125rem;
+  height: 1.125rem;
+  translate: 0 -50%;
+  color: var(--muted-foreground);
+  pointer-events: none;
+}
+.field-clear {
+  position: absolute;
+  top: 50%;
+  right: 0.375rem;
+  translate: 0 -50%;
+}
+.tv .field-search {
+  padding-left: 4.25rem;
+}
+.tv .field-clearable {
+  padding-right: 5rem;
+}
+.tv .field-search-icon {
+  left: 1.5rem;
+  width: 1.875rem;
+  height: 1.875rem;
+}
+.tv .field-wrap:has(.field:focus) .field-search-icon {
+  color: var(--on-focus-dim);
+}
+
+/* A small word on a thing: what kind it is. LIVE alone is red. */
+.tag {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  padding: 0.125rem 0.4375rem;
+  border-radius: 0.3125rem;
+  background: color-mix(in oklch, var(--foreground) 12%, transparent);
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.tv .tag {
+  padding: 0.1875rem 0.5625rem;
+  font-size: 1.125rem; /* 18 */
+}
+
+/* A page's name (DS-TV-2): large, the facts about it grey under it. */
+.page-title {
+  font-size: 1.875rem; /* 30 */
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  text-wrap: balance;
+}
+.tv .page-title {
+  font-size: 4rem; /* 64 */
+}
+.page-facts {
+  font-size: 1rem;
+  color: var(--muted-foreground);
+}
+.tv .page-facts {
+  font-size: 1.6875rem; /* 27 */
+}
+
+/* A menu of sections down the left (Account's, DS-TV-2): where you are in
+   white, the rest grey, focus the white fill. On a phone, where the menu is
+   the page, its items are rows. */
+.menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted-foreground);
+  font-size: 1rem;
+  font-weight: 500;
+  text-align: start;
+}
+.menu-item:hover {
+  background: var(--glass-quiet);
+  color: var(--foreground);
+}
+.menu-item[aria-current='page'] {
+  color: var(--foreground);
+  font-weight: 700;
+}
+.menu-item-label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.menu-item-sub {
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--muted-foreground);
+}
+.menu-item ng-icon {
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  color: var(--muted-foreground);
+}
+.menu-item:focus-visible {
+  border-radius: 999px;
+}
+@media (max-width: 47.99rem), (max-height: 379px) {
+  :root:not(.tv) .menu-item {
+    min-height: 3.5rem;
+    /* Square, or the hairline between rows curves up at both ends. */
+    border-radius: 0;
+    color: var(--foreground);
+    font-weight: 600;
+  }
+  :root:not(.tv) .menu-item + .menu-item {
+    border-top: 1px solid var(--hairline);
+  }
+}
+.tv .menu-item {
+  min-height: 4rem; /* 64 */
+  padding-inline: 1.5rem;
+  font-size: 1.875rem; /* 30 */
+}
+
+/* Tailwind's show-and-hide utilities, again, for the pieces. The pieces are
+   unlayered so their sizes win over a template's, and so their display beat
+   every layered utility too: `md:hidden` left the phone's back button and its
+   Guides entry on the desktop, and `hidden` could not hide a pill at all
+   (1 November). Restated here at the pieces' own level, in the same order
+   Tailwind keeps them. */
+:is(.pill, .chip, .menu-item, .setting-row, .choice-row, .field, .tag, .pin-key).hidden {
+  display: none;
+}
+@variant sm {
+  :is(.pill, .chip, .menu-item, .setting-row, .choice-row, .field, .tag, .pin-key).sm\:hidden { display: none; }
+  :is(.pill, .chip, .menu-item, .setting-row, .choice-row, .field, .tag, .pin-key).sm\:flex { display: flex; }
+  :is(.pill, .chip, .menu-item, .setting-row, .choice-row, .field, .tag, .pin-key).sm\:inline-flex { display: inline-flex; }
+}
+@variant md {
+  :is(.pill, .chip, .menu-item, .setting-row, .choice-row, .field, .tag, .pin-key).md\:hidden { display: none; }
+  :is(.pill, .chip, .menu-item, .setting-row, .choice-row, .field, .tag, .pin-key).md\:flex { display: flex; }
+  :is(.pill, .chip, .menu-item, .setting-row, .choice-row, .field, .tag, .pin-key).md\:inline-flex { display: inline-flex; }
+  :is(.pill, .chip, .menu-item, .setting-row, .choice-row, .field, .tag, .pin-key).md\:block { display: block; }
+}
+@variant lg {
+  :is(.pill, .chip, .menu-item, .setting-row, .choice-row, .field, .tag, .pin-key).lg\:hidden { display: none; }
+  :is(.pill, .chip, .menu-item, .setting-row, .choice-row, .field, .tag, .pin-key).lg\:flex { display: flex; }
+}
+
+/* Focus on a television: the white fill, on every piece but the card. The
+   general ring above is for everything not yet one of these. */
+.tv :is(.pill, .chip, .setting-row, .choice-row, .menu-item):focus {
+  outline: none;
+  box-shadow: none;
+  background: var(--foreground);
+  color: var(--on-focus);
+}
+.tv .chip:focus {
+  border-color: var(--foreground);
+}
+.tv :is(.setting-row, .choice-row):focus :is(.setting-row-sub, .setting-row-value, .setting-row-end, .choice-row-detail) {
+  color: var(--on-focus-dim);
+}
+.tv .setting-row:focus > .setting-row-end > .switch {
+  background: color-mix(in oklch, var(--on-focus) 24%, transparent);
+}
+.tv .setting-row:focus > .setting-row-end > .switch::after {
+  background: var(--on-focus);
+}
+.tv .setting-row[aria-checked='true']:focus > .setting-row-end > .switch {
+  background: var(--on-focus);
+}
+.tv .setting-row[aria-checked='true']:focus > .setting-row-end > .switch::after {
+  background: var(--foreground);
+}
+/* A field being typed into goes white too, its words dark. */
+.tv .field:focus {
+  outline: none;
+  box-shadow: none;
+  background: var(--foreground);
+  color: var(--on-focus);
+}
+.tv .field:focus::placeholder {
+  color: color-mix(in oklch, var(--on-focus) 55%, transparent);
+}
+/* A keyboard on the desktop keeps the ring, and the ring keeps the piece's
+   own shape rather than the general rule's small corner. */
+:is(.pill, .chip):focus-visible {
+  border-radius: 999px;
+}
+:is(.setting-row, .choice-row):focus-visible {
+  border-radius: 0.75rem;
+  /* Inside the row: a panel's list scrolls, and a scroller cuts off a ring
+     drawn outside its rows (the phone's sheet, 1 November). */
+  outline-offset: -2px;
+}
+.tv :is([data-choice-chips], [data-order-chips]) {
+  gap: 0.75rem;
+}
+
+/* The panel (DS-TV-4, ChoicePanelComponent): the screen dimmed, the setting's
+   name and its choices as rows. In the middle on the desktop; at the top left
+   on a television, where the player puts it; a sheet from the bottom on a
+   phone (DS-P-4). It opens and closes at once -- nothing animates on a remote
+   press. */
+.panel-screen,
+.dialog-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 1260;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: color-mix(in oklch, var(--background) 93%, transparent);
+}
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: min(28rem, 100%);
+  max-height: calc(100% - 2rem);
+}
+.panel-title {
+  font-size: 1.375rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.panel-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-height: 0;
+  overflow-y: auto;
+}
+.tv .panel-screen {
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 7.5rem 6rem; /* 120, 96: the player's panel */
+}
+.tv .panel {
+  width: 40rem; /* 640 */
+  max-height: calc(100vh - 12rem);
+  gap: 1.875rem;
+}
+.tv .panel-title {
+  font-size: 2.75rem; /* 44 */
+}
+
+/* The dialog (DS-TV-8, DialogShellComponent): the question in the middle of
+   the dimmed screen, the answers stacked under it. */
+.dialog-screen {
+  z-index: 1250;
+  background: color-mix(in oklch, var(--background) 94%, transparent);
+}
+.dialog-screen-above {
+  z-index: 1255;
+}
+.dialog {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  width: min(26rem, 100%);
+  max-height: calc(100% - 2rem);
+  overflow-y: auto;
+  text-align: center;
+}
+.dialog-wide {
+  width: min(34rem, 100%);
+}
+.dialog-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.dialog-message {
+  font-size: 1rem;
+  line-height: 1.45;
+  color: var(--muted-foreground);
+  text-wrap: pretty;
+}
+.dialog-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  width: 100%;
+  max-width: 20rem;
+  margin-top: 0.75rem;
+}
+.dialog-actions:empty {
+  display: none;
+}
+.dialog-actions > .pill {
+  width: 100%;
+}
+.tv .dialog {
+  width: 51.25rem; /* 820 */
+  gap: 1.625rem;
+}
+.tv .dialog-wide {
+  width: 70rem;
+}
+.tv .dialog-title {
+  font-size: 3rem; /* 48 */
+}
+.tv .dialog-message {
+  font-size: 1.6875rem; /* 27 */
+}
+.tv .dialog-actions {
+  max-width: 32.5rem; /* 520 */
+  gap: 0.875rem;
+  margin-top: 1.125rem;
+}
+
+/* On a phone, both come up from the bottom, within reach of a thumb. */
+@media (max-width: 47.99rem), (max-height: 379px) {
+  :root:not(.tv) :is(.panel-screen, .dialog-screen) {
+    align-items: flex-end;
+    padding: 0;
+  }
+  :root:not(.tv) :is(.panel, .dialog) {
+    width: 100%;
+    max-height: 85%;
+    border-radius: 1.375rem 1.375rem 0 0;
+    background: var(--card);
+    padding: 1.375rem 0.75rem calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  }
+  :root:not(.tv) .panel-title {
+    padding-inline: 0.625rem;
+  }
+  :root:not(.tv) .dialog {
+    align-items: stretch;
+    padding-inline: 1.25rem;
+    text-align: start;
+  }
+  :root:not(.tv) .dialog-actions {
+    max-width: none;
+  }
+}
+
+/* The PIN (DS-TV-9, PinPadComponent): round keys, dots for the digits given. */
+.pin-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-block: 0.25rem 1rem;
+}
+.pin-dot {
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 2px solid color-mix(in oklch, var(--foreground) 50%, transparent);
+  border-radius: 50%;
+}
+.pin-dot-on {
+  border-color: var(--foreground);
+  background: var(--foreground);
+}
+.pin-keys {
+  display: grid;
+  grid-template-columns: repeat(3, 4rem);
+  justify-content: center;
+  gap: 0.875rem;
+}
+.pin-key {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
+  border: 0;
+  border-radius: 50%;
+  background: var(--glass);
+  color: var(--foreground);
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.pin-key:hover {
+  background: var(--glass-strong);
+}
+.pin-key ng-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+.pin-key:focus-visible {
+  border-radius: 50%;
+}
+.tv .pin-dots {
+  gap: 1.25rem;
+}
+.tv .pin-dot {
+  width: 1.375rem;
+  height: 1.375rem;
+  border-width: 3px;
+}
+.tv .pin-keys {
+  grid-template-columns: repeat(3, 6.5rem);
+  gap: 1.375rem;
+}
+.tv .pin-key {
+  width: 6.5rem; /* 104 */
+  height: 6.5rem;
+  font-size: 2.5rem; /* 40 */
+}
+.tv .pin-key ng-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+.tv .pin-key:focus {
+  outline: none;
+  box-shadow: none;
+  background: var(--foreground);
+  color: var(--on-focus);
+}
+
+/* The backdrop to the edges (NX-TV-3, NX-TV-5), fading into the page from the
+   left and from below so the words sit on the page's own ground. A phone
+   upright has it across the top, fading only downwards (NX-P-2). Without
+   artwork of its own the poster stands in, blurred. */
+.nx-hero {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.nx-hero > img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+.nx-hero > img[data-nx-hero-blur] {
+  filter: blur(2.5rem) saturate(1.2);
+  transform: scale(1.15);
+  opacity: 0.6;
+}
+.nx-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      90deg,
+      var(--background) 0%,
+      color-mix(in oklch, var(--background) 88%, transparent) 26%,
+      color-mix(in oklch, var(--background) 25%, transparent) 56%,
+      transparent 80%
+    ),
+    linear-gradient(0deg, var(--background) 0%, color-mix(in oklch, var(--background) 60%, transparent) 22%, transparent 48%);
+}
+:root:not(.tv) .nx-hero {
+  max-height: 100vh;
+}
+/* Room above the words for the picture, on a phone upright only. */
+[data-nx-hero-space] {
+  display: none;
+}
+@media (max-width: 639px) {
+  :root:not(.tv) .nx-hero::after {
+    background: linear-gradient(0deg, var(--background) 0%, color-mix(in oklch, var(--background) 40%, transparent) 30%, transparent 60%);
+  }
+  :root:not(.tv) [data-nx-hero-space] {
+    display: block;
+    height: calc(56.25vw - 6rem);
+  }
+}
+
+/* A title page's name, large (110 on a television). */
+.nx-title {
+  font-size: 2.25rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+  text-wrap: balance;
+}
+@media (min-width: 640px) {
+  :root:not(.tv) .nx-title {
+    font-size: 3.75rem;
+  }
+}
+.tv .nx-title {
+  font-size: 6.875rem; /* 110 */
+  line-height: 1;
+}
+
+/* One line of details: year, length, genres, the age rating in a box, TMDB's score. */
+.nx-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 0.75rem;
+  row-gap: 0.25rem;
+  color: color-mix(in oklch, var(--foreground) 82%, transparent);
+}
+.nx-age {
+  padding: 0 0.5rem;
+  border: 2px solid var(--dim-foreground);
+  border-radius: 0.375rem;
+  font-weight: 700;
+}
+.nx-score {
+  font-weight: 700;
+  color: var(--foreground);
+}
+.tv .nx-meta {
+  font-size: 1.625rem; /* 26 */
+  column-gap: 0.875rem;
+}
+
+/* A row's title: a plain heading in the page's own colour, not a small
+   coloured label (NX-TV-2, NX-TV-4). */
+.nx-row-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--foreground);
+  text-transform: none;
+  letter-spacing: normal;
+}
+.tv .nx-row-title {
+  font-size: 1.875rem; /* 30 */
+}
+
+/* The top of a title page fills the first screen on a television, so the
+   first row peeks in at the foot (NX-TV-3, NX-TV-5). */
+.tv [data-nx-top] {
+  min-height: 50rem; /* 800 */
+  padding-top: 4rem;
+  gap: 1.5rem;
+}
+
+/* A show's episodes (NX-TV-6, NX-P-3). On a television the seasons stand down
+   the left, one under another, and the episodes are a list beside them, so
+   fifteen seasons fit where a row of season buttons ran off the screen;
+   elsewhere the seasons are a row of tabs over the list. */
+[data-show-season-list] {
+  display: none;
+}
+.tv [data-show-season-list] {
+  display: flex;
+  width: 18.75rem; /* 300 */
+}
+.tv [data-show-season-tabs] button {
+  display: none;
+}
+.tv [data-show-season-list] button {
+  font-size: 1.75rem; /* 28 */
+  padding: 0.875rem 1.375rem;
+}
+[data-show-season-list] button[aria-current='true'] {
+  color: var(--foreground);
+  font-weight: 800;
+  background: color-mix(in oklch, var(--foreground) 8%, transparent);
+  box-shadow: inset 0.3125rem 0 0 var(--series);
+}
+.tv [data-show-episode] {
+  gap: 2.125rem;
+  padding: 1.125rem;
+  border-radius: 1rem;
+}
+.tv [data-show-episode]:focus {
+  outline: none;
+  box-shadow: none;
+  background: color-mix(in oklch, var(--foreground) 10%, transparent);
+}
+.tv [data-show-episode-thumb] {
+  width: 20rem; /* 320 */
+}
+.tv [data-show-episode]:focus [data-show-episode-thumb]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 0.125rem solid color-mix(in oklch, var(--ring) 70%, transparent);
+  border-radius: inherit;
+}
+.tv [data-show-episode] .font-semibold {
+  font-size: 1.875rem; /* 30 */
+}
+.tv [data-show-episode-caption] {
+  font-size: 1.375rem; /* 22 */
+}
+.tv [data-show-episode] [data-episode-description] {
+  font-size: 1.375rem;
+  line-height: 1.45;
+}
+.tv [data-show-episode-number] {
+  font-size: 3rem;
+}
+
+/* For You's billboard (NX-TV-1, NX-P-1): its picture runs to the edges behind
+   the top of the page, the first row peeking in under it. */
+[data-fy-hero] {
+  height: min(56.25vw, 85vh);
+}
+[data-fy-hero] > img {
+  height: 100%;
+  aspect-ratio: auto;
+}
+.tv [data-fy-hero] {
+  height: 78vh;
+}
+.tv [data-fy-billboard] {
+  min-height: 46rem; /* 736: the first row starts at the foot of the picture */
+  justify-content: center;
+  gap: 1.375rem;
+}
+.tv [data-fy-billboard-kicker] {
+  font-size: 1.375rem; /* 22 */
+}
+@media (max-width: 639px) {
+  :root:not(.tv) [data-fy-billboard] {
+    padding-top: calc(min(56.25vw, 85vh) - 9rem);
+  }
+}
+
+/* Who's watching (NX-TV-10): the one with focus grows, with the quiet ring;
+   the others dim while somebody has it. */
+[data-profile-face] {
+  transition: transform 120ms ease-out;
+}
+[data-profile]:is(:focus, :focus-visible) [data-profile-face] {
+  transform: scale(1.1);
+  outline: 0.25rem solid color-mix(in oklch, var(--ring) 80%, transparent);
+  outline-offset: 0.375rem;
+}
+[data-profile]:is(:focus, :focus-visible) {
+  outline: none;
+  box-shadow: none;
+}
+[data-profile-row]:focus-within [data-profile]:not(:focus) {
+  opacity: 0.55;
+}
+.tv [data-profile] {
+  width: 15rem;
+}
+.tv [data-profile-face] {
+  width: 13.75rem; /* 220 */
+  height: 13.75rem;
+  font-size: 6rem;
+}
+.tv [data-profile-face] {
+  transition: none;
+}
+
+/* Room for the whole row of pills on one line (NX-TV-3). */
+.tv [data-nx-top] {
+  max-width: 87.5rem; /* 1400 */
+}
+/* Play is a solid triangle, as in the player. */
+.pill ng-icon[name='lucidePlay'] svg {
+  fill: currentColor;
+}
+/* No pointer rail on a television, so no room kept for it. */
+.tv [data-show-episode] .md\:pr-60 {
+  padding-right: 0;
+}
+/* A blurred poster's soft edge stays off the screen. */
+.nx-hero > img[data-nx-hero-blur] {
+  transform: scale(1.3);
+}
+
+/* A category row's last card, "All 1 240", the size of its posters (NX-TV-7). */
+.tv [data-front-all] {
+  width: 11.25rem; /* 180 */
+  height: 16.875rem; /* 270 */
+  font-size: 1.5rem;
+}
+.tv [data-front-all]:focus {
+  outline: 0.125rem solid color-mix(in oklch, var(--ring) 70%, transparent);
+  outline-offset: -0.125rem;
+  box-shadow: none;
+  background: color-mix(in oklch, var(--foreground) 22%, transparent);
+}
+
+/* The spotlight (NX-TV-2, NX-TV-7): while focus is in the rows, the top of
+   the screen is the focused title, held there as the rows scroll under it.
+   It takes no room of its own, and the page keeps the focused row clear of
+   it with scroll-padding, which the remote's scrolling honours. */
+.nx-spotlight {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  height: 50vh;
+  margin-bottom: -50vh;
+  padding: 4.5rem 3rem 0 1.5rem;
+  overflow: hidden;
+  /* Its foot fades, so a row passing under it fades out rather than being cut. */
+  background: linear-gradient(180deg, var(--background) 86%, transparent);
+}
+.nx-spotlight .nx-hero {
+  bottom: 14%;
+}
+.nx-spotlight .nx-hero > img {
+  height: 100%;
+  aspect-ratio: auto;
+}
+.tv [data-spot-on]:not([data-tv-pane]) {
+  scroll-padding-top: 58vh;
+}
+.tv [data-spotlight-title] {
+  font-size: 5rem; /* 80 */
+}
+
+/* Other copies on the page itself on a television too (NX-TV-4), each a row
+   that plays it; More still opens the copies page. */
+.tv [data-film-copies-inline] {
+  display: flex;
+}
+
+/* Lined up with each page's own left edge. */
+.tv [data-for-you] .nx-spotlight {
+  padding-left: 3rem; /* 48: the billboard at 136 */
+}
+
+/* On a phone upright the main button is the width of the screen, the rest
+   under it (NX-P-2, NX-P-3). */
+@media (max-width: 639px) {
+  :root:not(.tv) :is([data-film-actions], [data-show-actions]) .pill-primary {
+    flex: 1 1 100%;
+  }
+}
+
+/* A library's front page keeps the spotlight's room at its top on a
+   television, so its first row sits below the band rather than under it
+   (a user's TV, 31 October), and focus moving back up keeps rows clear. */
+[data-nx-spot-room] {
+  display: none;
+}
+.tv [data-nx-spot-room] {
+  display: block;
+  height: 50vh;
+}
+.tv [data-front-spot] {
+  scroll-padding-top: 58vh;
+}
+
+/* A title in the spotlight or the billboard keeps to two lines, so a long one
+   never runs into the rows under it. */
+[data-spotlight-title],
+[data-fy-billboard-title] {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Arrange's rows (round 14): quiet glass, the stronger glass for the one
+   whose place is being typed. */
+[data-tv-arrange-row] {
+  background: var(--glass-quiet);
+}
+[data-tv-arrange-row]:hover,
+[data-tv-arrange-row].arrange-row-editing {
+  background: var(--glass);
+}
+
+/* Profile pictures (ProfilePictureDialogComponent): round tiles that are a
+   choice, so they behave like chips -- a thin edge at rest, a white edge and a
+   check when chosen -- and on a television the white of focus is a ring. */
+.picture-choices {
+  align-self: stretch;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+  gap: 1rem 0.75rem;
+  padding-block: 0.5rem;
+}
+.picture-choice {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem;
+  border: 0;
+  border-radius: 1rem;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+.picture-face {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  overflow: hidden;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--foreground) 26%, transparent);
+}
+.picture-face img {
+  width: 78%;
+  height: 78%;
+  object-fit: contain;
+}
+.picture-face-own {
+  background: var(--glass);
+}
+.picture-face-own img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.picture-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+.picture-choice:hover {
+  color: var(--foreground);
+}
+.picture-choice[aria-checked='true'] {
+  color: var(--foreground);
+}
+.picture-choice[aria-checked='true'] .picture-face {
+  box-shadow: 0 0 0 3px var(--foreground);
+}
+/* The check, on the circle's edge where a badge sits. */
+.picture-choice[aria-checked='true']::after {
+  content: '';
+  position: absolute;
+  top: 0.125rem;
+  right: calc(50% - 2.5rem);
+  width: 1.375rem;
+  height: 1.375rem;
+  border-radius: 999px;
+  background: var(--foreground)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E")
+    center / 70% no-repeat;
+}
+.tv .picture-choices {
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: 1.75rem 1.25rem;
+}
+.tv .picture-face {
+  width: 7.5rem;
+  height: 7.5rem;
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--foreground) 26%, transparent);
+}
+.tv .picture-label {
+  font-size: 1.375rem;
+}
+.tv .picture-choice[aria-checked='true']::after {
+  right: calc(50% - 4rem);
+  width: 2rem;
+  height: 2rem;
+}
+.tv .picture-choice:focus {
+  outline: none;
+  color: var(--foreground);
+}
+.tv .picture-choice:focus .picture-face {
+  box-shadow: 0 0 0 6px var(--foreground);
+  transform: scale(1.06);
+}

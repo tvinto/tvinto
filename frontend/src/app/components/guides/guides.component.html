@@ -1,0 +1,148 @@
+<!-- TV-11, round 14 (DS-TV-7): the download offer at the top, because it is
+     the one thing here that changes what the listing shows; the sources as a
+     list of rows with their actions as pills; adding one at the foot. -->
+<div class="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-8 sm:px-6">
+  <div class="flex flex-col gap-3">
+    <button hlmBtn variant="quiet" size="sm" type="button" class="-ml-3 self-start" data-screen-back (click)="goBack()">
+      <ng-icon name="lucideArrowLeft" />
+      {{ 'common.back' | t }}
+    </button>
+    <div class="flex flex-col gap-1">
+      <h1 class="page-title">{{ 'guides.title' | t }}</h1>
+      @if (rowsLoaded()) {
+        <p class="page-facts">{{ 'guides.onDevice' | t: { count: loadedHereCount() } }}</p>
+      }
+    </div>
+  </div>
+
+  @if (!canUseProviderGuide) {
+    <p class="text-sm text-muted-foreground">{{ 'guides.browserCannot' | t }}</p>
+  } @else {
+    <!--
+      Offered, not fetched. A guide is tens of megabytes, so a device that has
+      just signed in is told what its account uses and left to decide -- with
+      "Not now" beside it, so declining is as easy as accepting.
+    -->
+    @if (sources.missingHere().length && !offerDismissed()) {
+      <app-setting-group [heading]="'guides.missingTitle' | t">
+        @for (missed of missing(); track missed.source.id) {
+          @let source = missed.source;
+          <app-setting-row [label]="missed.label" [sub]="'guides.missingBody' | t: { label: missed.label }" kind="static">
+            <span rowEnd class="flex flex-wrap gap-2">
+              <button hlmBtn variant="primary" size="sm" type="button" [attr.aria-disabled]="busy() ? true : null" (click)="load(source)">
+                @if (busy() === source.id) {
+                  <ng-icon name="lucideLoaderCircle" class="animate-spin" />
+                  {{ 'guides.loading' | t }}
+                } @else {
+                  <ng-icon name="lucideDownload" />
+                  {{ 'guides.loadIt' | t }}
+                }
+              </button>
+              <button hlmBtn variant="quiet" size="sm" type="button" (click)="offerDismissed.set(true)">{{ 'guides.notNow' | t }}</button>
+            </span>
+          </app-setting-row>
+        }
+      </app-setting-group>
+    }
+
+    <app-setting-group [heading]="'guides.sources' | t">
+      @if (!rowsLoaded()) {
+        <div class="setting-block flex flex-col gap-2">
+          <p class="text-sm text-muted-foreground" data-guides-reading>{{ 'guides.reading' | t }}</p>
+          <app-slow-wait [waiting]="!rowsLoaded()" what="slow.guides" />
+        </div>
+      } @else if (rows().length === 0) {
+        <p class="setting-block text-sm text-muted-foreground">{{ 'guides.none' | t }}</p>
+      }
+
+      <!-- The address is never shown: your provider's carries the
+           subscription's username and password in it. -->
+      @for (row of shownRows(); track row.source.id) {
+        <app-setting-row [label]="row.label" [sub]="rowLine(row)" kind="static">
+          <span rowEnd class="flex flex-wrap items-center gap-2">
+            <button hlmBtn size="sm" type="button" [attr.aria-disabled]="busy() ? true : null" (click)="load(row.source)" [title]="'guides.loadAgain' | t">
+              @if (busy() === row.source.id) {
+                <ng-icon name="lucideLoaderCircle" class="animate-spin" />
+                @if (guide.loading(); as running) {
+                  {{ running.programmes | number }}
+                }
+              } @else {
+                <ng-icon name="lucideRefreshCw" />
+                {{ 'guides.refresh' | t }}
+              }
+            </button>
+            @if (canChangeSetup()) {
+              <button hlmBtn size="sm" type="button" [attr.aria-disabled]="busy() ? true : null" (click)="toggle(row.source)">
+                {{ (row.source.enabled ? 'guides.turnOff' : 'guides.turnOn') | t }}
+              </button>
+              <button
+                hlmBtn
+                variant="destructive"
+                size="icon-sm"
+                type="button"
+                [attr.aria-disabled]="busy() ? true : null"
+                (click)="remove(row.source)"
+                [title]="'guides.removeHint' | t"
+                [attr.aria-label]="'guides.removeTitle' | t: { label: row.label }"
+              >
+                <ng-icon name="lucideTrash2" />
+              </button>
+            }
+          </span>
+        </app-setting-row>
+      }
+
+      @if (sources.mappedCount() > 0) {
+        <p class="setting-block text-sm text-muted-foreground">{{ 'guides.mapped' | t: { count: sources.mappedCount() } }}</p>
+      }
+    </app-setting-group>
+
+    <!-- At the foot. Not for a kid, whose guides are set from above. -->
+    @if (canChangeSetup()) {
+      <app-setting-group [heading]="'guides.addTitle' | t">
+        <form class="setting-block flex flex-col gap-4" [formGroup]="form" (ngSubmit)="add()">
+          <div class="flex flex-wrap items-end gap-3">
+            <label class="flex min-w-[12rem] flex-[2] flex-col gap-2">
+              <span hlmLabel>{{ 'guides.address' | t }}</span>
+              <input hlmInput id="guide-url" formControlName="url" placeholder="https://example.com/epg.xml.gz" autocomplete="off" />
+            </label>
+            <label class="flex min-w-[10rem] flex-1 flex-col gap-2">
+              <span hlmLabel>{{ 'guides.name' | t }}</span>
+              <input hlmInput id="guide-label" formControlName="label" [placeholder]="'guides.namePlaceholder' | t" autocomplete="off" />
+            </label>
+            <button hlmBtn type="submit" [disabled]="form.invalid" [attr.aria-disabled]="busy() ? true : null">
+              <ng-icon name="lucidePlus" />
+              {{ 'guides.add' | t }}
+            </button>
+          </div>
+
+          <!-- Worked out from the stored subscription rather than typed. On a
+               television, entering a URL with a password in it is close to
+               impossible. -->
+          <div class="flex flex-wrap items-center gap-3">
+            @if (providerGuides().length > 1) {
+              <!-- A pill for each provider's own guide not in the list yet,
+                   when there are several providers. -->
+              @for (offer of offered(); track offer.guide.id) {
+                @let guide = offer.guide;
+                <button hlmBtn size="sm" type="button" [attr.aria-disabled]="busy() ? true : null" (click)="addGuideOf(guide)" data-provider-guide>
+                  <ng-icon name="lucideSatelliteDish" />
+                  {{ 'guides.useProviderNamed' | t: { name: offer.name } }}
+                </button>
+              }
+            } @else {
+              <button hlmBtn size="sm" type="button" [attr.aria-disabled]="busy() ? true : null" (click)="addProviderGuide()">
+                <ng-icon name="lucideSatelliteDish" />
+                {{ 'guides.useProvider' | t }}
+              </button>
+            }
+            <button hlmBtn size="sm" type="button" (click)="useEpgShare()" data-epg-share>
+              <ng-icon name="lucidePlus" />
+              {{ 'guides.epgShare' | t }}
+            </button>
+          </div>
+        </form>
+      </app-setting-group>
+    }
+  }
+</div>

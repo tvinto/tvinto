@@ -1,0 +1,202 @@
+<!-- Two columns, as TV-4 draws it: the left says what is on now and what
+     follows, the right is the day's listing -- a single column of rows, so Up
+     and Down are the only gestures it needs. -->
+<div class="grid min-h-0 gap-4 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]" data-tv-epg>
+  <div class="flex min-w-0 flex-col gap-3">
+    @if (store.loading()) {
+      <div class="flex items-center justify-center gap-2 p-6 text-muted-foreground">
+        <ng-icon name="lucideLoaderCircle" size="18" class="animate-spin" />
+        <span class="text-sm">{{ 'epg.loading' | t }}</span>
+      </div>
+    }
+
+    @if (store.error() && !store.loading()) {
+      <div class="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+        {{ store.error() }}
+      </div>
+    }
+
+    <!-- The programme focused in the listing, with its description; the one
+         on air, with the way to watch it, when that is where focus is. -->
+    @if (detailView(); as shown) {
+      @if (!store.loading()) {
+        <div class="rounded-lg bg-card-2 p-4" data-epg-detail>
+          <p class="flex items-center gap-2 text-sm">
+            <span class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">{{ shown.when }}</span>
+            <span class="text-muted-foreground tabular-nums">{{ shown.timeRange }}</span>
+          </p>
+          <h3 class="mt-2 text-2xl leading-tight font-bold">{{ shown.program.title }}</h3>
+          <p class="mt-1 text-sm text-dim-foreground">{{ 'common.min' | t: { count: shown.minutes } }}</p>
+          @if (shown.program.description) {
+            <p class="mt-2 line-clamp-6 text-sm text-muted-foreground">{{ shown.program.description }}</p>
+          } @else {
+            <p class="mt-2 text-sm text-dim-foreground">{{ 'epg.noDescription' | t }}</p>
+          }
+          <!-- For a mouse or a finger: on a remote, OK on the row does this. -->
+          @if (shown.replay) {
+            <button hlmBtn variant="primary" type="button" class="mt-3 w-full" tabindex="-1" (click)="playFromStart(shown.program)">
+              <ng-icon name="lucideHistory" size="16" />
+              {{ 'catchUp.watchFromStart' | t }}
+            </button>
+          } @else if (shown.future) {
+            <!-- For a mouse or a finger; on a remote, OK on the row does it. -->
+            <button
+              hlmBtn
+              type="button"
+              class="mt-3 w-full"
+              tabindex="-1"
+              [attr.aria-pressed]="shown.reminded"
+              data-remind-button
+              data-desktop-only
+              (click)="toggleReminder(shown.program)"
+            >
+              <ng-icon name="lucideBell" size="16" />
+              {{ (shown.reminded ? 'remind.remove' : 'remind.set') | t }}
+            </button>
+            @if (bookingOf(shown.program); as booked) {
+              <button hlmBtn type="button" class="mt-2 w-full" data-record-button aria-pressed="true" (click)="cancelBooking(booked.id)">
+                <ng-icon name="lucideCircleDot" size="16" />
+                {{ booked.device === recordings.deviceKey ? ('recordings.cancelBooking' | t) : ('recordings.cancelOn' | t: { device: recordings.deviceName(booked.device) }) }}
+              </button>
+              <!-- Booked once: the same title, every time it airs here, on the same device. -->
+              @if (ruleOf(shown.program); as rule) {
+                <button hlmBtn type="button" class="mt-2 w-full" data-record-every aria-pressed="true" (click)="stopEvery(rule.id)">
+                  <ng-icon name="lucideRepeat" size="16" />
+                  {{ 'recordings.stopEvery' | t }}
+                </button>
+              } @else {
+                <button hlmBtn type="button" class="mt-2 w-full" data-record-every aria-pressed="false" (click)="recordEvery(shown.program, booked.device)">
+                  <ng-icon name="lucideRepeat" size="16" />
+                  {{ 'recordings.every' | t }}
+                </button>
+              }
+            } @else {
+              <!-- One button per device that records: this one, and the others the account knows. -->
+              @for (device of recordings.bookable(); track device.key) {
+                <button hlmBtn type="button" class="mt-2 w-full" data-record-button aria-pressed="false" (click)="book(shown.program, device.key)">
+                  <ng-icon name="lucideCircleDot" size="16" />
+                  {{ recordings.bookable().length === 1 && device.key === recordings.deviceKey ? ('recordings.record' | t) : ('recordings.recordOn' | t: { device: recordings.deviceName(device.key) }) }}
+                </button>
+              }
+            }
+          }
+        </div>
+      }
+    }
+
+    @if (currentView(); as current) {
+      @if (!store.loading()) {
+        <div class="rounded-lg bg-card-2 p-4">
+          <p class="flex items-center gap-2 text-sm">
+            <span class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">{{ 'epg.onAir' | t }}</span>
+            <span class="text-muted-foreground tabular-nums">{{ current.timeRange }}</span>
+          </p>
+          <h3 class="mt-2 text-2xl leading-tight font-bold">{{ current.program.title }}</h3>
+          @if (current.program.description && !compact()) {
+            <p class="mt-2 line-clamp-3 text-sm text-muted-foreground">{{ current.program.description }}</p>
+          }
+          <div class="mt-3 h-1 overflow-hidden rounded-full bg-background-2">
+            <div class="h-full rounded-full bg-on-air transition-[width]" [style.width.%]="currentProgress()"></div>
+          </div>
+          <p class="mt-1 flex justify-between text-xs text-muted-foreground tabular-nums">
+            <span>{{ 'epg.elapsed' | t: { count: current.elapsed } }}</span>
+            <span>{{ 'epg.left' | t: { count: current.left } }}</span>
+          </p>
+          @if (canWatch() || current.startOver) {
+            <div class="mt-3 flex gap-2">
+              @if (canWatch()) {
+                <button hlmBtn variant="primary" type="button" class="flex-1" (click)="watch.emit()">{{ 'epg.watchNow' | t }}</button>
+              }
+              <!-- The channel keeps its past, so the programme on air can be
+                   watched from its beginning. -->
+              @if (current.startOver) {
+                <button hlmBtn variant="secondary" type="button" class="flex-1" (click)="playFromStart(current.program)">
+                  <ng-icon name="lucideRotateCcw" size="16" />
+                  {{ 'catchUp.startOver' | t }}
+                </button>
+              }
+            </div>
+          }
+        </div>
+      }
+    }
+
+    @if (nextView(); as next) {
+      @if (!store.loading()) {
+        <div class="rounded-lg border border-border-2 p-4">
+          <p class="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            {{ 'epg.upNext' | t: { time: next.start } }}
+          </p>
+          <h4 class="mt-1 font-semibold">{{ next.program.title }}</h4>
+          <p class="mt-0.5 truncate text-sm text-muted-foreground">
+            {{ 'common.min' | t: { count: next.minutes } }}@if (next.program.description && !compact()) { · {{ next.program.description }} }
+          </p>
+        </div>
+      }
+    }
+
+    @if (!store.loading() && !store.error() && store.programs().length === 0) {
+      <div class="flex flex-col items-center gap-2 p-8 text-muted-foreground">
+        <ng-icon name="lucideCalendarOff" size="24" />
+        <p class="text-sm">{{ 'epg.noGuide' | t }}</p>
+      </div>
+    }
+  </div>
+
+  @if (!compact() && store.programs().length > 0 && !store.loading()) {
+    <div class="flex min-h-0 min-w-0 flex-col gap-2">
+      <div class="flex items-center gap-2">
+        <h3 class="min-w-0 flex-1 truncate font-semibold">{{ dayLabel() }}</h3>
+        @if (previousDay(); as day) {
+          <button hlmBtn variant="secondary" size="sm" type="button" (click)="selectedDay.set(day)">
+            ◂ {{ previousDayLabel() }}
+          </button>
+        }
+        @if (nextDay(); as day) {
+          <button hlmBtn variant="secondary" size="sm" type="button" (click)="selectedDay.set(day)">
+            {{ nextDayLabel() }} ▸
+          </button>
+        }
+      </div>
+
+      <!-- Rows are buttons so that a remote can walk them; the one on air is
+           where focus opens, and pressing it watches. Finished programmes stay,
+           at reduced strength, so the list never jumps under the cursor. -->
+      <div class="flex min-h-0 flex-col gap-1 overflow-y-auto" data-tv-ring-room>
+        @for (row of rows(); track row.program.id) {
+          <div [attr.data-focus-first]="row.current ? '' : null">
+            <button
+              type="button"
+              class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm"
+              [class]="row.current ? 'border-l-2 border-l-on-air bg-card-3 font-semibold' : row.dimmed ? 'bg-card-2 opacity-60' : 'bg-card-2'"
+              (click)="pressed(row.program)"
+              (focus)="focused.set(row.current ? null : row.program)"
+              (mouseenter)="focused.set(row.current ? null : row.program)"
+            >
+              <span class="w-[3.5em] shrink-0 font-mono text-dim-foreground tabular-nums">
+                {{ row.clock }}
+              </span>
+              <span class="min-w-0 flex-1 truncate" [title]="row.program.title">{{ row.program.title }}</span>
+              @if (row.current) {
+                <span class="shrink-0 text-xs font-semibold text-on-air">{{ 'epg.onAirShort' | t }}</span>
+              } @else if (row.replay) {
+                <!-- Finished, and still in the channel's catch-up: OK plays it. -->
+                <span class="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                  <ng-icon name="lucideHistory" size="12" />
+                  {{ 'catchUp.watch' | t }}
+                </span>
+              } @else if (row.reminded) {
+                <span class="flex shrink-0 items-center gap-1 text-xs font-semibold text-muted-foreground" data-reminded>
+                  <ng-icon name="lucideBell" size="12" />
+                  {{ 'remind.setShort' | t }}
+                </span>
+              } @else if (!row.past) {
+                <span class="shrink-0 text-xs text-muted-foreground">{{ 'common.min' | t: { count: row.minutes } }}</span>
+              }
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

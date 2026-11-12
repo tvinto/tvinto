@@ -1,0 +1,339 @@
+<!-- A show (NX-TV-5, NX-TV-6, NX-P-3): the backdrop to the edges with the show
+     over it and one row of pills, the first of which names the exact episode
+     it plays; then its episodes -- on a television the seasons down the left
+     and the episodes as a list beside them, so fifteen seasons fit. -->
+<div class="relative" data-show-page>
+<div class="nx-hero" aria-hidden="true">
+  @if (tmdbShow()?.backdrop; as backdrop) {
+    <img [src]="backdrop" alt="" />
+  } @else if (facts().cover && !coverFailed()) {
+    <img [src]="facts().cover" alt="" data-nx-hero-blur (error)="coverFailed.set(true)" />
+  }
+</div>
+<div class="relative mx-auto flex max-w-6xl flex-col gap-5 p-5" data-tv-wide>
+  <header class="flex items-center gap-3">
+    <!-- Not on a television, where Back on the remote is the way out and a
+         button saying so is one more stop for the D-pad (26
+         September). -->
+    <button hlmBtn variant="secondary" size="sm" type="button" data-screen-back (click)="goBack()">
+      <ng-icon name="lucideArrowLeft" size="16" />
+      {{ 'common.back' | t }}
+    </button>
+    <p class="flex min-w-0 items-center gap-2 font-semibold">
+      <span class="h-2 w-2 shrink-0 rounded-full bg-primary-bright"></span>
+      <span class="truncate">{{ 'nav.shows' | t }}</span>
+    </p>
+  </header>
+
+  @if (store.error()) {
+    <div class="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+      {{ store.error() }}
+    </div>
+  }
+
+  @if (store.loading()) {
+    <div class="flex items-center justify-center gap-2 p-12 text-muted-foreground">
+      <ng-icon name="lucideLoaderCircle" size="20" class="animate-spin" />
+      <p class="text-sm">{{ 'show.loading' | t }}</p>
+    </div>
+    <app-slow-wait [waiting]="store.loading()" what="slow.episodes" [retryable]="true" (retry)="reloadShow()" />
+  }
+
+  @if (!store.loading() && store.seriesInfo()) {
+    <div data-nx-hero-space></div>
+    <div class="flex max-w-[60rem] min-w-0 flex-col gap-4" data-nx-top data-tv-show>
+      <h1 class="nx-title" [title]="seriesName()">{{ displayName() }}</h1>
+      <div class="nx-meta text-base" data-show-meta>
+        @if (metaLine()) {
+          <span>{{ metaLine() }}</span>
+        }
+        @if (tmdbShow(); as show) {
+          @if (show.rating) {
+            <span class="nx-age">{{ show.rating }}+</span>
+            @if (ages.lockedLabel('tv', show.tmdbId)) {
+              <span class="font-semibold" data-show-locked>{{ 'lock.age.locked' | t }}</span>
+            }
+          }
+          @if (show.vote !== null) {
+            <span class="nx-score" data-show-scores>{{ 'film.tmdbScore' | t: { score: show.vote } }}</span>
+          }
+        } @else if (facts().rating) {
+          <span class="nx-score" [attr.aria-label]="'show.ratingOf' | t: { rating: facts().rating }">{{ 'show.rating' | t }} {{ facts().rating }} / 5</span>
+        }
+      </div>
+
+      <!-- The next episode, stated in full (TV-29), as a tag the width of its words. -->
+      @if (newsLine()) {
+        <p class="w-fit max-w-full truncate rounded-sm border-l-4 border-series bg-card-2 px-2 py-0.5 text-xs font-semibold" [title]="newsLine()" data-show-news>{{ newsLine() }}</p>
+      }
+
+      @if (nextView(); as shown) {
+        @if (shown.next.resuming) {
+          <div class="flex max-w-full min-w-0 items-center gap-4" data-show-progress>
+            <span class="block h-1.5 w-32 shrink-0 overflow-hidden rounded-full bg-foreground/25 sm:w-48">
+              <span class="block h-full bg-primary-bright" [style.width.%]="shown.percent"></span>
+            </span>
+            <span class="min-w-0 truncate text-sm text-muted-foreground">{{ shown.label }} · {{ shown.title }} · {{ shown.remaining }}</span>
+          </div>
+        }
+      }
+
+      @if (plot(); as described) {
+        <div class="flex flex-col gap-1">
+          <p class="line-clamp-3 max-w-[48rem] text-base leading-relaxed" data-show-plot appCutOff #plotCut="cutOff">{{ described.text }}</p>
+          @if (plotCut.isCut()) {
+            <button type="button" class="self-start text-sm font-semibold text-foreground underline-offset-2 hover:underline" data-read-more (click)="readShow(described)">
+              {{ 'describe.more' | t }}
+            </button>
+          }
+          @if (described.source === 'tmdb') {
+            <p class="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">{{ 'describe.fromTmdb' | t }}</p>
+          }
+        </div>
+      }
+
+      <!-- One row of pills (NX-TV-5): the episode it plays, Episodes, Favourites,
+           Subtitles for that episode, and More -- the copy, the trailer. -->
+      <div class="flex flex-wrap items-center gap-3 pt-2" data-show-actions>
+        @if (nextView()) {
+          <button type="button" class="pill pill-primary" data-tv-show-start data-focus-key="show-start" (click)="continueWatching()">
+            <ng-icon name="lucidePlay" />
+            <span class="truncate">{{ continueShort() }}</span>
+          </button>
+        }
+        @if (store.currentSeasonEpisodes().length > 0) {
+          <button type="button" class="pill" data-focus-key="show-episodes" (click)="toEpisodes()">
+            <ng-icon name="lucideListVideo" />{{ 'show.episodesHeading' | t }}
+          </button>
+        }
+        <button type="button" class="pill" data-focus-key="show-favourite" [attr.aria-pressed]="isFavourite()" (click)="toggleFavourite()">
+          <ng-icon name="lucideStar" />{{ 'film.favourites' | t }}
+        </button>
+        @if (nextUp(); as next) {
+          <button type="button" class="pill" data-focus-key="show-subtitles" (click)="addSubtitles(next.episode)">
+            <ng-icon name="lucideCaptions" />{{ 'film.subtitles' | t }}
+          </button>
+        }
+        @if (moreActions().length) {
+          <button
+            type="button"
+            class="pill"
+            data-pill-round
+            data-focus-key="show-more"
+            [attr.aria-label]="'film.more' | t"
+            [title]="'film.more' | t"
+            (click)="moreOpen.set(true)"
+          >
+            <ng-icon name="lucideEllipsis" />
+          </button>
+        }
+      </div>
+    </div>
+
+    <!-- The episodes. On a television the seasons stand down the left and the
+         episodes are a list beside them (NX-TV-6); elsewhere the seasons are a
+         row of tabs over the list (NX-P-3, D-5). -->
+    <section class="flex min-w-0 flex-col gap-3" data-show-episodes>
+      <div class="flex flex-wrap items-center gap-2" data-show-season-tabs>
+        <h2 class="nx-row-title mr-auto shrink-0">
+          {{ 'show.episodesHeading' | t }}
+          <span class="ml-1 text-sm font-normal text-muted-foreground">{{ store.currentSeasonEpisodes().length }}</span>
+        </h2>
+        @for (season of store.availableSeasons(); track season) {
+          <button class="chip"
+            type="button"
+            [attr.aria-pressed]="store.selectedSeason() === season"
+            (click)="selectSeason(season)"
+          >
+            <span data-season-short>S{{ season }}</span>
+            <span data-season-long>{{ 'show.season' | t: { season: season } }}</span>
+          </button>
+        }
+      </div>
+
+      <div class="flex min-w-0 gap-8" data-show-episodes-body>
+        <!-- NX-TV-6: a television's seasons, one under another. -->
+        <ul class="flex shrink-0 flex-col gap-1" data-show-season-list data-tv-ring-room>
+          @for (season of store.availableSeasons(); track season) {
+            <li>
+              <button
+                type="button"
+                class="flex w-full items-baseline gap-3 rounded-lg px-5 py-3 text-left font-semibold text-muted-foreground"
+                [attr.aria-current]="store.selectedSeason() === season ? 'true' : null"
+                [attr.data-focus-key]="'season-' + season"
+                (click)="selectSeason(season)"
+              >
+                {{ 'show.season' | t: { season: season } }}
+              </button>
+            </li>
+          }
+        </ul>
+
+        @if (store.currentSeasonEpisodes().length > 0) {
+          <!-- Buttons, one column: Up and Down walk it, OK plays from where
+               that episode was left. Each leads with its own picture, how far
+               it got along the foot; watched ones keep a tick. -->
+          <ul class="flex min-w-0 flex-1 flex-col gap-1.5" data-tv-ring-room data-show-episode-list>
+            @for (row of episodeRows(); track row.episode.id) {
+              @let episode = row.episode;
+              <li class="group relative">
+                <button
+                  type="button"
+                  class="relative flex w-full items-center gap-4 overflow-hidden rounded-lg px-2 py-2 text-left transition-colors hover:bg-card-3 focus-visible:bg-card-3"
+                  data-show-episode
+                  [attr.aria-label]="row.label + ' ' + row.title"
+                  [attr.data-focus-key]="'episode-' + episode.id"
+                  appCardGestures
+                  (activate)="playEpisode(episode)"
+                  (menu)="readEpisode(episode)"
+                >
+                  <span class="relative block aspect-video w-32 shrink-0 overflow-hidden rounded-md bg-card-2 sm:w-40" data-show-episode-thumb>
+                    @if (row.thumbnail; as picture) {
+                      <img [src]="picture" alt="" loading="lazy" class="h-full w-full object-cover" (error)="thumbnailFailed(episode)" />
+                    } @else {
+                      <span class="poster-placeholder absolute inset-0 flex items-end border-l-4 border-series p-2">
+                        <span class="text-2xl leading-none font-bold text-series" data-show-episode-number>{{ episode.episode_num }}</span>
+                      </span>
+                    }
+                    @if (row.percent > 0) {
+                      <span class="absolute inset-x-0 bottom-0 h-1 bg-foreground/25">
+                        <span class="block h-full bg-primary-bright" [style.width.%]="row.percent"></span>
+                      </span>
+                    }
+                  </span>
+                  <!-- Clear of Subtitles and Resume, which sit over the right of the row
+                       wherever there is a pointer: a description runs that far. -->
+                  <span class="min-w-0 flex-1 md:pr-60">
+                    <span class="flex min-w-0 items-center gap-2">
+                      @if (row.tag; as tag) {
+                        <span class="shrink-0 rounded-sm bg-foreground px-1.5 text-[10px] font-bold tracking-wide text-background uppercase" data-next-up>{{ tag }}</span>
+                      }
+                      <span class="block min-w-0 truncate font-semibold" data-marquee appMarquee [title]="episode.title"><span>{{ episode.episode_num }}. {{ row.title }}</span></span>
+                    </span>
+                    <span class="flex min-w-0 items-center gap-2 text-xs text-muted-foreground" data-show-episode-caption>
+                      @if (row.caption) {
+                        <span class="truncate">{{ row.caption }}</span>
+                      }
+                      @if (row.watched) {
+                        <ng-icon name="lucideCheck" size="14" class="shrink-0" />
+                        <span class="shrink-0">{{ 'time.watched' | t }}</span>
+                      }
+                    </span>
+                    @if (row.description; as described) {
+                      <span class="mt-0.5 line-clamp-2 text-xs text-muted-foreground" data-episode-description>{{ described.text }}</span>
+                    }
+                  </span>
+                </button>
+                <!-- D-5: with a pointer a per-row Resume is legitimate, and it
+                     appears only on the row that has a resume point. -->
+                <!-- ST-D-2: beside Resume, and only with a pointer. On a
+                     television the row plays; subtitles are added from a
+                     desktop or phone, where typing is possible. -->
+                <span class="absolute top-1/2 right-3 flex -translate-y-1/2 gap-2" data-desktop-only data-desktop-rail>
+                  @if (row.description) {
+                    <button
+                      hlmBtn
+                     
+                      size="icon-sm"
+                      type="button"
+                      [title]="'describe.read' | t"
+                      [attr.aria-label]="'describe.read' | t"
+                      (click)="readEpisode(episode)"
+                    >
+                      <ng-icon name="lucideInfo" size="16" />
+                    </button>
+                  }
+                  <button hlmBtn size="sm" type="button" (click)="addSubtitles(episode)">
+                    {{ 'show.subtitles' | t }}
+                  </button>
+                  @if (row.resumable) {
+                    <button hlmBtn variant="primary" size="sm" type="button" (click)="playEpisode(episode)">{{ 'show.resume' | t }}</button>
+                  }
+                </span>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="flex-1 p-12 text-center text-sm text-muted-foreground">{{ 'show.none' | t }}</p>
+        }
+      </div>
+    </section>
+
+    <!-- TMDB's recommendations kept to the library, after the episodes; hidden when fewer than three. -->
+    @if (moreLikeThis().length >= 3) {
+      <section class="flex flex-col gap-2" data-show-more>
+        <h2 class="nx-row-title">{{ 'film.moreLikeThis' | t }}</h2>
+        <div class="flex gap-3 overflow-x-auto pb-2" data-tv-rail>
+          @for (link of moreLikeThis(); track link.item.id) {
+            <button
+              type="button"
+              class="flex w-[7.875rem] shrink-0 flex-col gap-1.5 text-left"
+              data-fy-poster
+              [attr.data-focus-key]="'show-more-' + link.item.id"
+              [title]="link.item.title"
+              (click)="openLink(link)"
+            >
+              <span class="relative block h-[11.8rem] w-full overflow-hidden rounded-md bg-card-2" data-fy-poster-image>
+                @if (link.poster) {
+                  <img [src]="link.poster" alt="" loading="lazy" class="h-full w-full object-cover" />
+                }
+              </span>
+              <span class="block w-full truncate text-sm font-semibold">{{ link.item.title }}</span>
+              <span class="block w-full truncate text-xs text-muted-foreground">@if (link.item.year) { {{ link.item.year }} } @else { &nbsp; }</span>
+            </button>
+          }
+        </div>
+      </section>
+    }
+
+    @if (tmdbShow()) {
+      <p class="flex flex-wrap items-center gap-3 text-xs text-muted-foreground" data-show-notice>
+        <img [src]="logo" alt="TMDB" class="h-3 w-auto" />
+        {{ 'describe.attribution' | t }}
+      </p>
+    }
+  }
+</div>
+</div>
+
+@if (showPlayer()) {
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_oklch,var(--background)_88%,transparent)] p-4" data-focus-scope
+    (click)="closePlayer()"
+  >
+    <div
+      class="rounded-2xl bg-card flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="flex items-center justify-between p-4">
+        <h2 class="truncate text-lg font-semibold">{{ currentStreamName() }}</h2>
+        <button hlmBtn variant="quiet" size="icon" type="button" [attr.aria-label]="'show.closePlayer' | t" (click)="closePlayer()">
+          <ng-icon name="lucideX" size="18" />
+        </button>
+      </div>
+      <div class="min-h-0 flex-1 overflow-auto p-4">
+        <app-video-player
+          [streamUrl]="currentStreamUrl()"
+          [streamName]="currentStreamName()"
+          [startPositionSeconds]="resumeAt()"
+          (progress)="onPlaybackProgress($event)"
+          (close)="closePlayer()"
+        ></app-video-player>
+      </div>
+    </div>
+  </div>
+}
+
+@if (subtitleTarget(); as target) {
+  <app-subtitle-picker
+    [item]="target.item"
+    [name]="target.name"
+    [seriesInfo]="store.seriesInfo()"
+    (closed)="subtitleTarget.set(null)"
+  />
+}
+
+<!-- More (NX-TV-5): the copy episodes play in, and the trailer. -->
+@if (moreOpen()) {
+  <app-item-actions [name]="displayName()" [subtitle]="metaLine()" [actions]="moreActions()" (chosen)="onMore($event)" (closed)="closeMore()" />
+}

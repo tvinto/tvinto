@@ -1,0 +1,33 @@
+{
+  "name": "tvinto-sync",
+  "description": "Tvinto's sync service: your accounts, devices and what they share, on your own Cloudflare account.",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "cloudflare": {
+    "label": "Tvinto sync service",
+    "products": ["Workers", "D1"],
+    "categories": ["storage"],
+    "bindings": {
+      "DB": {
+        "description": "Accounts and what their devices share. Subscriptions and guides arrive sealed on the devices and cannot be read here."
+      },
+      "ACCOUNT_SALT_SECRET": {
+        "description": "Any long random string, kept secret. Make one with `openssl rand -hex 32`."
+      },
+      "ACCOUNT_REGISTRATION": {
+        "description": "`first-only`: the first account is free to make and every other one needs an invite code from an account here. `closed`: invite codes only. `open`: anybody who finds the address."
+      },
+      "ALLOWED_ORIGINS": {
+        "description": "Where the apps call from. Leave as it is."
+      }
+    }
+  },
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "predeploy": "wrangler d1 migrations apply DB --remote",
+    "dev": "wrangler d1 migrations apply DB --local && wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "4.127.1"
+  }
+}

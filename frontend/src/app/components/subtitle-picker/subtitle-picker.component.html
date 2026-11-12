@@ -1,0 +1,279 @@
+<!-- ST-TV-1 / ST-D-2 / ST-P-1: a page on a television, a dialog on a desktop,
+     a sheet on a phone. The same rows, order and words on all three. -->
+<div
+  class="fixed inset-0 z-50 flex items-end bg-[color-mix(in_oklch,var(--background)_88%,transparent)] md:items-center md:justify-center md:p-4"
+  data-focus-scope
+  data-tv-page
+  data-subtitle-picker
+  (click)="close()"
+>
+  <div
+    class="flex max-h-[88dvh] w-full flex-col overflow-hidden rounded-t-xl bg-card md:max-h-[85vh] md:max-w-3xl md:rounded-lg"
+    data-tv-page-surface
+    (click)="$event.stopPropagation()"
+  >
+    <div class="flex items-center gap-3 border-b border-border-2 p-4" data-tv-page-header>
+      <button hlmBtn variant="secondary" size="sm" type="button" data-tv-only (click)="close()">
+        <ng-icon name="lucideArrowLeft" size="16" />
+        {{ 'common.back' | t }}
+      </button>
+      <div class="min-w-0 flex-1">
+        <h2 class="truncate text-lg font-semibold">{{ 'picker.title' | t }}</h2>
+        <p class="truncate text-xs text-muted-foreground">
+          {{ heading() }}@if (item().type === "series" && item().season) { · S{{ item().season }} E{{ item().episodeNum }} }
+          @if (subtitles.allowance(); as allowance) {
+            · {{ 'picker.allowance' | t: { remaining: allowance.remaining, allowed: allowance.allowed } }}
+          }
+        </p>
+      </div>
+      <button hlmBtn size="sm" type="button" class="hidden md:inline-flex" (click)="close()">{{ 'common.close' | t }}</button>
+    </div>
+
+    <div class="min-h-0 flex-1 overflow-y-auto p-4">
+      @switch (phase()) {
+        @case ("not-linked") {
+          <!-- ST-TV-2: typing a password with a remote is miserable, so it is routed off the television. -->
+          <div class="flex flex-col gap-3" data-picker-state="not-linked">
+            <h3 class="text-lg font-semibold">{{ 'picker.linkFirst' | t }}</h3>
+            <p class="text-sm text-muted-foreground">
+              {{ (subtitles.state() === 'needs-sync' ? 'local.needsSync' : 'picker.linkHow') | t }}
+            </p>
+            @if (message()) {
+              <p class="text-sm text-destructive" role="alert">{{ message() }}</p>
+            }
+            <div class="flex flex-col gap-2 sm:flex-row">
+              <button hlmBtn variant="primary" type="button" class="flex-1" data-focus-first (click)="start()">{{ 'picker.checkAgain' | t }}</button>
+              <button hlmBtn type="button" (click)="close()">{{ 'picker.backToFilm' | t }}</button>
+            </div>
+          </div>
+        }
+
+        @case ("no-allowance") {
+          <div class="flex flex-col gap-3" data-picker-state="no-allowance">
+            <h3 class="text-lg font-semibold">{{ 'picker.usedUp' | t }}</h3>
+            <p class="text-sm text-muted-foreground">
+              {{ message() }} {{ 'picker.savedStillWork' | t }}
+            </p>
+            <div class="flex flex-col gap-2 sm:flex-row">
+              <button hlmBtn variant="primary" type="button" class="flex-1" data-focus-first (click)="close()">{{ 'picker.backToFilm' | t }}</button>
+              <button hlmBtn type="button" (click)="backToResults()">{{ 'picker.seeList' | t }}</button>
+            </div>
+          </div>
+        }
+
+        @case ("downloading") {
+          <div class="flex flex-col gap-3" data-picker-state="downloading">
+            <p class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">{{ 'picker.downloading' | t }}</p>
+            <div class="flex items-center gap-2 text-sm">
+              <ng-icon name="lucideLoaderCircle" size="16" class="animate-spin" />
+              {{ 'picker.saving' | t }}
+            </div>
+          </div>
+        }
+
+        @case ("added") {
+          <div class="flex flex-col gap-4" data-picker-state="added">
+            <div class="flex flex-col gap-1">
+              <p class="text-xs font-semibold tracking-wider text-live uppercase">{{ 'picker.added' | t }}</p>
+              @if (justAdded(); as added) {
+                <h3 class="text-lg font-semibold">{{ 'picker.savedLanguage' | t: { language: added.language | languageName } }}</h3>
+                <p class="text-sm text-muted-foreground">{{ added.release }} · {{ 'picker.savedToAccount' | t }}</p>
+              }
+            </div>
+            <p class="text-sm text-muted-foreground">
+              {{ 'picker.nextTime' | t }}
+            </p>
+
+            @if (justAdded(); as added) {
+              <div class="flex items-center justify-between gap-3 rounded-md bg-[var(--glass-quiet)] p-3" data-timing>
+                <span class="flex flex-col">
+                  <span class="text-sm font-medium">{{ 'picker.timing' | t }}</span>
+                  <span class="text-xs text-muted-foreground">{{ 'picker.timingHelp' | t }}</span>
+                </span>
+                <span class="flex items-center gap-2">
+                  <button hlmBtn size="sm" type="button" [disabled]="nudging() === added.id" (click)="nudge(added, -step)">
+                    <ng-icon name="lucideChevronLeft" size="14" />
+                    {{ 'common.earlier' | t }}
+                  </button>
+                  <span class="min-w-[4.5rem] text-center font-mono text-sm">{{ added.offsetMs | subtitleOffset }}</span>
+                  <button hlmBtn size="sm" type="button" [disabled]="nudging() === added.id" (click)="nudge(added, step)">
+                    {{ 'common.later' | t }}
+                    <ng-icon name="lucideChevronRight" size="14" />
+                  </button>
+                </span>
+              </div>
+            }
+            <div class="flex flex-col gap-2 sm:flex-row">
+              <button hlmBtn variant="primary" type="button" class="flex-1" data-focus-first (click)="close()">{{ 'common.done' | t }}</button>
+              <button hlmBtn type="button" (click)="backToResults()">{{ 'picker.chooseDifferent' | t }}</button>
+            </div>
+          </div>
+        }
+
+        @case ("failed") {
+          <div class="flex flex-col gap-3" data-picker-state="failed">
+            <h3 class="text-lg font-semibold">{{ 'picker.failed' | t }}</h3>
+            <p class="text-sm text-destructive" role="alert">{{ message() }}</p>
+            <div class="flex flex-col gap-2 sm:flex-row">
+              <button hlmBtn variant="primary" type="button" class="flex-1" data-focus-first (click)="retry()">{{ 'common.tryAgain' | t }}</button>
+              <button hlmBtn type="button" (click)="close()">{{ 'picker.backToFilm' | t }}</button>
+            </div>
+          </div>
+        }
+
+        @default {
+          <!-- Searching, results and nothing-found share one layout, so nothing jumps. -->
+          <div class="flex flex-col gap-4">
+            @if (matchedByTitle()) {
+              <p class="rounded-md bg-[var(--glass-quiet)] p-3 text-xs text-muted-foreground" data-matched-by="title">
+                {{ 'picker.byTitle' | t }}
+              </p>
+            } @else if (identity(); as found) {
+              <p class="text-xs text-muted-foreground" data-matched-by="id">
+                {{ (item().type === 'series' ? 'picker.byIdEpisode' : 'picker.byIdFilm') | t: { source: found.matchedBy === 'tmdb' ? 'TMDB' : 'IMDb' } }}
+              </p>
+            }
+
+            @if (saved().length) {
+              <div class="flex flex-col gap-2">
+                <p class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                  {{ (item().type === 'series' ? 'picker.onThisEpisode' : 'picker.onThisFilm') | t }}
+                </p>
+                @for (one of saved(); track one.id) {
+                  <div class="flex flex-col gap-2 rounded-md border-l-2 border-live bg-[var(--glass-quiet)] p-3 sm:flex-row sm:items-center sm:gap-3">
+                    <span class="shrink-0 text-xs font-medium text-live sm:w-20 sm:text-sm">{{ one.language | languageName }}</span>
+                    <span class="min-w-0 flex-1 text-sm break-words sm:truncate">{{ one.release }}</span>
+                    <span class="flex shrink-0 items-center gap-1" data-timing>
+                      <button hlmBtn variant="quiet" size="sm" type="button" [attr.aria-label]="'common.earlier' | t" [disabled]="nudging() === one.id" (click)="nudge(one, -step)">
+                        <ng-icon name="lucideChevronLeft" size="14" />
+                      </button>
+                      <span class="min-w-[3.5rem] text-center font-mono text-xs">{{ one.offsetMs | subtitleOffset }}</span>
+                      <button hlmBtn variant="quiet" size="sm" type="button" [attr.aria-label]="'common.later' | t" [disabled]="nudging() === one.id" (click)="nudge(one, step)">
+                        <ng-icon name="lucideChevronRight" size="14" />
+                      </button>
+                    </span>
+                    <button hlmBtn size="sm" type="button" (click)="remove(one)">
+                      <ng-icon name="lucideTrash2" size="14" />
+                      {{ 'common.remove' | t }}
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+
+            @if (phase() === "searching") {
+              <div class="flex flex-col gap-2" data-picker-state="searching">
+                <p class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                  {{ 'picker.searching' | t }}
+                </p>
+                @for (row of [1, 2, 3]; track row) {
+                  <div class="h-16 animate-pulse rounded-md bg-[var(--glass-quiet)]"></div>
+                }
+              </div>
+            } @else if (phase() === "nothing-found") {
+              <div class="flex flex-col gap-3" data-picker-state="nothing-found">
+                <p class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">{{ 'picker.nothingFound' | t }}</p>
+                <input
+                  hlmInput
+                  class="w-full"
+                  data-focus-first
+                  [value]="searchText()"
+                  (input)="onSearchInput($event)"
+                  (keydown.enter)="searchAgain()"
+                  [attr.aria-label]="'picker.searchByName' | t"
+                />
+                <p class="text-sm text-muted-foreground">
+                  {{ 'picker.nothingHelp' | t }}
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  @for (suggestion of suggestions(); track suggestion) {
+                    <button hlmBtn size="sm" type="button" (click)="searchAgain(suggestion)">
+                      {{ 'picker.try' | t: { text: suggestion } }}
+                    </button>
+                  }
+                  <button hlmBtn variant="primary" size="sm" type="button" (click)="searchAgain()">
+                    <ng-icon name="lucideSearch" size="14" />
+                    {{ 'common.search' | t }}
+                  </button>
+                </div>
+              </div>
+            } @else {
+              <div class="flex flex-wrap items-center gap-2">
+                @for (chip of chips(); track chip.code) {
+                  <button class="chip" [attr.aria-pressed]="language() === chip.code"
+                    type="button"
+                    (click)="language.set(chip.code)"
+                  >
+                    {{ chip.name }} {{ chip.count }}
+                  </button>
+                }
+              </div>
+
+              <div class="flex flex-col gap-2">
+                <p class="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                  {{ 'picker.fromOpenSubtitles' | t }}
+                </p>
+                @for (result of shown(); track result.fileId; let first = $first) {
+                  <button
+                    type="button"
+                    class="group flex w-full flex-col items-start gap-1 rounded-md bg-[var(--glass-quiet)] p-3 text-left hover:bg-[var(--glass)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:flex-row sm:items-center sm:gap-3"
+                    [attr.data-focus-first]="first ? '' : null"
+                    [disabled]="working() !== null"
+                    (click)="choose(result)"
+                  >
+                    <span class="shrink-0 text-xs font-medium text-muted-foreground sm:w-20 sm:text-sm">
+                      {{ result.language | languageName }}
+                    </span>
+                    <span class="w-full min-w-0 flex-1">
+                      <span class="flex flex-wrap items-center gap-2">
+                        <span class="text-sm font-medium break-words sm:truncate">{{ result.release || result.fileName }}</span>
+                        @if (result.hearingImpaired) {
+                          <span class="rounded-sm bg-favorite/20 px-1 text-[10px] font-bold text-favorite uppercase">HI</span>
+                        }
+                        @if (result.aiTranslated) {
+                          <span class="rounded-sm bg-border px-1 text-[10px] font-bold text-muted-foreground uppercase">AI</span>
+                        }
+                      </span>
+                      <span class="mt-0.5 block text-xs text-muted-foreground sm:truncate">
+                        {{ 'picker.downloads' | t: { count: result.downloads } }}@if (result.votes > 0) { · {{ 'picker.rated' | t: { rating: result.rating } }} }
+                        @if (result.uploaderRank) { · {{ result.uploaderRank }} }
+                        @if (result.uploadedAt) { · {{ result.uploadedAt.slice(0, 10) }} }
+                      </span>
+                    </span>
+                    @if (working() === result.fileId) {
+                      <ng-icon name="lucideLoaderCircle" size="16" class="animate-spin" />
+                    } @else {
+                      <!-- Said at the moment of the press, not on every row. -->
+                      <span class="shrink-0 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100">
+                        {{ 'picker.spends' | t }}
+                      </span>
+                    }
+                  </button>
+                }
+              </div>
+
+              @if (message()) {
+                <p class="text-sm text-destructive" role="alert">{{ message() }}</p>
+              }
+
+              <div class="flex items-center gap-2">
+                <input
+                  hlmInput
+                  class="w-full"
+                  [value]="searchText()"
+                  (input)="onSearchInput($event)"
+                  (keydown.enter)="searchAgain()"
+                  [attr.aria-label]="'picker.searchByName' | t"
+                />
+                <button hlmBtn size="sm" type="button" (click)="searchAgain()">
+                  <ng-icon name="lucideSearch" size="14" />
+                  {{ 'common.search' | t }}
+                </button>
+              </div>
+            }
+          </div>
+        }
+      }
+    </div>
+  </div>
+</div>

@@ -1,0 +1,117 @@
+<!--
+  Two ways to be on screen, the same panel in both.
+
+  A sheet against the right-hand edge, over the page, for places with nothing
+  to push aside -- the front page's rails. On a television the D-pad reads the
+  screen as a map: everything on the panel is then in one column, so Up and
+  Down walk it and nothing competes sideways. A centred dialog puts rows above
+  and below the middle of the screen with the list underneath still visible
+  past both sides, which is where focus used to escape to.
+
+  Docked, a column beside the category browser, which it pushes rather than
+  covers (TV-3, D-3). See `docked` in the component.
+-->
+@if (docked()) {
+  <div class="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl bg-card" data-tv-actions-docked>
+    <ng-container [ngTemplateOutlet]="panel" />
+  </div>
+} @else {
+  <!-- On a phone a sheet from the bottom, with a handle, where a thumb is (P-3). -->
+  <div class="fixed inset-0 z-50 flex items-end bg-[color-mix(in_oklch,var(--background)_70%,transparent)] md:items-stretch" data-focus-scope data-enter="panel" (click)="onBackdrop($event)">
+    <div
+      class="flex max-h-[88dvh] w-full flex-col rounded-t-[1.375rem] bg-card shadow-2xl md:ml-auto md:h-full md:max-h-none md:max-w-sm md:rounded-none"
+    >
+      <span class="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-border-2 md:hidden" aria-hidden="true"></span>
+      <ng-container [ngTemplateOutlet]="panel" />
+    </div>
+  </div>
+}
+
+<ng-template #panel>
+  <div class="flex items-start gap-3 p-4">
+    @if (icon(); as icon) {
+      <img
+        [src]="icon"
+        [alt]="name()"
+        class="h-12 w-12 shrink-0 rounded-sm bg-background-2 object-contain"
+        data-tv-panel-logo
+        (error)="hideBrokenIcon($event)"
+      />
+    } @else if (monogram()) {
+      <span
+        class="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm bg-background-2 text-sm font-bold text-live"
+        data-tv-panel-logo
+      >
+        {{ monogram() }}
+      </span>
+    } @else {
+      <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm bg-background-2" data-tv-panel-logo>
+        <ng-icon name="lucideTv" size="20" class="text-muted-foreground" />
+      </span>
+    }
+
+    <div class="min-w-0 flex-1">
+      <!-- Wrapped rather than truncated. This is the one place the whole name
+           is worth having: a rail truncates every one of these, and telling
+           two channels apart is often the reason somebody opened this. -->
+      <h2 class="text-base leading-snug font-semibold break-words">{{ name() }}</h2>
+      @if (subtitle()) {
+        <p class="mt-0.5 text-sm text-muted-foreground">{{ subtitle() }}</p>
+      }
+    </div>
+
+    <button hlmBtn variant="quiet" size="icon" type="button" (click)="closed.emit()" [attr.aria-label]="'common.close' | t">
+      <ng-icon name="lucideX" size="18" />
+    </button>
+  </div>
+
+  @if (description(); as described) {
+    <div class="mx-4 mt-3" data-item-description>
+      <p class="line-clamp-6 text-sm text-muted-foreground" data-whole-on-tv appCutOff #panelCut="cutOff">{{ described.text }}</p>
+      @if (panelCut.isCut()) {
+        <button type="button" class="mt-1 text-sm font-semibold text-foreground underline-offset-2 hover:underline" data-read-more (click)="readDescription(described)">
+          {{ 'describe.more' | t }}
+        </button>
+      }
+      @if (described.source === 'tmdb') {
+        <p class="mt-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">{{ 'describe.fromTmdb' | t }}</p>
+      }
+    </div>
+  }
+
+  @if (nowPlaying(); as nowPlaying) {
+    <!-- What is on, before what to do about it: on a live channel that is the
+         question the panel is usually opened to answer. -->
+    <div class="mx-2 mt-2 rounded-xl bg-[var(--glass-quiet)] p-3">
+      <p class="flex items-center gap-2 text-sm font-semibold">
+        <span class="min-w-0 truncate">{{ nowPlaying.title }}</span>
+      </p>
+      <span class="mt-2 block h-1 overflow-hidden rounded-full bg-background-2">
+        <span class="block h-full bg-on-air" [style.width.%]="nowPlaying.percent"></span>
+      </span>
+      <p class="mt-1 text-xs text-muted-foreground">
+        {{ nowPlaying.time }}@if (nowPlaying.left) { · {{ nowPlaying.left }} }
+      </p>
+    </div>
+  }
+
+  <!-- The player's panel rows (round 14): an icon where a choice has its
+       check, focus the white row on a television. The first is where focus
+       starts, not a different colour; what takes something away is red. -->
+  <div data-focus-first class="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-2">
+    @for (action of actions(); track action.id) {
+      <button type="button" class="choice-row action-row" [class.action-row-danger]="action.danger" (click)="choose(action)">
+        <span class="choice-row-mark"><ng-icon [name]="action.icon" aria-hidden="true" /></span>
+        <span class="choice-row-label">
+          <span class="block">{{ action.label }}</span>
+          @if (action.hint) {
+            <span class="action-row-hint">{{ action.hint }}</span>
+          }
+        </span>
+        @if (action.badge) {
+          <span class="choice-row-detail">{{ action.badge }}</span>
+        }
+      </button>
+    }
+  </div>
+</ng-template>

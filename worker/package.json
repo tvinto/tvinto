@@ -1,0 +1,17 @@
+{
+  "name": "xtream-sync-worker",
+  "version": "1.0.0",
+  "license": "AGPL-3.0-only",
+  "private": true,
+  "description": "The sync service: accounts, and what one person made, on Cloudflare Workers and D1",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:create": "wrangler d1 create xtream",
+    "db:local": "wrangler d1 execute xtream --local --file=./schema.sql",
+    "db:remote": "wrangler d1 execute xtream --remote --file=./schema.sql"
+  },
+  "devDependencies": {
+    "wrangler": "^4.127.1"
+  }
+}

@@ -1,0 +1,78 @@
+<!-- Top rated and genres (TV-32, P-20). Absent without TMDB. -->
+@if (genres().length) {
+  <div class="flex flex-col gap-6" data-discover>
+    <!-- Browse by: one straight row of chips -- Top rated, then the genres
+         the library has enough of. Each opens that list in full. -->
+    <section class="flex flex-col gap-2" data-discover-browse>
+      <h2 class="nx-row-title" data-front-heading>{{ 'discover.browseBy' | t }}</h2>
+      <div class="flex gap-2 overflow-x-auto pb-2" data-tv-rail data-discover-chips>
+        <a hlmBtn class="shrink-0" [routerLink]="link('top')" [attr.data-focus-key]="'discover-chip-top'" data-discover-chip>
+          {{ 'discover.topRated' | t }}
+        </a>
+        @for (genre of genres(); track genre.id) {
+          <a hlmBtn class="shrink-0" [routerLink]="link('genre-' + genre.id)" [attr.data-focus-key]="'discover-chip-' + genre.id" data-discover-chip>
+            {{ genre.name }}
+          </a>
+        }
+      </div>
+    </section>
+
+    @for (row of rows(); track row.list) {
+      <section class="flex flex-col gap-2" [attr.data-discover-row]="row.list">
+        <div class="flex items-baseline gap-3">
+          <h2 class="nx-row-title" data-front-heading>
+            {{ row.title }}
+            <span class="ml-1 font-normal text-dim-foreground normal-case">{{ row.note }}</span>
+          </h2>
+          <!-- The full list from the heading, on a desktop and a phone; on a television the chip above. -->
+          <a class="ml-auto flex min-h-11 items-center px-2 text-sm font-semibold text-muted-foreground lg:min-h-0" data-discover-all [routerLink]="link(row.list)">
+            {{ 'fy.seeAll' | t }}
+          </a>
+        </div>
+        <div class="flex gap-3 overflow-x-auto pb-2" data-tv-rail>
+          @for (card of row.cards; track card.item.id) {
+            <button
+              type="button"
+              appCardGestures
+              class="flex w-[7.875rem] shrink-0 flex-col gap-1.5 text-left"
+              data-fy-poster
+              [attr.data-focus-key]="'discover-' + row.list + '-' + card.item.id"
+              [title]="card.item.title"
+              (activate)="open(card)"
+              (menu)="openMenu(card)"
+            >
+              <span class="relative block h-[11.8rem] w-full overflow-hidden rounded-md bg-card-2" data-fy-poster-image>
+                @if (card.poster && !failedIcons().has(card.poster)) {
+                  <img [src]="card.poster" (error)="iconFailed(card.poster)" alt="" loading="lazy" class="h-full w-full object-cover" />
+                } @else {
+                  <span class="poster-placeholder absolute inset-0 flex flex-col border-l-4 p-2" [class]="card.type === 'series' ? 'border-series' : 'border-vod'">
+                    <span class="text-xl font-bold" [class]="card.type === 'series' ? 'text-series' : 'text-vod'">{{ card.item.title | channelMonogram }}</span>
+                  </span>
+                }
+                @if (ages.lockedLabel(card.item.kind, card.item.id); as rating) {
+                  <app-age-cover [rating]="rating" />
+                }
+              </span>
+              <span class="block w-full truncate text-sm font-semibold">{{ card.item.title }}</span>
+              <!-- The year alone: Movies is only films, TV Shows only shows. -->
+              <span class="block w-full truncate text-xs text-muted-foreground">
+                @if (card.year) { {{ card.year }} } @else { &nbsp; }
+              </span>
+            </button>
+          }
+        </div>
+      </section>
+    }
+  </div>
+}
+
+@if (menu(); as card) {
+  <app-item-actions
+    [name]="card.item.title"
+    [icon]="card.poster || null"
+    [film]="menuFilm()"
+    [actions]="menuActions()"
+    (chosen)="onMenuAction($event)"
+    (closed)="closeMenu()"
+  />
+}

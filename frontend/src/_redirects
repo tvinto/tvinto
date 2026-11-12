@@ -1,0 +1,5 @@
+# Every path is the same page: the router decides what it means once the app
+# has loaded. Without this a static host looks for a file at /movies/1234,
+# does not find one, and returns its own 404 -- so the app works from the
+# front door and nowhere else, including on reload and on any shared link.
+/*  /index.html  200
