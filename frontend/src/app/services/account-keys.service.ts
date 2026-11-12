@@ -44,7 +44,11 @@ export interface SubmittedKeys extends SaltAnswer {
 @Injectable({ providedIn: 'root' })
 export class AccountKeysService {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = inject(API_URL);
+  // Read at each use: a server chosen at sign-in takes effect without a restart.
+  private readonly syncServer = inject(API_URL);
+  private get apiUrl(): string {
+    return this.syncServer();
+  }
 
   /**
    * How far through the slow step, from 0 to 1, or null when not deriving.

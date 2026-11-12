@@ -63,7 +63,7 @@ export class ToolsComponent {
   private readonly supported = computed(() => this.localOnly() || this.syncSupported());
 
   /** The host to sign in to, as the commands need it. */
-  readonly server = serverName(inject(API_URL));
+  readonly server = serverName(inject(API_URL)());
 
   /** This account's name, for the sign-in command. */
   readonly username = computed(() => this.accounts.account()?.username ?? '');

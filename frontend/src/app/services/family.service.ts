@@ -66,7 +66,11 @@ const MATCHES_APPLIED_KEY = 'xtream_family_matches_applied';
 @Injectable({ providedIn: 'root' })
 export class FamilyService {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = inject(API_URL);
+  // Read at each use: a server chosen at sign-in takes effect without a restart.
+  private readonly syncServer = inject(API_URL);
+  private get apiUrl(): string {
+    return this.syncServer();
+  }
   private readonly accounts = inject(AccountService);
   private readonly keys = inject(AccountKeysService);
   private readonly access = inject(ProviderAccessService);

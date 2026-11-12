@@ -63,7 +63,7 @@ describe('OpenSubtitlesService', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: HttpClient, useValue: http },
-        { provide: API_URL, useValue: 'https://sync.example/api' },
+        { provide: API_URL, useValue: () => 'https://sync.example/api' },
         { provide: AccountKeysService, useValue: keys },
         { provide: AccountService, useValue: { account, localProfile: { active: () => false } } },
         { provide: ServiceKindService, useValue: { isSyncService: async () => sync } }

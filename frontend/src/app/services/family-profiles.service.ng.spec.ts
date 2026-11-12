@@ -19,7 +19,7 @@ describe('FamilyProfilesService and who is watching', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: HttpClient, useValue: {} },
-        { provide: API_URL, useValue: 'https://sync.example/api' },
+        { provide: API_URL, useValue: () => 'https://sync.example/api' },
         { provide: AccountService, useValue: { signedIn: () => true } },
         { provide: FamilyService, useValue: {} },
         { provide: ParentalLockService, useValue: {} }

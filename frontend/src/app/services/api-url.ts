@@ -7,10 +7,15 @@ import { Capacitor } from '@capacitor/core';
  * It was written out in five places, all saying localhost, which was true
  * everywhere the app had ever run. It stopped being true the moment the app
  * ran on a phone: localhost there is the phone.
+ *
+ * A function, asked at each use rather than once as the app starts: a server
+ * chosen at sign-in is then the one everything talks to at once. When it was
+ * a string read at startup, choosing one restarted the app, which came back
+ * on Welcome with what the person had typed gone (12 November).
  */
-export const API_URL = new InjectionToken<string>('API_URL', {
+export const API_URL = new InjectionToken<() => string>('API_URL', {
   providedIn: 'root',
-  factory: () => resolveApiUrl()
+  factory: () => resolveApiUrl
 });
 
 /** Where the backend listens. */
@@ -43,7 +48,8 @@ function configuredApiUrl(): string | null {
  * A sync service somebody chose at sign-in, over the build's own
  * ("use the default, or enter your own"). Kept on the device, not in
  * the account -- it is where the account is, so it has to be known before
- * there is one. Changed only while signed out, and the app starts again on it.
+ * there is one. Changed only while signed out; every service reads it as it
+ * makes a request (API_URL), so no restart is needed.
  */
 export const CHOSEN_SERVER_KEY = 'xtream_server_url';
 
@@ -96,7 +102,12 @@ export function updatesBaseUrl(): string | null {
  * would only send a person's account nowhere.
  */
 export function hasServer(): boolean {
-  if (chosenServer() !== null || configuredApiUrl() !== null) {
+  return chosenServer() !== null || buildHasServer();
+}
+
+/** Whether the build has a server of its own to go back to ("Use the default"). */
+export function buildHasServer(): boolean {
+  if (configuredApiUrl() !== null) {
     return true;
   }
   const platform = Capacitor.getPlatform();

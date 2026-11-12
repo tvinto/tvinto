@@ -19,7 +19,11 @@ export class SetupHoldService {
   // HttpClient is reached lazily: the interceptor that feeds this service runs
   // inside HttpClient, and asking for it at construction would be a cycle.
   private readonly injector = inject(Injector);
-  private readonly apiUrl = inject(API_URL);
+  // Read at each use: a server chosen at sign-in takes effect without a restart.
+  private readonly syncServer = inject(API_URL);
+  private get apiUrl(): string {
+    return this.syncServer();
+  }
 
   private readonly held = signal<HeldRequest[]>(this.read());
   readonly holding = computed(() => this.held().length > 0);

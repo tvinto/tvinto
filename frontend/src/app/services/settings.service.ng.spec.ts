@@ -33,7 +33,7 @@ describe('SettingsService and what a device kept', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: HttpClient, useValue: http },
-        { provide: API_URL, useValue: 'https://sync.example/api' },
+        { provide: API_URL, useValue: () => 'https://sync.example/api' },
         {
           provide: AccountService,
           useValue: {
@@ -93,7 +93,7 @@ describe('SettingsService and records deleted for the account', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: HttpClient, useValue: http },
-        { provide: API_URL, useValue: 'https://sync.example/api' },
+        { provide: API_URL, useValue: () => 'https://sync.example/api' },
         {
           provide: AccountService,
           useValue: {
