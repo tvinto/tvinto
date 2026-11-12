@@ -42,7 +42,7 @@ describe('DeviceSyncService, signing in', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: API_URL, useValue: API },
+        { provide: API_URL, useValue: () => API },
         {
           provide: AccountService,
           useValue: {
