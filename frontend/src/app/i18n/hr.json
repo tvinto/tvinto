@@ -749,6 +749,11 @@
     "tryAgain": "Pokušaj ponovno"
   },
   "fy": {
+    "settling": {
+      "sync": "Preuzimamo vašu povijest i favorite",
+      "library": "Učitavamo vašu knjižnicu filmova i serija",
+      "guide": "Učitavamo TV vodič"
+    },
     "newInShows": "Novo u vašim serijama",
     "announced": "Najavljeno",
     "newEpisodeOut": "S{{s}} E{{e}} · izašla danas",

@@ -26,6 +26,7 @@ import { LocalUserDataService } from './local-user-data.service';
 import { ProviderAccessService } from './provider-access.service';
 import { isMeteredConnection } from '../utils/connection.utils';
 import { technicalDetail } from '../utils/failure-messages.utils';
+import { wasLoadedHere } from './guide-loaded-here';
 import { t } from '../utils/i18n';
 
 /**
@@ -127,9 +128,10 @@ export class GuideSourcesService {
    * a new machine should offer what you already use rather than send you
    * looking for a URL again.
    *
-   * Offered, never fetched. A guide is tens of megabytes and a phone on mobile
-   * data should get a choice -- and a device that declines is not out of step
-   * with the others, it simply has no local copy.
+   * Offered rather than fetched, except on the first sync of a device on an
+   * unmetered connection (`loadFirstTimeHere`). A guide is tens of megabytes
+   * and a phone on mobile data should get a choice -- and a device that
+   * declines is not out of step with the others, it simply has no local copy.
    *
    * A signal rather than a call, because two places ask: the screen that lists
    * guides, and the badge that gets somebody to open it.
@@ -158,7 +160,7 @@ export class GuideSourcesService {
    * changed the day the store started surviving a restart.
    */
   async refreshMissing(): Promise<void> {
-    const sources = this.state().sources.filter(source => source.enabled);
+    const sources = this.ensureLoaded().sources.filter(source => source.enabled);
 
     if (!sources.length) {
       this.missingHere.set([]);
@@ -510,6 +512,44 @@ export class GuideSourcesService {
       })();
     }
     return missing.length;
+  }
+
+  /**
+   * The account's guides, downloaded on a device that has just signed in to
+   * it, in the background, one at a time -- as `addGuidesOf` does for a
+   * provider's own guide, and with the same exceptions: not in a family
+   * member's setup, and not on a metered connection, where "No guide on this
+   * device yet" offers them instead.
+   *
+   * Only those this device has never loaded. A guide it once had and lost is
+   * GuideReloadService's (`guide-loaded-here.ts`), and a guide added later on
+   * another device stays an offer: this is for the first sync, when a device
+   * with an account's history and favourites and no guide at all is a For You
+   * with nothing on now (12 November).
+   */
+  async loadFirstTimeHere(): Promise<void> {
+    if (this.accounts.profileScope() === 'setup' || isMeteredConnection() || !this.guide.supported) {
+      return;
+    }
+    const owner = this.accounts.storageName();
+    await this.refreshMissing();
+    const fresh = this.missingHere().filter(source => !wasLoadedHere(source.id));
+    for (const source of fresh) {
+      // The guide store takes one at a time; one somebody started waits its turn.
+      while (this.guide.isLoading()) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      // Signed out, or somebody else, while waiting.
+      if (this.accounts.storageName() !== owner) {
+        return;
+      }
+      await this.guide
+        .load(source.id, source.url)
+        .catch((error: unknown) => console.warn('Could not load a guide from the account', technicalDetail(error)));
+    }
+    if (fresh.length) {
+      await this.refreshMissing();
+    }
   }
 
   /** Throws it all away, for a sign-out. */

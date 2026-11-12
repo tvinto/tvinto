@@ -790,7 +790,12 @@
     "withoutGuide": "Senza di essa non si può dire cosa c'è in onda. I tuoi canali funzionano comunque.",
     "nextAfter": "Poi dopo {{after}}",
     "more": "+ altri {{count}}",
-    "show": "Serie TV"
+    "show": "Serie TV",
+    "settling": {
+      "sync": "Recupero della cronologia e dei preferiti",
+      "library": "Caricamento della libreria di film e serie",
+      "guide": "Caricamento della guida TV"
+    }
   },
   "actions": {
     "playLive": "Guarda in diretta",

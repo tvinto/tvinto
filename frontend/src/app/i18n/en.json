@@ -735,6 +735,11 @@
     "tryAgain": "Try again"
   },
   "fy": {
+    "settling": {
+      "sync": "Bringing in your history and favourites",
+      "library": "Loading your film and show library",
+      "guide": "Loading the TV guide"
+    },
     "newInShows": "New in your shows",
     "announced": "Announced",
     "newEpisodeOut": "S{{s}} E{{e}} · out today",

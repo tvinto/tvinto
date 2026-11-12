@@ -790,7 +790,12 @@
     "withoutGuide": "Onsuz şu an ne olduğu söylenemez. Kanallarınız yine de oynar.",
     "nextAfter": "{{after}} sonrasında",
     "more": "+ {{count}} tane daha",
-    "show": "TV dizisi"
+    "show": "TV dizisi",
+    "settling": {
+      "sync": "Geçmişiniz ve favorileriniz getiriliyor",
+      "library": "Film ve dizi kütüphaneniz yükleniyor",
+      "guide": "TV rehberi yükleniyor"
+    }
   },
   "actions": {
     "playLive": "Canlı oynat",

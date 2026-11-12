@@ -82,6 +82,28 @@
 
     <app-storage-banner />
 
+    <!-- What a device that has just signed in is still bringing in: the
+         account's history first, then a library or a guide it has never
+         held. Quiet, and gone once it is done. -->
+    @if (settling(); as what) {
+      <p class="flex items-center gap-2 text-sm text-muted-foreground" role="status" data-fy-settling>
+        <ng-icon name="lucideLoaderCircle" size="16" class="animate-spin" />
+        {{ what | t }}
+      </p>
+    }
+    @if (waitingForAccount()) {
+      <!-- Where Continue watching will be, while the first sync is out:
+           plain tiles, nothing to focus (TV-34's placeholder row). -->
+      <section class="flex flex-col gap-2" data-fy-account-loading aria-hidden="true">
+        <span class="block h-5 w-48 rounded bg-card"></span>
+        <div class="flex gap-3 overflow-hidden pb-2" data-tv-rail>
+          @for (tile of LOADING_TILES; track tile) {
+            <span class="block aspect-video w-[16rem] shrink-0 rounded-md bg-card"></span>
+          }
+        </div>
+      </section>
+    }
+
     @if (dayOne()) {
       <!-- FY-TV · Day one: four equal doors rather than empty rails. -->
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-fy-doors>

@@ -790,7 +790,12 @@
     "withoutGuide": "Ohne ihn lässt sich nicht sagen, was gerade läuft. Deine Sender laufen trotzdem.",
     "nextAfter": "Danach nach {{after}}",
     "more": "+ {{count}} weitere",
-    "show": "Serie"
+    "show": "Serie",
+    "settling": {
+      "sync": "Dein Verlauf und deine Favoriten werden geholt",
+      "library": "Deine Film- und Serienbibliothek wird geladen",
+      "guide": "Der Programmführer wird geladen"
+    }
   },
   "actions": {
     "playLive": "Live abspielen",

@@ -245,4 +245,67 @@ describe('GuideSourcesService', () => {
       expect(load).not.toHaveBeenCalled();
     });
   });
+
+  describe("the account's guides, on a device that has just signed in", () => {
+    // 12 November: a new desktop had the account's history and favourites,
+    // and no guide at all -- the guides were only offered.
+    const scope = signal<'full' | 'setup'>('full');
+    let load: jest.Mock;
+    let absent: string[];
+
+    const buildNew = (): GuideSourcesService => {
+      load = jest.fn().mockImplementation(async (id: string) => {
+        absent = absent.filter(one => one !== id);
+        return {};
+      });
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [
+          { provide: AccountService, useValue: { account, profileScope: scope, storageName: () => account()?.username, localProfile: { active: () => false } } },
+          { provide: AccountKeysService, useValue: { open: jest.fn(), seal: jest.fn() } },
+          { provide: LocalUserDataService, useValue: { queueGuideSource: jest.fn(), queueChannelMapping: jest.fn() } },
+          { provide: GuideService, useValue: { supported: true, isLoading: () => false, missing: async (ids: string[]) => ids.filter(id => absent.includes(id)), load } },
+          { provide: ProviderAccessService, useValue: { direct: async () => null } }
+        ]
+      });
+      return TestBed.inject(GuideSourcesService);
+    };
+
+    beforeEach(() => {
+      scope.set('full');
+      absent = ['src-a'];
+      localStorage.setItem('xtream_guide_sources:anamaria', held());
+    });
+
+    it('are downloaded here', async () => {
+      const service = buildNew();
+
+      await service.loadFirstTimeHere();
+
+      expect(load).toHaveBeenCalledWith('src-a', FEED);
+      expect(service.missingHere()).toEqual([]);
+    });
+
+    it('are not downloaded again when already here', async () => {
+      absent = [];
+      await buildNew().loadFirstTimeHere();
+
+      expect(load).not.toHaveBeenCalled();
+    });
+
+    it('leave one this device had and lost to the reloader', async () => {
+      // GuideReloadService's case (guide-loaded-here.ts), with its own limits.
+      localStorage.setItem('xtream_guide_loaded_here:src-a', '2026-11-01T00:00:00.000Z');
+      await buildNew().loadFirstTimeHere();
+
+      expect(load).not.toHaveBeenCalled();
+    });
+
+    it("are not downloaded in a family member's setup", async () => {
+      scope.set('setup');
+      await buildNew().loadFirstTimeHere();
+
+      expect(load).not.toHaveBeenCalled();
+    });
+  });
 });

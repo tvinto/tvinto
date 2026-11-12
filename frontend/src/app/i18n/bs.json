@@ -810,7 +810,12 @@
     "withoutGuide": "Bez njega ne može se reći šta je sada na programu. Kanali i dalje rade.",
     "nextAfter": "Zatim nakon {{after}}",
     "more": "+ još {{count}}",
-    "show": "TV serija"
+    "show": "TV serija",
+    "settling": {
+      "sync": "Preuzimamo vašu historiju i favorite",
+      "library": "Učitavamo vašu biblioteku filmova i serija",
+      "guide": "Učitavamo TV vodič"
+    }
   },
   "actions": {
     "playLive": "Pusti uživo",

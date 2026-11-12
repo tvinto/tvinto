@@ -182,15 +182,73 @@ export class ForYouComponent {
    */
   readonly continueRail = computed(() => continueWatching([this.history(), this.seriesHistory()], 12, this.hiddenShows()));
   readonly liveFavourites = computed(() => this.favourites().filter(favourite => favourite.type === 'live'));
-  readonly dayOne = computed(
+  /** Whether this page has nothing of the account's to show yet: no history, no favourites. */
+  private readonly nothingYet = computed(
     () => !this.loading() && this.continueRail().length === 0 && this.favourites().length === 0
   );
+
+  /**
+   * The four doors, for an account with no history at all -- not for a
+   * device that has just signed in and is still waiting for the account's
+   * history to arrive (12 November: a new desktop showed the doors and
+   * nothing else, with plenty of history on its way).
+   */
+  readonly dayOne = computed(() => this.nothingYet() && !this.deviceSync.firstSync());
+
+  /**
+   * What this device is still bringing in, for the quiet line that says so:
+   * the account's history and favourites, a first library, a first guide --
+   * the first of them still running, or null. A library or guide refreshed
+   * behind rows already shown goes unmentioned: the page is not waiting on it.
+   */
+  readonly settling = computed<string | null>(() => {
+    if (this.deviceSync.firstSync()) {
+      return 'fy.settling.sync';
+    }
+    if (this.xtream.indexing() && !this.popular().length && !this.added().length) {
+      return 'fy.settling.library';
+    }
+    if (this.guide.isLoading() && !this.hasGuide()) {
+      return 'fy.settling.guide';
+    }
+    return null;
+  });
+
+  /** Placeholder rows in place of the doors while the first sync is out. */
+  readonly waitingForAccount = computed(() => this.nothingYet() && this.deviceSync.firstSync());
 
   /** The favourites shown before "+ N more". */
   readonly FAVOURITES_SHOWN = 8;
 
   constructor() {
-    this.load();
+    // Read again whenever a sync brings something in -- the first one after
+    // signing in above all, which lands after this page has been made.
+    effect(() => {
+      this.deviceSync.remoteChanges();
+      untracked(() => this.load());
+    });
+
+    // A library or a guide that has just finished loading is what Popular,
+    // Recently added and On now were waiting for.
+    let indexing = this.xtream.indexing();
+    effect(() => {
+      const now = this.xtream.indexing();
+      if (indexing !== null && now === null) {
+        untracked(() => {
+          this.loadRecentlyAdded();
+          void this.loadPopular();
+        });
+      }
+      indexing = now;
+    });
+    let guideLoading = this.guide.isLoading();
+    effect(() => {
+      const now = this.guide.isLoading();
+      if (guideLoading && !now) {
+        untracked(() => this.reloadGuide());
+      }
+      guideLoading = now;
+    });
 
     // Back closes the panel, or the subtitles over it, before it leaves the
     // app: For You is the first screen, where an unclaimed Back exits.
@@ -233,6 +291,7 @@ export class ForYouComponent {
       favVod: this.xtream.getFavorites('vod').pipe(catchError(() => of([] as Stream[]))),
       favSeries: this.xtream.getFavorites('series').pipe(catchError(() => of([] as Stream[])))
     }).subscribe(found => {
+      this.liveForGuide = { favourites: found.favLive, recent: found.live };
       this.history.set([...found.live, ...found.vod]);
       this.seriesHistory.set(found.series);
       this.favourites.set([
@@ -371,6 +430,15 @@ export class ForYouComponent {
 
   openNewShow(show: NewShow): void {
     void this.router.navigate(['/series', show.seriesId], { queryParams: { name: show.name } });
+  }
+
+  /** The channels whose programmes this page shows, as last read. */
+  private liveForGuide: { favourites: Stream[]; recent: WatchProgress[] } = { favourites: [], recent: [] };
+
+  /** The guide read again, once one has finished loading here. */
+  private reloadGuide(): void {
+    this.loadGuide(this.liveForGuide.favourites, this.liveForGuide.recent);
+    void this.checkGuideHeld();
   }
 
   /** The programmes for the channels on this page, from the device's own guide. */
