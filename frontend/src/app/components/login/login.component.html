@@ -221,17 +221,8 @@
 
     <!-- The language before signing in, too: the picker on Account is
          behind the sign-in it would have helped with. -->
-    <div class="mt-3 flex justify-center gap-1 text-xs" role="group" [attr.aria-label]="'language.title' | t">
-      @for (language of languages.languages; track language.id) {
-        <button class="chip"
-          type="button"
-          [attr.lang]="language.id"
-          [attr.aria-pressed]="languages.current() === language.id"
-          (click)="languages.choose(language.id)"
-        >
-          {{ language.label }}
-        </button>
-      }
+    <div class="mt-3" data-login-language>
+      <app-language-picker focusKey="login-language" />
     </div>
     </div>
   </div>

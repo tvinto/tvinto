@@ -8,7 +8,6 @@ import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmLabel } from '@spartan-ng/helm/label';
 import { AccountService } from '../../services/account.service';
-import { LanguageService } from '../../services/language.service';
 import { t } from '../../utils/i18n';
 import { SettingGroupComponent, SettingRowComponent } from '../../ui/setting-row.component';
 import { TPipe } from '../../pipes/t.pipe';
@@ -19,6 +18,7 @@ import { SyncStartService } from '../../services/sync-start.service';
 import { OnboardingService } from '../../services/onboarding.service';
 import { technicalDetail } from '../../utils/failure-messages.utils';
 import { isSyncServiceHealth, registrationOf, serverAddressCandidates, serverName } from '@shared/server';
+import { LanguagePickerComponent } from '../language-picker/language-picker.component';
 import { TvintoMarkComponent } from '../../ui/tvinto-mark.component';
 import { TvNavigationService } from '../../services/tv-navigation.service';
 import { Capacitor } from '@capacitor/core';
@@ -44,7 +44,7 @@ type Mode = 'signIn' | 'register';
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [PhoneFormOfferComponent, TPipe, ReactiveFormsModule, NgIcon, HlmButton, HlmInput, HlmLabel, SettingGroupComponent, SettingRowComponent, TvintoMarkComponent],
+  imports: [PhoneFormOfferComponent, TPipe, ReactiveFormsModule, NgIcon, HlmButton, HlmInput, HlmLabel, SettingGroupComponent, SettingRowComponent, TvintoMarkComponent, LanguagePickerComponent],
   providers: [provideIcons({ lucideEye, lucideEyeOff, lucideLoaderCircle })],
   templateUrl: './login.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -53,7 +53,6 @@ export class LoginComponent {
   private readonly accounts = inject(AccountService);
   private readonly router = inject(Router);
   private readonly syncStart = inject(SyncStartService);
-  readonly languages = inject(LanguageService);
 
   /**
    * Reached from a device used without an account, to start syncing it
