@@ -431,7 +431,8 @@
     "useProviderNamed": "Dodaj przewodnik: {{name}}",
     "orShare": "Albo EPG Share: {{address}}",
     "failed": "Przewodnik nie został dodany",
-    "epgShare": "EPG Share · Chorwacja",
+    "country": "Kraj",
+    "changeCountry": "Zmień kraj",
     "yourProvider": "Twój dostawca",
     "unknownTime": "o nieznanej porze",
     "todayAt": "dziś o {{time}}",
@@ -1388,6 +1389,7 @@
     "noKey": "Zeskanuj ponownie kod QR na telewizorze: temu adresowi brakuje klucza.",
     "failed": "Telewizor nie odpowiedział. Czy kod jest wciąż na ekranie?",
     "title": {
+      "guide": "Dodaj przewodnik",
       "stalker": "Twój portal (MAC)",
       "server": "Twoja usługa synchronizacji",
       "xtream": "Twój dostawca (kody Xtream)",
@@ -1395,6 +1397,7 @@
       "signin": "Zaloguj się, aby synchronizować"
     },
     "field": {
+      "guide": "Adres",
       "mac": "Adres MAC",
       "server": "Adres serwera",
       "username": "Nazwa użytkownika",

@@ -159,15 +159,47 @@
               </span>
             </div>
           }
+          <!-- EPG Share's guide for the device's country, which can be changed;
+               with none for it, only the country to choose. -->
           @if (!shareAdded()) {
-            <div class="flex items-center justify-between gap-3 rounded-md bg-card-2 px-4 py-3" data-onboarding-share>
+            <div class="flex flex-wrap items-center justify-between gap-3 rounded-md bg-card-2 px-4 py-3" data-onboarding-share>
               <div class="flex min-w-0 flex-col">
-                <span class="font-semibold">{{ shareLabel() }}</span>
+                <span class="font-semibold">{{ share.name() ?? 'EPG Share' }}</span>
                 <span class="text-xs text-muted-foreground">epgshare01.online</span>
               </div>
-              <button hlmBtn variant="secondary" size="sm" type="button" (click)="addShare()">{{ 'onboarding.add' | t }}</button>
+              <div class="flex flex-wrap gap-2">
+                <button hlmBtn variant="quiet" size="sm" type="button" (click)="share.chooseCountry()" data-onboarding-share-country>
+                  <ng-icon name="lucideGlobe" size="16" />
+                  {{ 'guides.changeCountry' | t }}
+                </button>
+                @if (share.suggestion()) {
+                  <button hlmBtn variant="secondary" size="sm" type="button" (click)="addShare()">{{ 'onboarding.add' | t }}</button>
+                }
+              </div>
             </div>
           }
+
+          <!-- A guide of one's own, by address, as on the Guides page. -->
+          <div class="flex flex-col gap-3 rounded-md bg-card-2 px-4 py-3" data-onboarding-own-guide>
+            <span class="font-semibold">{{ 'guides.addTitle' | t }}</span>
+            <div class="flex flex-col gap-1.5">
+              <label hlmLabel for="onboardingGuideUrl">{{ 'guides.address' | t }}</label>
+              <input hlmInput #guideUrlField id="onboardingGuideUrl" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false"
+                placeholder="https://example.com/epg.xml.gz" class="w-full font-mono"
+                [value]="guideUrl()" (input)="guideUrl.set($any($event.target).value)" (keydown.enter)="addOwnGuide(guideUrlField, guideNameField)" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label hlmLabel for="onboardingGuideName">{{ 'guides.name' | t }}</label>
+              <input hlmInput #guideNameField id="onboardingGuideName" type="text" autocomplete="off" class="w-full" [placeholder]="'guides.namePlaceholder' | t"
+                [value]="guideLabel()" (input)="guideLabel.set($any($event.target).value)" (keydown.enter)="addOwnGuide(guideUrlField, guideNameField)" />
+            </div>
+            <button hlmBtn variant="secondary" size="sm" type="button" class="self-start" (click)="addOwnGuide(guideUrlField, guideNameField)" data-onboarding-own-guide-add>
+              <ng-icon name="lucidePlus" size="16" />
+              {{ 'guides.add' | t }}
+            </button>
+          </div>
+          <!-- On a television: the address typed on a phone. -->
+          <app-phone-form-offer kind="guide" (arrived)="fromGuidePhone($event)" />
           <div class="mt-auto flex flex-col gap-2 sm:flex-row" data-onboarding-actions>
             <button hlmBtn variant="primary" type="button" class="sm:flex-1" data-onboarding-first (click)="next()">{{ 'onboarding.continue' | t }}</button>
             <button hlmBtn variant="quiet" type="button" (click)="next()">{{ 'onboarding.skip' | t }}</button>

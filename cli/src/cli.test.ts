@@ -701,6 +701,27 @@ describe('changing more of the account', () => {
     expect((await tvinto('guide add', typing)).out).toContain('already has that guide');
   });
 
+  it("suggests EPG Share's guide for this computer's country or another, and adds it", async () => {
+    const here = await tvinto('guide suggest', { locales: ['de-AT'] });
+    expect(here.out).toContain('EPG Share · Austria (AT): https://epgshare01.online/epgshare01/epg_ripper_AT1.xml.gz');
+
+    const several = await tvinto('guide suggest --country us');
+    expect(several.out).toContain('EPG Share · United States (US)');
+    expect(several.out).toContain('epg_ripper_US_LOCALS1.xml.gz');
+
+    const none = await tvinto('guide suggest --country SI');
+    expect(none.code).toBe(1);
+    expect(none.out).toContain('EPG Share has no guide for SI.');
+    expect((await tvinto('guide suggest', { locales: ['sl-SI'] })).code).toBe(0);
+
+    await seed();
+    await tvinto(`sign-in --password --server ${SERVER}`);
+    const previewed = await tvinto('guide suggest --country HR --add');
+    expect(previewed.out).toContain('Adds the guide "EPG Share · Croatia" (epgshare01.online).');
+    await tvinto(`apply ${codeIn(previewed.out)}`);
+    expect((await tvinto('guides')).out).toContain('"EPG Share · Croatia" -- epgshare01.online, on');
+  });
+
   it('removes a guide with its hand matches, and an undo brings both back', async () => {
     const { token } = await seed();
     await tvinto(`sign-in --password --server ${SERVER}`);

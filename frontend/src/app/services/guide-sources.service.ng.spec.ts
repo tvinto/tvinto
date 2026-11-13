@@ -4,7 +4,8 @@ import { Account } from '@shared/types';
 import { AccountService } from './account.service';
 import { AccountKeysService } from './account-keys.service';
 import { GuideService } from './guide.service';
-import { GuideSourcesService } from './guide-sources.service';
+import { GuideSourcesService, guideAddressProblem, guideName } from './guide-sources.service';
+import { setCurrentLanguage, t } from '../utils/i18n';
 import { LocalUserDataService } from './local-user-data.service';
 import { ProviderAccessService } from './provider-access.service';
 
@@ -307,5 +308,34 @@ describe('GuideSourcesService', () => {
 
       expect(load).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('guideName', () => {
+  afterEach(() => setCurrentLanguage('en'));
+
+  it('still names a guide added under the old Croatian label, in the language in use', () => {
+    expect(guideName('EPG Share · Croatia')).toBe('EPG Share · Croatia');
+    setCurrentLanguage('hr');
+    expect(guideName('EPG Share · Croatia')).toBe('EPG Share · Hrvatska');
+  });
+
+  it("names any country's EPG Share guide in the language in use", () => {
+    setCurrentLanguage('de');
+    expect(guideName('EPG Share · United Kingdom')).toBe('EPG Share · Vereinigtes Königreich');
+  });
+
+  it('shows a name somebody typed as typed', () => {
+    setCurrentLanguage('de');
+    expect(guideName('EPG Share')).toBe('EPG Share');
+    expect(guideName('EPG Share · Atlantis')).toBe('EPG Share · Atlantis');
+  });
+});
+
+describe('guideAddressProblem', () => {
+  it('asks for an address, and refuses one that is not a web address, in the Guides page words', () => {
+    expect(guideAddressProblem('  ')).toBe(t('guides.enterAddress'));
+    expect(guideAddressProblem('epg.xml')).toBe(t('guides.notAnAddress'));
+    expect(guideAddressProblem(' https://example.com/epg.xml.gz ')).toBeNull();
   });
 });

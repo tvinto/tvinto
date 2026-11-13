@@ -415,7 +415,8 @@
     "useProviderNamed": "Add guide: {{name}}",
     "orShare": "Or EPG Share: {{address}}",
     "failed": "Guide not added",
-    "epgShare": "EPG Share · Croatia",
+    "country": "Country",
+    "changeCountry": "Change country",
     "yourProvider": "Your provider",
     "unknownTime": "at an unknown time",
     "todayAt": "today at {{time}}",
@@ -1304,6 +1305,7 @@
     "noKey": "Scan the QR code on your TV again: this address is missing its key.",
     "failed": "The TV did not answer. Is the code still on its screen?",
     "title": {
+      "guide": "Add a guide",
       "stalker": "Your portal (MAC)",
       "server": "Your sync service",
       "xtream": "Your provider (Xtream codes)",
@@ -1311,6 +1313,7 @@
       "signin": "Sign in to sync"
     },
     "field": {
+      "guide": "Address",
       "mac": "MAC address",
       "server": "Server address",
       "username": "Username",

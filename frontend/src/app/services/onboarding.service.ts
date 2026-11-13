@@ -80,17 +80,25 @@ export class OnboardingService {
    * A guide added here, downloaded once the one before it has finished: the
    * provider's own guide starts downloading as the provider is added, and the
    * guide store takes one at a time (GuideService.load). Carries on after the
-   * walk-through is left.
+   * walk-through is left. Resolves with what went wrong, if anything, for a
+   * guide somebody typed (an address that is no guide is taken off again).
+   * Without a label the guide is named after its address.
    */
-  addGuide(url: string, label: string): void {
+  addGuide(url: string, label?: string): Promise<unknown> {
     this.sources.add(url, label);
     const id = guideSourceId(url);
-    void (async () => {
+    return (async () => {
       const until = Date.now() + WAIT_FOR_LOAD_MS;
       while (this.guide.isLoading() && Date.now() < until) {
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
-      await this.guide.load(id, url).catch((error: unknown) => console.warn('Could not load a guide added at the start', technicalDetail(error)));
+      try {
+        await this.guide.load(id, url);
+        return null;
+      } catch (error) {
+        console.warn('Could not load a guide added at the start', technicalDetail(error));
+        return error;
+      }
     })();
   }
 }

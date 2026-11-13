@@ -4,7 +4,7 @@ import { PhoneFormOfferComponent } from '../phone-form-offer/phone-form-offer.co
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideArrowLeft, lucideCheck, lucideEye, lucideEyeOff, lucideLoaderCircle } from '@ng-icons/lucide';
+import { lucideArrowLeft, lucideCheck, lucideEye, lucideEyeOff, lucideGlobe, lucideLoaderCircle, lucidePlus } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmLabel } from '@spartan-ng/helm/label';
@@ -20,7 +20,9 @@ import { AccountService } from '../../services/account.service';
 import { BackButtonService } from '../../services/back-button.service';
 import { ChannelPreviewService } from '../../services/channel-preview.service';
 import { GuideService } from '../../services/guide.service';
-import { EPG_SHARE_LABEL, GuideSourcesService, guideName } from '../../services/guide-sources.service';
+import { GuideSourcesService, guideAddressProblem, guideName } from '../../services/guide-sources.service';
+import { EpgShareService } from '../../services/epg-share.service';
+import { EmptyGuide } from '@shared/xtream/guide';
 import { LanguagePickerComponent } from '../language-picker/language-picker.component';
 import { OnboardingService } from '../../services/onboarding.service';
 import { ProviderInput, ProvidersService } from '../../services/providers.service';
@@ -32,9 +34,6 @@ import { StartupSettingsComponent } from '../startup-settings/startup-settings.c
 import { TvintoMarkComponent } from '../../ui/tvinto-mark.component';
 
 type Step = 'welcome' | 'provider' | 'guide' | 'startup' | 'done';
-
-/** The guide suggested beside the provider's own, as the Guides page suggests it. */
-const EPG_SHARE = { url: 'https://epgshare01.online/epgshare01/epg_ripper_HR1.xml.gz', label: EPG_SHARE_LABEL };
 
 /** How long checking a provider waits for its category list. */
 const CHECK_TIMEOUT_MS = 30_000;
@@ -51,7 +50,7 @@ const CHECK_TIMEOUT_MS = 30_000;
   selector: 'app-onboarding',
   standalone: true,
   imports: [TPipe, NgIcon, HlmButton, HlmInput, HlmLabel, StartupSettingsComponent, TvintoMarkComponent, PhoneFormOfferComponent, LanguagePickerComponent],
-  providers: [provideIcons({ lucideArrowLeft, lucideCheck, lucideEye, lucideEyeOff, lucideLoaderCircle })],
+  providers: [provideIcons({ lucideArrowLeft, lucideCheck, lucideEye, lucideEyeOff, lucideGlobe, lucideLoaderCircle, lucidePlus })],
   templateUrl: './onboarding.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -106,9 +105,16 @@ export class OnboardingComponent {
 
   /** What each guide source holds once loaded, by id. */
   readonly totals = signal<ReadonlyMap<string, { channels: number; programmes: number }>>(new Map());
-  readonly shareAdded = computed(() => this.sources.sources().some(source => source.id === guideSourceId(EPG_SHARE.url)));
-  readonly shareLabel = computed(() => guideName(EPG_SHARE.label));
+  /** The guide suggested beside the provider's own, for the device's country, as the Guides page suggests it. */
+  readonly share = inject(EpgShareService);
+  readonly shareAdded = computed(() => {
+    const suggestion = this.share.suggestion();
+    return !!suggestion && this.sources.sources().some(source => source.id === guideSourceId(suggestion.url));
+  });
   readonly guideName = guideName;
+  /** A guide of one's own, by address, as on the Guides page. */
+  readonly guideUrl = signal('');
+  readonly guideLabel = signal('');
 
   // --- Done -------------------------------------------------------------------
 
@@ -244,9 +250,51 @@ export class OnboardingComponent {
   }
 
   addShare(): void {
-    if (!this.shareAdded()) {
-      this.onboarding.addGuide(EPG_SHARE.url, EPG_SHARE.label);
+    const suggestion = this.share.suggestion();
+    if (suggestion && !this.shareAdded()) {
+      void this.onboarding.addGuide(suggestion.url, suggestion.label);
     }
+  }
+
+  /**
+   * A guide by its address, checked and worded as the Guides page does: an
+   * address that answers with no guide is taken off again. The fields are
+   * emptied themselves as well as their signals: typed and sent in one go (a
+   * paste and Enter, a script), the signal is back to '' before the view has
+   * seen it change, and the text stayed in them.
+   */
+  async addOwnGuide(...fields: HTMLInputElement[]): Promise<void> {
+    const url = this.guideUrl().trim();
+    const problem = guideAddressProblem(url);
+    if (problem) {
+      this.toasts.error(t('guides.failed'), problem);
+      return;
+    }
+    const typed = this.guideLabel().trim();
+    this.guideUrl.set('');
+    this.guideLabel.set('');
+    fields.forEach(field => (field.value = ''));
+    if (this.sources.sources().some(source => source.id === guideSourceId(url))) {
+      return;
+    }
+    const failure = await this.onboarding.addGuide(url, typed || undefined);
+    const source = this.sources.sources().find(entry => entry.id === guideSourceId(url));
+    const label = guideName(source?.label ?? url);
+    if (failure instanceof EmptyGuide) {
+      if (source) {
+        this.sources.remove(source.id);
+      }
+      this.toasts.error(t('guides.failed'), t('guides.emptyNotAdded', { label }));
+    } else if (failure) {
+      const reason = failure instanceof Error ? failure.message : String(failure);
+      this.toasts.error(t('guides.failed'), t('guides.couldNotLoad', { label, reason: reason.length > 160 ? reason.slice(0, 160) + '…' : reason }));
+    }
+  }
+
+  /** A guide's address typed on a phone (PhoneFormOfferComponent): into the fields, added with Add. */
+  fromGuidePhone(fields: Record<string, string>): void {
+    this.guideUrl.set(fields['guide'] ?? '');
+    this.guideLabel.set(fields['name'] ?? '');
   }
 
   setPreview(on: boolean): void {

@@ -415,7 +415,8 @@
     "useProviderNamed": "Rehber ekle: {{name}}",
     "orShare": "Ya da EPG Share: {{address}}",
     "failed": "Rehber eklenmedi",
-    "epgShare": "EPG Share · Hırvatistan",
+    "country": "Ülke",
+    "changeCountry": "Ülkeyi değiştir",
     "yourProvider": "Sağlayıcınız",
     "unknownTime": "bilinmeyen bir saatte",
     "todayAt": "bugün {{time}}",
@@ -1322,6 +1323,7 @@
     "noKey": "Televizyonunuzdaki QR kodunu tekrar tarayın: bu adreste anahtarı eksik.",
     "failed": "Televizyon yanıt vermedi. Kod hâlâ ekranında mı?",
     "title": {
+      "guide": "Rehber ekle",
       "stalker": "Portalınız (MAC)",
       "server": "Eşitleme hizmetiniz",
       "xtream": "Sağlayıcınız (Xtream kodları)",
@@ -1329,6 +1331,7 @@
       "signin": "Eşitlemek için giriş yapın"
     },
     "field": {
+      "guide": "Adres",
       "mac": "MAC adresi",
       "server": "Sunucu adresi",
       "username": "Kullanıcı adı",

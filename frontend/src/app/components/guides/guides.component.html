@@ -136,11 +136,22 @@
                 {{ 'guides.useProvider' | t }}
               </button>
             }
+            <!-- EPG Share's guide for the device's country, filled in; with
+                 none for it, the pill asks for a country first. -->
             <button hlmBtn size="sm" type="button" (click)="useEpgShare()" data-epg-share>
               <ng-icon name="lucidePlus" />
-              {{ 'guides.epgShare' | t }}
+              {{ share.name() ?? 'EPG Share' }}
             </button>
+            @if (share.suggestion()) {
+              <button hlmBtn size="sm" type="button" (click)="share.chooseCountry()" data-epg-share-country>
+                <ng-icon name="lucideGlobe" />
+                {{ 'guides.changeCountry' | t }}
+              </button>
+            }
           </div>
+
+          <!-- On a television: the address typed on a phone. -->
+          <app-phone-form-offer kind="guide" (arrived)="fromPhone($event)" />
         </form>
       </app-setting-group>
     }

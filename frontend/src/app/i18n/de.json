@@ -415,7 +415,8 @@
     "useProviderNamed": "Programmführer hinzufügen: {{name}}",
     "orShare": "Oder EPG Share: {{address}}",
     "failed": "Programmführer nicht hinzugefügt",
-    "epgShare": "EPG Share · Kroatien",
+    "country": "Land",
+    "changeCountry": "Land ändern",
     "yourProvider": "Dein Anbieter",
     "unknownTime": "zu unbekannter Zeit",
     "todayAt": "heute um {{time}}",
@@ -1322,6 +1323,7 @@
     "noKey": "Scanne den QR-Code auf dem Fernseher erneut: Dieser Adresse fehlt ihr Schlüssel.",
     "failed": "Der Fernseher hat nicht geantwortet. Ist der Code noch auf seinem Bildschirm?",
     "title": {
+      "guide": "Programmführer hinzufügen",
       "stalker": "Dein Portal (MAC)",
       "server": "Dein Sync-Dienst",
       "xtream": "Dein Anbieter (Xtream-Codes)",
@@ -1329,6 +1331,7 @@
       "signin": "Zum Synchronisieren anmelden"
     },
     "field": {
+      "guide": "Adresse",
       "mac": "MAC-Adresse",
       "server": "Serveradresse",
       "username": "Benutzername",

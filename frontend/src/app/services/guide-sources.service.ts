@@ -7,6 +7,7 @@ import {
   emptyGuideSources,
 
   enabledSources,
+  isGuideAddress,
   mapChannel,
   removeSource,
   mergeIncoming,
@@ -17,6 +18,8 @@ import {
 } from '@shared/xtream/guideSources';
 import { ChangeSet } from '@shared/sync';
 import { guideSourceId } from '@shared/xtream/guideSourceId';
+import { epgShareCountryOfLabel } from '@shared/xtream/epgShare';
+import { epgShareName } from '../utils/epg-share.utils';
 import { accountStorageKey, adoptableLegacyValue } from '../utils/account-storage.utils';
 import { takeBrought } from '../utils/local-drawers.utils';
 import { AccountService } from './account.service';
@@ -50,20 +53,32 @@ const STORAGE_PREFIX = 'xtream_guide_sources';
 /** What the first provider's guide is called in the list, as it always has been. */
 export const PROVIDER_GUIDE_LABEL = 'Your provider';
 
-/** The name onboarding gives EPG Share's Croatian guide. */
-export const EPG_SHARE_LABEL = 'EPG Share · Croatia';
-
 /**
- * A guide's name as shown. The two the app names itself are kept in English,
- * since the name is stored and synced, and shown in the language in use; a
- * name somebody typed is shown as typed. Onboarding, a channel's guide
+ * A guide's name as shown. The ones the app names itself -- the provider's,
+ * and EPG Share's for a country (`EPG Share · Croatia`) -- are kept in
+ * English, since the name is stored and synced, and shown in the language in
+ * use; a name somebody typed is shown as typed. Onboarding, a channel's guide
  * picker and For You showed them in English until 12 November.
  */
 export function guideName(label: string): string {
   if (label === PROVIDER_GUIDE_LABEL) {
     return t('guides.yourProvider');
   }
-  return label === EPG_SHARE_LABEL ? t('guides.epgShare') : label;
+  const country = epgShareCountryOfLabel(label);
+  return country ? epgShareName(country) : label;
+}
+
+/**
+ * What is wrong with a guide address somebody typed, in the Guides page's
+ * words, or null when it can be added. Onboarding asks the same.
+ */
+export function guideAddressProblem(url: string): string | null {
+  const address = url.trim();
+  if (!address) {
+    return t('guides.enterAddress');
+  }
+  // Refused here rather than saved and "loaded" as a guide of nothing.
+  return isGuideAddress(address) ? null : t('guides.notAnAddress');
 }
 
 /** A provider's own guide, ready to add. The address is a credential. */

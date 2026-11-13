@@ -423,7 +423,8 @@
     "useProviderNamed": "Dodaj vodič: {{name}}",
     "orShare": "Ili EPG Share: {{address}}",
     "failed": "Vodič nije dodan",
-    "epgShare": "EPG Share · Hrvatska",
+    "country": "Država",
+    "changeCountry": "Promijeni državu",
     "yourProvider": "Vaš pružatelj",
     "unknownTime": "u nepoznato vrijeme",
     "todayAt": "danas u {{time}}",
@@ -1331,6 +1332,7 @@
     "noKey": "Ponovno skenirajte QR kod s TV-a: ovoj adresi nedostaje ključ.",
     "failed": "TV se nije javio. Je li kod još na ekranu?",
     "title": {
+      "guide": "Dodaj vodič",
       "stalker": "Vaš portal (MAC)",
       "server": "Vaša usluga sinkronizacije",
       "xtream": "Vaš pružatelj (Xtream codes)",
@@ -1338,6 +1340,7 @@
       "signin": "Prijava za sinkronizaciju"
     },
     "field": {
+      "guide": "Adresa",
       "mac": "MAC adresa",
       "server": "Adresa poslužitelja",
       "username": "Korisničko ime",
