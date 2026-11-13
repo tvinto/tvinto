@@ -1,5 +1,6 @@
 import { mkdirSync, readdirSync, rmSync, statfsSync } from 'fs';
 import { join } from 'path';
+import { playbackLog } from './playbackLog';
 
 /**
  * Pausing live TV on the desktop: mpv's own cache, put on disk at the pause.
@@ -59,6 +60,11 @@ export interface LiveWords {
   behind?: string;
   backToLive?: string;
   cannotPause?: string;
+  /** While a channel that dropped is opened again (player.ts, LiveKeeper). */
+  reconnecting?: string;
+  /** When it could not be: what happened, and the keys under it. */
+  stopped?: string;
+  tryAgain?: string;
 }
 
 /** What a step does: go to live, or seek in what was read. */
@@ -289,6 +295,7 @@ export class LivePause {
     }
     this.finish();
     this.reloading = true;
+    playbackLog('app: back to live, reopening the channel');
     this.mpv.send(['loadfile', this.url, 'replace']);
   }
 

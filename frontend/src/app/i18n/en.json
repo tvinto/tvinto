@@ -1509,7 +1509,10 @@
       "noSubtitles": "This channel has no subtitles",
       "behind": "{0} behind live",
       "backToLive": "Back to live",
-      "cannotPause": "This channel can't be paused"
+      "cannotPause": "This channel can't be paused",
+      "reconnecting": "Reconnecting…",
+      "stopped": "The channel stopped. The provider may have ended the connection.",
+      "tryAgain": "Enter: try again · Esc: close"
     },
     "sleep": {
       "title": "Sleep timer",

@@ -1608,7 +1608,10 @@
       "noSubtitles": "Ta kanal nima podnapisov",
       "behind": "{0} za prenosom v živo",
       "backToLive": "Nazaj v živo",
-      "cannotPause": "Tega kanala ni mogoče začasno ustaviti"
+      "cannotPause": "Tega kanala ni mogoče začasno ustaviti",
+      "reconnecting": "Ponovno povezovanje…",
+      "stopped": "Kanal se je ustavil. Ponudnik je morda prekinil povezavo.",
+      "tryAgain": "Enter: poskusi znova · Esc: zapri"
     },
     "sleep": {
       "title": "Časovnik izklopa",

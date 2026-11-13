@@ -1536,7 +1536,10 @@
       "noSubtitles": "Ky kanal nuk ka titra",
       "behind": "{0} pas transmetimit live",
       "backToLive": "Kthehu te live",
-      "cannotPause": "Ky kanal nuk mund të ndalet"
+      "cannotPause": "Ky kanal nuk mund të ndalet",
+      "reconnecting": "Po rilidhet…",
+      "stopped": "Kanali u ndal. Ofruesi mund ta ketë ndërprerë lidhjen.",
+      "tryAgain": "Enter: provo përsëri · Esc: mbyll"
     },
     "sleep": {
       "title": "Kohëmatësi i fikjes",

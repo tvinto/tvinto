@@ -1536,7 +1536,10 @@
       "noSubtitles": "Cette chaîne n'a pas de sous-titres",
       "behind": "{0} de retard sur le direct",
       "backToLive": "Revenir au direct",
-      "cannotPause": "Cette chaîne ne peut pas être mise en pause"
+      "cannotPause": "Cette chaîne ne peut pas être mise en pause",
+      "reconnecting": "Reconnexion…",
+      "stopped": "La chaîne s'est arrêtée. Le fournisseur a peut-être coupé la connexion.",
+      "tryAgain": "Entrée : réessayer · Échap : fermer"
     },
     "sleep": {
       "title": "Minuterie de mise en veille",

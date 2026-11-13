@@ -1536,7 +1536,10 @@
       "noSubtitles": "Este canal no tiene subtítulos",
       "behind": "{0} por detrás del directo",
       "backToLive": "Volver al directo",
-      "cannotPause": "Este canal no se puede pausar"
+      "cannotPause": "Este canal no se puede pausar",
+      "reconnecting": "Reconectando…",
+      "stopped": "El canal se detuvo. Es posible que el proveedor haya cortado la conexión.",
+      "tryAgain": "Enter: reintentar · Esc: cerrar"
     },
     "sleep": {
       "title": "Temporizador de apagado",

@@ -1608,7 +1608,10 @@
       "noSubtitles": "Ten kanał nie ma napisów",
       "behind": "{0} za transmisją na żywo",
       "backToLive": "Wróć na żywo",
-      "cannotPause": "Tego kanału nie można wstrzymać"
+      "cannotPause": "Tego kanału nie można wstrzymać",
+      "reconnecting": "Ponowne łączenie…",
+      "stopped": "Kanał się zatrzymał. Dostawca mógł zerwać połączenie.",
+      "tryAgain": "Enter: spróbuj ponownie · Esc: zamknij"
     },
     "sleep": {
       "title": "Wyłącznik czasowy",

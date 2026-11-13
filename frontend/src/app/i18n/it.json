@@ -1536,7 +1536,10 @@
       "noSubtitles": "Questo canale non ha sottotitoli",
       "behind": "{0} indietro rispetto alla diretta",
       "backToLive": "Torna alla diretta",
-      "cannotPause": "Questo canale non si può mettere in pausa"
+      "cannotPause": "Questo canale non si può mettere in pausa",
+      "reconnecting": "Riconnessione…",
+      "stopped": "Il canale si è interrotto. Il fornitore potrebbe aver chiuso la connessione.",
+      "tryAgain": "Invio: riprova · Esc: chiudi"
     },
     "sleep": {
       "title": "Spegnimento automatico",

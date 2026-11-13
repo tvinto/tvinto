@@ -451,7 +451,10 @@ export class NativePlayerService {
           paused: t('nativePlayer.film.paused'),
           behind: t('nativePlayer.live.behind'),
           backToLive: t('nativePlayer.live.backToLive'),
-          cannotPause: t('nativePlayer.live.cannotPause')
+          cannotPause: t('nativePlayer.live.cannotPause'),
+          reconnecting: t('nativePlayer.live.reconnecting'),
+          stopped: t('nativePlayer.live.stopped'),
+          tryAgain: t('nativePlayer.live.tryAgain')
         }
       });
 

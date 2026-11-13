@@ -1536,7 +1536,10 @@
       "noSubtitles": "Bu kanalın altyazısı yok",
       "behind": "Canlı yayının {0} gerisinde",
       "backToLive": "Canlı yayına dön",
-      "cannotPause": "Bu kanal duraklatılamaz"
+      "cannotPause": "Bu kanal duraklatılamaz",
+      "reconnecting": "Yeniden bağlanılıyor…",
+      "stopped": "Kanal durdu. Sağlayıcı bağlantıyı kesmiş olabilir.",
+      "tryAgain": "Enter: tekrar dene · Esc: kapat"
     },
     "sleep": {
       "title": "Uyku zamanlayıcısı",
