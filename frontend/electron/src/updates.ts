@@ -1,3 +1,4 @@
+import { toPage } from './pageChannel';
 import { fromAppPage } from './appPage';
 import { appendFileSync } from 'fs';
 import { join } from 'path';
@@ -150,7 +151,7 @@ export const startUpdates = (): void => {
     lastReason = null;
     write('info', `Downloaded ${info.version}. Waiting for a restart, a close, or an idle hour.`);
     for (const window of BrowserWindow.getAllWindows()) {
-      window.webContents.send('xtream:update-ready', info.version);
+      toPage(window.webContents, 'xtream:update-ready', info.version);
     }
   });
   // No handler for 'error'. The logger above already receives it, in more

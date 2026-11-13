@@ -1591,5 +1591,26 @@
         "other": "{0} kanal"
       }
     }
+  },
+  "desktopPlayer": {
+    "paused": "DURAKLATILDI",
+    "play": "Oynat",
+    "pause": "Duraklat",
+    "live": "CANLI",
+    "next": "SONRAKİ",
+    "ends": "bitiş {{time}}",
+    "backToLive": "Canlıya dön",
+    "audioSubtitles": "Ses ve altyazılar",
+    "startOver": "Baştan başlat",
+    "fullScreen": "Tam ekran",
+    "exitFullScreen": "Tam ekrandan çık",
+    "close": "Kapat",
+    "audio": "Ses",
+    "subtitles": "Altyazılar",
+    "off": "Kapalı",
+    "where": "Filmler bu bilgisayarda nerede oynatılır",
+    "whereSub": "Uygulamanın içinde kendi kontrolleriyle ya da eskisi gibi mpv penceresinde",
+    "inApp": "Uygulamada",
+    "inWindow": "mpv penceresi"
   }
 }

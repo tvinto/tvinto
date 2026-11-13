@@ -24,6 +24,15 @@ export type SkipIntros = 'button' | 'auto' | 'off';
 
 export const SKIP_INTROS: readonly SkipIntros[] = ['button', 'auto', 'off'];
 
+/**
+ * Where the desktop plays: inside the app's window with its own controls
+ * (tvinto-player, from November 2026), or mpv's window over the app as
+ * before -- kept for one release in case the first misbehaves on a machine.
+ */
+export type DesktopPlayer = 'app' | 'window';
+
+export const DESKTOP_PLAYERS: readonly DesktopPlayer[] = ['app', 'window'];
+
 export interface PlayerPreferences {
   /**
    * Subtitle size as a percentage of the player's default.
@@ -68,6 +77,9 @@ export interface PlayerPreferences {
    * the file's chapters or TheIntroDB (shared/tmdb/introdb.ts).
    */
   skipIntros: SkipIntros;
+
+  /** Only the desktop app acts on it (DesktopPlayer). */
+  desktopPlayer: DesktopPlayer;
 }
 
 export const DEFAULT_PLAYER_PREFERENCES: PlayerPreferences = {
@@ -79,7 +91,8 @@ export const DEFAULT_PLAYER_PREFERENCES: PlayerPreferences = {
   subtitleLanguage: '',
   subtitlesEnabled: false,
   matchFrameRate: true,
-  skipIntros: 'button'
+  skipIntros: 'button',
+  desktopPlayer: 'app'
 };
 
 /** The sizes offered, rather than a free number nobody wants to type. */
@@ -121,7 +134,8 @@ export function readPlayerPreferences(stored: string | null | undefined): Player
     subtitleLanguage: languageOr(parsed.subtitleLanguage),
     subtitlesEnabled: parsed.subtitlesEnabled === true,
     matchFrameRate: parsed.matchFrameRate !== false,
-    skipIntros: oneOf(parsed.skipIntros, SKIP_INTROS, DEFAULT_PLAYER_PREFERENCES.skipIntros)
+    skipIntros: oneOf(parsed.skipIntros, SKIP_INTROS, DEFAULT_PLAYER_PREFERENCES.skipIntros),
+    desktopPlayer: oneOf(parsed.desktopPlayer, DESKTOP_PLAYERS, DEFAULT_PLAYER_PREFERENCES.desktopPlayer)
   };
 }
 

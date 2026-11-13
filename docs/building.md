@@ -6,8 +6,13 @@
 - **For Android:** the Android SDK from Android Studio (compile SDK 36,
   minimum Android 7.0, which is API 24) and JDK 21. An Android TV emulator for
   anything that runs on a TV.
-- **For Windows:** nothing extra. `npm run electron:make` downloads mpv the
-  first time, at a fixed version, and checks its hash.
+- **For Windows:** nothing extra. `npm run electron:make` downloads mpv and
+  libmpv the first time, at a fixed version, and checks their hashes
+  (`npm run fetch:mpv`). It also builds `tvinto-player.exe`, the player that
+  draws into the app's window, with Zig, which it downloads into
+  `%LOCALAPPDATA%\tvinto-build` the same way (`npm run build:player`). The
+  mpv build is shinchiro's, which keeps only about a month of releases: move
+  the pin in `scripts/fetch-mpv.js` forward when the download answers 404.
 
 ## First time
 

@@ -7,7 +7,7 @@ import { Session, untrusted } from './account';
 import { Change, Line, Op, currentOf } from './changes';
 import { CategoryView } from './provider';
 import { FamilyView, isFamilyRole } from '../../shared/family';
-import { PlayerPreferences, SUBTITLE_SCALES, readPlayerPreferences, writePlayerPreferences } from '../../shared/player';
+import { DESKTOP_PLAYERS, PlayerPreferences, SUBTITLE_SCALES, readPlayerPreferences, writePlayerPreferences } from '../../shared/player';
 import { DESCRIPTION_LANGUAGES } from '../../shared/tmdb/describe';
 import { openLastChannelValue } from '../../shared/startup';
 import { LANGUAGES_MAX, LANGUAGE_CHOICES, writeLanguages } from '../../shared/languages';
@@ -225,7 +225,9 @@ const PLAYER_FIELDS: Record<string, { field: keyof PlayerPreferences; read(word:
   'subtitle-background': { field: 'subtitleBackground', read: word => oneOfWord(word, ['none', 'translucent', 'solid']), help: 'none|translucent|solid' },
   'subtitle-edge': { field: 'subtitleEdge', read: word => oneOfWord(word, ['none', 'outline', 'shadow']), help: 'none|outline|shadow' },
   'frame-rate': { field: 'matchFrameRate', read: onOffWord, help: 'on|off' },
-  'skip-intros': { field: 'skipIntros', read: word => oneOfWord(word, ['button', 'auto', 'off']), help: 'button|auto|off' }
+  'skip-intros': { field: 'skipIntros', read: word => oneOfWord(word, ['button', 'auto', 'off']), help: 'button|auto|off' },
+  // Where the desktop app plays: inside its window, or mpv's own (shared/player.ts).
+  desktop: { field: 'desktopPlayer', read: word => oneOfWord(word, [...DESKTOP_PLAYERS]), help: DESKTOP_PLAYERS.join('|') }
 };
 
 export const PLAYER_HELP = Object.entries(PLAYER_FIELDS)

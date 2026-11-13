@@ -479,6 +479,24 @@ http
       }
       if (PLAY) {
         const size = require('fs').statSync(PLAY).size;
+        // Byte ranges as a provider's server answers them, so a resumed film
+        // starts where it was and a seek lands (a player asks for one range).
+        const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? '');
+        if (range && (range[1] || range[2])) {
+          const start = range[1] ? Number(range[1]) : Math.max(0, size - Number(range[2]));
+          const end = range[1] && range[2] ? Math.min(size - 1, Number(range[2])) : size - 1;
+          if (start >= size || start > end) {
+            res.writeHead(416, { 'Content-Range': `bytes */${size}` });
+            return res.end();
+          }
+          res.writeHead(206, {
+            'Content-Type': 'video/mp2t',
+            'Content-Length': end - start + 1,
+            'Content-Range': `bytes ${start}-${end}/${size}`,
+            'Accept-Ranges': 'bytes'
+          });
+          return require('fs').createReadStream(PLAY, { start, end }).pipe(res);
+        }
         res.writeHead(200, { 'Content-Type': 'video/mp2t', 'Content-Length': size, 'Accept-Ranges': 'bytes' });
         return require('fs').createReadStream(PLAY).pipe(res);
       }

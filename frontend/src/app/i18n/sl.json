@@ -1665,5 +1665,26 @@
         "other": "{0} kanalov"
       }
     }
+  },
+  "desktopPlayer": {
+    "paused": "ZAUSTAVLJENO",
+    "play": "Predvajaj",
+    "pause": "Zaustavi",
+    "live": "V ŽIVO",
+    "next": "SLEDI",
+    "ends": "konča ob {{time}}",
+    "backToLive": "Nazaj v živo",
+    "audioSubtitles": "Zvok in podnapisi",
+    "startOver": "Od začetka",
+    "fullScreen": "Celoten zaslon",
+    "exitFullScreen": "Zapusti celoten zaslon",
+    "close": "Zapri",
+    "audio": "Zvok",
+    "subtitles": "Podnapisi",
+    "off": "Izklopljeno",
+    "where": "Kje se filmi predvajajo na tem računalniku",
+    "whereSub": "V aplikaciji z njenimi kontrolami ali v oknu mpv kot prej",
+    "inApp": "V aplikaciji",
+    "inWindow": "Okno mpv"
   }
 }

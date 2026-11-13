@@ -1,3 +1,4 @@
+import { toPage } from './pageChannel';
 import { fromAppPage } from './appPage';
 import type { BrowserWindow } from 'electron';
 import { app, ipcMain } from 'electron';
@@ -31,7 +32,7 @@ function deliver(link: string): void {
     window.focus();
   }
   if (window && !window.isDestroyed() && pageListening) {
-    window.webContents.send('xtream:deep-link', link);
+    toPage(window.webContents, 'xtream:deep-link', link);
   } else {
     waiting.push(link);
   }

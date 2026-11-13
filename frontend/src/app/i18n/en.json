@@ -1564,5 +1564,26 @@
         "other": "{0} channels"
       }
     }
+  },
+  "desktopPlayer": {
+    "paused": "PAUSED",
+    "play": "Play",
+    "pause": "Pause",
+    "live": "LIVE",
+    "next": "NEXT",
+    "ends": "ends {{time}}",
+    "backToLive": "Back to live",
+    "audioSubtitles": "Audio & subtitles",
+    "startOver": "Start over",
+    "fullScreen": "Full screen",
+    "exitFullScreen": "Exit full screen",
+    "close": "Close",
+    "audio": "Audio",
+    "subtitles": "Subtitles",
+    "off": "Off",
+    "where": "Where films play on this computer",
+    "whereSub": "Inside the app with its own controls, or in mpv’s window as before",
+    "inApp": "In the app",
+    "inWindow": "mpv’s window"
   }
 }

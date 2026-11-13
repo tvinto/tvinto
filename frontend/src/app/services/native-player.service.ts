@@ -12,6 +12,7 @@ import { shiftWebVtt, withoutStyleTags } from '@shared/opensubtitles/vtt';
 import { SubtitleLibraryService } from './subtitle-library.service';
 import { SwitchAction, SwitchEvent, SwitchState, nextSwitch, startSwitching } from '../utils/channel-switch.utils';
 import { ChannelBanner } from '../utils/player-banner.utils';
+import { DesktopVideoService } from './desktop-video.service';
 import { DesktopPlayerBridge, SwitchBridge, androidBridge, desktopBridge } from './native/switch-bridge';
 import { tooBigToDecodeInSoftware } from '../utils/failure-messages.utils';
 import { AheadEpisode, EpisodesAhead, FilmPresentation, ShowSeasons } from '../utils/film-presentation.utils';
@@ -183,6 +184,7 @@ export class NativePlayerService {
   private readonly library = inject(SubtitleLibraryService);
   private readonly local = inject(LocalUserDataService);
   private readonly recordings = inject(RecordingsService);
+  private readonly desktopVideo = inject(DesktopVideoService);
 
   /** Whether this build has a player that is not the WebView's. */
   readonly available = this.platform.hasNativePlayer;
@@ -420,7 +422,13 @@ export class NativePlayerService {
 
     try {
       if (run && bridge.player) {
-        const channels = desktopBridge(bridge.player, run.current);
+        const channels = desktopBridge(bridge.player, run.current, channel => {
+          if (!this.desktopVideo.open()) {
+            return false;
+          }
+          this.desktopVideo.showBanner(channel);
+          return true;
+        });
         stopListening = await this.listenForSwitching(run, channels);
         void run.bannerFor(run.current.itemId).then(banner => channels.updateBanner({ itemId: run.current.itemId, banner }), () => undefined);
       }
@@ -444,6 +452,8 @@ export class NativePlayerService {
         subtitles: request.subtitles,
         skips: request.skips?.length && chosen.skipIntros !== 'off' ? request.skips : undefined,
         skipIntros: chosen.skipIntros,
+        // Inside the app (tvinto-player) or mpv's own window (shared/player.ts).
+        engine: chosen.desktopPlayer,
         skipWords: { intro: t('player.skipIntroDesktop'), recap: t('player.skipRecapDesktop') },
         // A live channel can be paused in mpv (electron/src/livePause.ts).
         live: request.item?.type === 'live',

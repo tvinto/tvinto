@@ -1591,5 +1591,26 @@
         "other": "{0} chaînes"
       }
     }
+  },
+  "desktopPlayer": {
+    "paused": "EN PAUSE",
+    "play": "Lecture",
+    "pause": "Pause",
+    "live": "EN DIRECT",
+    "next": "ENSUITE",
+    "ends": "fin à {{time}}",
+    "backToLive": "Revenir au direct",
+    "audioSubtitles": "Audio et sous-titres",
+    "startOver": "Reprendre au début",
+    "fullScreen": "Plein écran",
+    "exitFullScreen": "Quitter le plein écran",
+    "close": "Fermer",
+    "audio": "Audio",
+    "subtitles": "Sous-titres",
+    "off": "Désactivés",
+    "where": "Où les films sont lus sur cet ordinateur",
+    "whereSub": "Dans l’application avec ses propres commandes, ou dans la fenêtre de mpv comme avant",
+    "inApp": "Dans l’application",
+    "inWindow": "Fenêtre de mpv"
   }
 }

@@ -1591,5 +1591,26 @@
         "other": "{0} canali"
       }
     }
+  },
+  "desktopPlayer": {
+    "paused": "IN PAUSA",
+    "play": "Riproduci",
+    "pause": "Pausa",
+    "live": "IN DIRETTA",
+    "next": "DOPO",
+    "ends": "finisce alle {{time}}",
+    "backToLive": "Torna in diretta",
+    "audioSubtitles": "Audio e sottotitoli",
+    "startOver": "Dall’inizio",
+    "fullScreen": "Schermo intero",
+    "exitFullScreen": "Esci da schermo intero",
+    "close": "Chiudi",
+    "audio": "Audio",
+    "subtitles": "Sottotitoli",
+    "off": "No",
+    "where": "Dove si guardano i film su questo computer",
+    "whereSub": "Nell’app con i suoi controlli, o nella finestra di mpv come prima",
+    "inApp": "Nell’app",
+    "inWindow": "Finestra di mpv"
   }
 }

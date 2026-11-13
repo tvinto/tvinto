@@ -1,14 +1,17 @@
+import { toPage } from './pageChannel';
 import { MpvChapter, Skip, handedSkips, skipAt, skipsFromChapters } from './skips';
 import { fromAppPage } from './appPage';
-import { ChildProcess, spawn } from 'child_process';
+import { ChildProcess, execFile, spawn } from 'child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { connect, Socket } from 'net';
-import { join } from 'path';
-import { app, BrowserWindow, ipcMain, screen } from 'electron';
+import { dirname, join } from 'path';
+import { app, BrowserWindow, ipcMain, powerSaveBlocker, screen } from 'electron';
 import { desktopRecorder } from './recorderIpc';
 import { CacheState, LivePause, LiveWords } from './livePause';
 import { LiveRecovery } from './liveRecovery';
 import { playbackLog, redactUrl, setPlaybackLogFolder } from './playbackLog';
+import { VideoFrames } from './videoFrames';
+import { VideoState } from './videoState';
 
 /**
  * Playback on the desktop, by mpv rather than by Chromium.
@@ -19,11 +22,19 @@ import { playbackLog, redactUrl, setPlaybackLogFolder } from './playbackLog';
  * picture. mpv carries its own decoders, so it plays them whatever Windows has
  * installed.
  *
- * A separate window driven over a pipe, rather than a surface embedded in the
- * app. Embedding means handing mpv a native window handle and owning its
- * lifetime, sizing and focus; a separate window is what the Android player
- * already is, and the app above already knows how to ask for playback and be
- * told where it got to afterwards.
+ * Inside the app's window since November 2026: tvinto-player.exe is the same
+ * mpv as a library, drawing into textures the page shows under its own
+ * controls (native/tvinto-player.cpp, src/videoFrames.ts, src/videoState.ts,
+ * the page's app-desktop-player). It takes mpv.exe's command line and serves
+ * its JSON pipe, so everything below -- live pause, Skip intro, switching
+ * channel, reopening a dropped one -- talks to either the same way.
+ *
+ * mpv.exe's own window over the app is the fallback: no helper, a machine
+ * where it cannot start, or the account's player setting `desktopPlayer:
+ * 'window'`. Kept for one release. What goes with it then: overlayGeometry
+ * and the window-only arguments (--ontop, --no-border, --geometry, --screen),
+ * the preload's full-window canvas and its key forwarding, the mpv OSD
+ * banner (osdBanner) and live pause badge (badgeAss), and the setting.
  */
 
 /**
@@ -113,7 +124,22 @@ export interface PlayRequest {
 
   /** The pause's words, in the app's language. */
   liveWords?: LiveWords;
+
+  /**
+   * Where to play (shared/player.ts DesktopPlayer): 'window' is mpv's own
+   * window, as before tvinto-player; anything else, inside the app when it
+   * can. Absent from an older page.
+   */
+  engine?: string;
 }
+
+/** What the page's own player controls ask for (videoState.ts, preload's `video`). */
+type VideoCommand =
+  | { kind: 'key'; key: string }
+  | { kind: 'seek'; seconds: number; mode: 'relative' | 'absolute' }
+  | { kind: 'audio'; id: number }
+  | { kind: 'subtitle'; id: number | null }
+  | { kind: 'pause'; paused: boolean };
 
 /** What the page tells a player that switches inside itself. */
 type PlayerCommand =
@@ -280,6 +306,39 @@ function findMpv(): string | null {
   return said('mpv');
 }
 
+/**
+ * Whether tvinto-player can play on this machine, asked once (its
+ * `--tvinto-check`: a D3D11 device, libmpv, mpv's D3D11 renderer). Null
+ * until asked.
+ */
+let helperWorks: boolean | null = null;
+
+/**
+ * tvinto-player.exe, mpv drawing into the app's own window (src/videoFrames.ts),
+ * when it is beside mpv.exe with its libmpv and works here. Null sends the
+ * play to mpv.exe's window, as before: no helper, a machine where it cannot
+ * start, or XTREAM_PLAYER=window.
+ */
+async function findHelper(mpv: string): Promise<string | null> {
+  if (process.platform !== 'win32' || process.env['XTREAM_PLAYER'] === 'window') {
+    return null;
+  }
+  const helper = join(dirname(mpv), 'tvinto-player.exe');
+  if (!existsSync(helper) || !existsSync(join(dirname(mpv), 'libmpv-2.dll'))) {
+    return null;
+  }
+  if (helperWorks === null) {
+    helperWorks = await new Promise<boolean>(resolve => {
+      execFile(helper, ['--tvinto-check'], { timeout: 10_000, windowsHide: true }, (error, stdout) => {
+        const works = !error && /ready/.test(stdout);
+        console.info(`[player] tvinto-player ${works ? 'works here' : `cannot play here: ${String(stdout).trim() || error?.message}`}`);
+        resolve(works);
+      });
+    });
+  }
+  return helperWorks ? helper : null;
+}
+
 let announced: string | null = null;
 
 /**
@@ -314,6 +373,9 @@ function said(mpv: string): string {
  *
  * A file because mpv has no way to bind a key on the command line.
  */
+/** `quit <code>` for input.conf, readable by tvinto-player too (`PositionWatcher.quitWith`). */
+const quitCommand = (code: number): string => `set user-data/tvinto-exit ${code}; quit ${code}`;
+
 function inputConf(channelKeys: boolean, inPlayer: boolean, live: boolean): string | null {
   const path = join(app.getPath('userData'), 'mpv-input.conf');
 
@@ -323,7 +385,7 @@ function inputConf(channelKeys: boolean, inPlayer: boolean, live: boolean): stri
   const keys = inPlayer
     ? 'ESC quit\nBS script-message xtream back\nPGUP script-message xtream channel previous\n' +
       'PGDWN script-message xtream channel next\ni script-message xtream banner\n'
-    : `ESC quit\nBS quit\n${channelKeys ? `PGUP quit ${CHANNEL_PREVIOUS_EXIT}\nPGDWN quit ${CHANNEL_NEXT_EXIT}\n` : ''}` +
+    : `ESC quit\nBS quit\n${channelKeys ? `PGUP ${quitCommand(CHANNEL_PREVIOUS_EXIT)}\nPGDWN ${quitCommand(CHANNEL_NEXT_EXIT)}\n` : ''}` +
       // A film or an episode: Enter takes the offer to skip an intro (skips.ts).
       (channelKeys ? '' : 'ENTER script-message xtream skip\nKP_ENTER script-message xtream skip\n');
   // A live channel steps within a pause (livePause.ts) rather than seeking in
@@ -425,8 +487,9 @@ function argumentsFor(
   ];
 
   if (!app.isPackaged && process.env['XTREAM_HEADLESS'] === '1') {
-    // Checked from a script while the owner uses the machine: not a sound.
-    args.push('--ao=null');
+    // Checked from a script while the owner uses the machine: not a sound,
+    // and a window that never takes the keyboard from what they are doing.
+    args.push('--ao=null', '--focus-on=never');
   }
 
   if (inside) {
@@ -594,11 +657,36 @@ class PositionWatcher {
 
   /** Sends a command, if the pipe is open. */
   send(command: unknown[]): void {
+    if (this.inPage && command[0] === 'show-text') {
+      // The page writes it (videoState.ts); mpv's OSD is off.
+      this.inPage.text(String(command[1] ?? ''), Number(command[2] ?? 0));
+      return;
+    }
     this.command(command);
+  }
+
+  /**
+   * The page's player, when tvinto-player draws into the app's window:
+   * what mpv would have written on the picture goes to it instead, with the
+   * position, the pause and the tracks for its controls.
+   */
+  inPage: VideoState | null = null;
+
+  /**
+   * Quits with an exit code that says why. mpv.exe exits with it; libmpv
+   * cannot pass it on, so it is also left where tvinto-player reads it.
+   */
+  quitWith(code: number): void {
+    this.command(['set_property', 'user-data/tvinto-exit', String(code)]);
+    this.command(['quit', String(code)]);
   }
 
   /** Sends a command given by name with named arguments (`osd-overlay`). */
   sendNamed(command: Record<string, unknown>): void {
+    if (this.inPage && command['name'] === 'osd-overlay') {
+      // The live pause badge reaches the page by itself (LivePause's badge).
+      return;
+    }
     this.command(command);
   }
 
@@ -643,24 +731,34 @@ class PositionWatcher {
   start(): void {
     // mpv creates the pipe when it opens its window, so the first attempts fail
     // and are simply retried.
+    // One connection at a time. A second attempt while the first was still
+    // connecting made two, and every event of mpv's was handled twice: a
+    // dropped channel used up its three reopens in fifty milliseconds.
+    let connecting: Socket | null = null;
     const attempt = () => {
-      if (this.socket) {
+      if (this.socket || connecting) {
         return;
       }
 
       const socket = connect(PIPE_NAME);
+      connecting = socket;
 
       socket.on('connect', () => {
+        connecting = null;
         this.socket = socket;
         this.pause?.connected();
       });
       socket.on('error', () => {
         socket.destroy();
-        this.socket = null;
       });
       socket.on('data', chunk => this.read(chunk.toString()));
       socket.on('close', () => {
-        this.socket = null;
+        if (connecting === socket) {
+          connecting = null;
+        }
+        if (this.socket === socket) {
+          this.socket = null;
+        }
       });
     };
 
@@ -682,6 +780,11 @@ class PositionWatcher {
       }
       if (this.onChapters && !this.chaptersRead) {
         this.ask('chapter-list');
+      }
+      if (this.inPage) {
+        this.ask('track-list');
+        this.ask('pause');
+        this.ask('paused-for-cache');
       }
       if (this.pause) {
         this.ask('demuxer-cache-state');
@@ -714,7 +817,9 @@ class PositionWatcher {
     'chapter-list': 10,
     'demuxer-cache-state': 11,
     'osd-width': 12,
-    'osd-height': 13
+    'osd-height': 13,
+    pause: 14,
+    'paused-for-cache': 15
   };
 
   /**
@@ -833,6 +938,9 @@ class PositionWatcher {
       this.pictureAt = null;
     } else if (event.event === 'playback-restart' && this.opening) {
       this.opening = false;
+      // What mpv's next line would have replaced: "Changing to…",
+      // "Reconnecting…". The picture is back, so the page's goes.
+      this.inPage?.text('', 0);
       this.pictureAt = Date.now();
       playbackLog('mpv: the picture is there');
     } else if (event.event === 'end-file') {
@@ -883,6 +991,10 @@ class PositionWatcher {
           this.cacheState = message.data as CacheState;
         } else if (message.request_id === 12 && typeof message.data === 'number') {
           this.osdWidth = message.data;
+        } else if (message.request_id === 14 && typeof message.data === 'boolean') {
+          this.inPage?.paused(message.data);
+        } else if (message.request_id === 15 && typeof message.data === 'boolean') {
+          this.inPage?.buffering(message.data);
         } else if (message.request_id === 13 && typeof message.data === 'number') {
           this.osdSize = this.osdWidth > 0 && message.data > 0 ? { width: this.osdWidth, height: message.data } : this.osdSize;
         } else if (message.request_id === 10 && Array.isArray(message.data)) {
@@ -895,10 +1007,12 @@ class PositionWatcher {
           this.positionMs = Math.max(0, Math.round(message.data * 1000));
           this.positionSeconds = Math.max(0, Math.floor(message.data));
           this.positionExact = { seconds: message.data, at: Date.now() };
+          this.inPage?.position(message.data);
           this.pause?.positionRead(this.positionExact.at);
           this.onPosition?.();
         } else if (message.request_id === 2 && typeof message.data === 'number') {
           this.durationSeconds = Math.max(0, Math.floor(message.data));
+          this.inPage?.duration(message.data);
         } else if (message.request_id === 3 && typeof message.data === 'string') {
           this.audioLanguage = message.data;
         } else if (message.request_id === 4 && typeof message.data === 'string') {
@@ -910,6 +1024,7 @@ class PositionWatcher {
           this.subVisible = message.data;
           this.settleSubtitles();
         } else if (message.request_id === 9 && Array.isArray(message.data)) {
+          this.inPage?.tracks(message.data);
           this.applyWanted(message.data as MpvTrack[]);
         } else if (message.request_id === 7 && typeof message.data === 'string') {
           this.audioTitle = message.data;
@@ -970,11 +1085,17 @@ class DesktopSkips {
       if (this.offered !== now) {
         this.offered = now;
         const text = (now.kind === 'recap' ? this.words.recap : this.words.intro) || 'Skip intro · Enter';
+        if (this.watcher.inPage) {
+          // A button of the page's, which Enter presses too.
+          this.watcher.inPage.skip(text);
+          return;
+        }
         // show-text expands ${properties}: the words are the app's own, but kept literal all the same.
         this.watcher.send(['show-text', text.split('$').join('$$'), Math.max(1000, now.endMs - this.watcher.positionMs)]);
       }
     } else if (this.offered) {
       this.offered = null;
+      this.watcher.inPage?.skip(null);
       this.watcher.send(['show-text', '', 1]);
     }
   }
@@ -986,6 +1107,7 @@ class DesktopSkips {
     }
     this.done = now;
     this.offered = null;
+    this.watcher.inPage?.skip(null);
     this.watcher.send(['show-text', '', 1]);
     this.watcher.send(['seek', now.endMs / 1000, 'absolute']);
   }
@@ -1133,12 +1255,13 @@ class DesktopChannels {
     }
     this.started = true;
     this.switching = false;
+    this.watcher.inPage?.text('', 0);
     this.emit({ type: 'channelStarted', itemId: this.itemId });
   }
 
   private emit(payload: Record<string, unknown>): void {
     if (this.window && !this.window.isDestroyed()) {
-      this.window.webContents.send('xtream:player-event', payload);
+      toPage(this.window.webContents, 'xtream:player-event', payload);
     }
   }
 
@@ -1180,7 +1303,7 @@ class DesktopChannels {
         } else {
           this.closingWith = error;
           playbackLog(`app: closing the player over ${error}`);
-          this.watcher.send(['quit', String(CLOSED_OVER_FAILURE_EXIT)]);
+          this.watcher.quitWith(CLOSED_OVER_FAILURE_EXIT);
         }
       } else if (event.reason === 'eof') {
         // Idle would leave an empty window where a stream ended.
@@ -1229,7 +1352,7 @@ class DesktopChannels {
       case 'close':
         this.closingWith = this.lastError ?? 'mpv could not play this';
         playbackLog(`app: the page closes the player (${this.closingWith})`);
-        this.watcher.send(['quit', String(CLOSED_OVER_FAILURE_EXIT)]);
+        this.watcher.quitWith(CLOSED_OVER_FAILURE_EXIT);
         return;
     }
   }
@@ -1259,7 +1382,8 @@ function livePause(watcher: PositionWatcher, request: PlayRequest): LivePause {
       sendNamed: command => watcher.sendNamed(command),
       position: () => watcher.positionExact,
       cacheState: () => watcher.cacheState,
-      osdSize: () => watcher.osdSize
+      osdSize: () => watcher.osdSize,
+      badge: watcher.inPage ? shown => watcher.inPage?.badge(shown) : undefined
     },
     request.url,
     request.liveWords ?? {},
@@ -1270,6 +1394,9 @@ function livePause(watcher: PositionWatcher, request: PlayRequest): LivePause {
 }
 
 let running: ChildProcess | null = null;
+/** The frames of tvinto-player while it plays, and the pipe its keys go to. */
+let frames: VideoFrames | null = null;
+let keys: PositionWatcher | null = null;
 
 /** Whether mpv has the screen. An update must not restart the app under it. */
 export const isPlaying = (): boolean => running !== null;
@@ -1282,6 +1409,55 @@ export function registerNativePlayer(): void {
       return;
     }
     channels?.command(command);
+  });
+
+  // tvinto-player's picture: the size the page shows it at, and keys
+  // pressed over it, which mpv binds as it always has (input.conf).
+  ipcMain.on('xtream:video-size', (event, width: unknown, height: unknown) => {
+    if (fromAppPage(event) && typeof width === 'number' && typeof height === 'number') {
+      frames?.resize(width, height);
+    }
+  });
+  ipcMain.on('xtream:video-key', (event, key: unknown) => {
+    if (fromAppPage(event) && typeof key === 'string' && /^[A-Za-z0-9_+-]{1,16}$|^.$/.test(key)) {
+      keys?.send(['keypress', key]);
+    }
+  });
+
+  // The page's player controls (stage 3): a key mpv binds, a seek, a track.
+  ipcMain.on('xtream:video-command', (event, command: VideoCommand) => {
+    if (!fromAppPage(event) || !keys || !command || typeof command !== 'object') {
+      return;
+    }
+    const watcher = keys;
+    switch (command.kind) {
+      case 'key':
+        if (typeof command.key === 'string' && /^[A-Za-z0-9_+-]{1,16}$|^.$/.test(command.key)) {
+          watcher.send(['keypress', command.key]);
+        }
+        return;
+      case 'seek':
+        if (Number.isFinite(command.seconds)) {
+          watcher.send(['seek', command.seconds, command.mode === 'absolute' ? 'absolute' : 'relative']);
+        }
+        return;
+      case 'audio':
+        if (Number.isInteger(command.id)) {
+          watcher.send(['set_property', 'aid', command.id]);
+        }
+        return;
+      case 'subtitle':
+        if (command.id === null) {
+          watcher.send(['set_property', 'sid', 'no']);
+        } else if (Number.isInteger(command.id)) {
+          watcher.send(['set_property', 'sid', command.id]);
+          watcher.send(['set_property', 'sub-visibility', true]);
+        }
+        return;
+      case 'pause':
+        watcher.send(['set_property', 'pause', command.paused === true]);
+        return;
+    }
   });
 
   ipcMain.handle('xtream:play', async (event, request: PlayRequest): Promise<PlayResult> => {
@@ -1313,13 +1489,48 @@ export function registerNativePlayer(): void {
     // rather than taken from `getAllWindows()`, which would be a guess the day
     // there are two.
     const window = BrowserWindow.fromWebContents(event.sender);
-    const inside = overlayGeometry(window);
+    // Inside the app's window when tvinto-player can (src/videoFrames.ts);
+    // mpv's own window over the app otherwise.
+    const helper = window && request.engine !== 'window' ? await findHelper(mpv) : null;
+    const inside = helper ? null : overlayGeometry(window);
+    if (helper && window) {
+      // The page's player (videoState.ts): set before the live pause and
+      // Skip intro are made, which hand it their words.
+      const contents = window.webContents;
+      watcher.inPage = new VideoState(state => toPage(contents, 'xtream:video-state', state), {
+        title: request.title,
+        live: isLive(request),
+        channels: request.channelKeys === true && request.inPlayerSwitching === true
+      });
+    }
 
     return new Promise<PlayResult>(resolve => {
       let child: ChildProcess;
 
       try {
-        child = spawn(mpv, argumentsFor(request, mpv, inside), { windowsHide: false });
+        if (helper && window) {
+          const scale = screen.getDisplayMatching(window.getBounds()).scaleFactor;
+          const content = window.getContentBounds();
+          child = spawn(
+            helper,
+            [
+              `--tvinto-parent=${process.pid}`,
+              `--tvinto-size=${Math.round(content.width * scale)}x${Math.round(content.height * scale)}`,
+              // The page draws every word and control: none of mpv's. Before
+              // the rest, which ends with `--` and the address: anything after
+              // it is a file to play, and these two once were.
+              '--osd-level=0',
+              '--osc=no',
+              ...argumentsFor(request, helper, null)
+            ],
+            { windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'] }
+          );
+          frames = new VideoFrames(child, window);
+          frames.onLog = line => playbackLog(`tvinto-player: ${line.replace(/^log /, '')}`);
+          toPage(window.webContents, 'xtream:video-open', true);
+        } else {
+          child = spawn(mpv, argumentsFor(request, mpv, inside), { windowsHide: false });
+        }
       } catch (error) {
         resolve({
           positionSeconds: 0,
@@ -1331,16 +1542,20 @@ export function registerNativePlayer(): void {
       }
 
       running = child;
+      // The screen stays on while anything plays, in either window: a film
+      // watched without touching the mouse is not a machine left alone.
+      const awake = powerSaveBlocker.start('prevent-display-sleep');
       playbackLog(
-        `app: opens ${isLive(request) ? 'a live channel' : 'a film or an episode'} ${redactUrl(request.url)} in mpv`
+        `app: opens ${isLive(request) ? 'a live channel' : 'a film or an episode'} ${redactUrl(request.url)} in ${helper ? 'tvinto-player' : 'mpv'}`
       );
+      keys = watcher;
       watcher.start();
       // Where a film or an episode has got to, every half minute, so a crash
       // of the app or the machine loses at most that much.
       const progress = request.reportProgress
         ? setInterval(() => {
             if (watcher.durationSeconds > 0 && watcher.positionSeconds > 0 && window && !window.isDestroyed()) {
-              window.webContents.send('xtream:player-event', {
+              toPage(window.webContents, 'xtream:player-event', {
                 type: 'progress',
                 positionSeconds: watcher.positionSeconds,
                 durationSeconds: watcher.durationSeconds
@@ -1370,7 +1585,7 @@ export function registerNativePlayer(): void {
             // Opened again, or the message is up.
           } else if (event.event === 'end-file' && event.reason === 'error') {
             playbackLog('app: closing the player: the channel would not open');
-            watcher.send(['quit', '2']);
+            watcher.quitWith(2);
           } else if (event.event === 'end-file' && event.reason === 'eof') {
             playbackLog('app: closing the player at the end of the stream');
             watcher.send(['quit']);
@@ -1401,6 +1616,17 @@ export function registerNativePlayer(): void {
           channels = null;
         }
         running = null;
+        keys = null;
+        if (powerSaveBlocker.isStarted(awake)) {
+          powerSaveBlocker.stop(awake);
+        }
+        if (helper) {
+          frames = null;
+          watcher.inPage?.close();
+          if (window && !window.isDestroyed()) {
+            toPage(window.webContents, 'xtream:video-open', false);
+          }
+        }
         window?.removeListener('closed', stopWithWindow);
       };
 

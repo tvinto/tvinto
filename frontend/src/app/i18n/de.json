@@ -1591,5 +1591,26 @@
         "other": "{0} Sender"
       }
     }
+  },
+  "desktopPlayer": {
+    "paused": "PAUSIERT",
+    "play": "Abspielen",
+    "pause": "Pause",
+    "live": "LIVE",
+    "next": "DANACH",
+    "ends": "endet {{time}}",
+    "backToLive": "Zurück zu live",
+    "audioSubtitles": "Audio & Untertitel",
+    "startOver": "Von vorn",
+    "fullScreen": "Vollbild",
+    "exitFullScreen": "Vollbild beenden",
+    "close": "Schließen",
+    "audio": "Audio",
+    "subtitles": "Untertitel",
+    "off": "Aus",
+    "where": "Wo Filme auf diesem Computer laufen",
+    "whereSub": "In der App mit ihren eigenen Bedienelementen oder wie bisher im Fenster von mpv",
+    "inApp": "In der App",
+    "inWindow": "Fenster von mpv"
   }
 }
