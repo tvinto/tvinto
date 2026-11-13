@@ -1536,7 +1536,10 @@
       "noSubtitles": "Dieser Sender hat keine Untertitel",
       "behind": "{0} hinter Live",
       "backToLive": "Zurück zu Live",
-      "cannotPause": "Dieser Sender kann nicht angehalten werden"
+      "cannotPause": "Dieser Sender kann nicht angehalten werden",
+      "reconnecting": "Verbindung wird wiederhergestellt…",
+      "stopped": "Der Sender wurde unterbrochen. Der Anbieter hat die Verbindung möglicherweise beendet.",
+      "tryAgain": "Enter: erneut versuchen · Esc: schließen"
     },
     "sleep": {
       "title": "Sleep-Timer",

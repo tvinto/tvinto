@@ -68,10 +68,85 @@ const hlsPieces = () => {
   return pieces;
 };
 
+/**
+ * Faults for the live HLS, to see what a player does with a provider's
+ * hiccups (a desktop channel stopped every minute or so, 12 November). Set
+ * while it runs:
+ *
+ *   /qa/fault?playlist=fail&times=1     the next playlist reload answers 500
+ *   /qa/fault?playlist=gone&times=1     ... 404
+ *   /qa/fault?playlist=slow&ms=8000     the next reload waits that long first
+ *   /qa/fault?playlist=hang&times=1     the next reload never answers
+ *   /qa/fault?playlist=stale&times=3    the next reloads repeat the last one
+ *   /qa/fault?playlist=skip&times=1     the next reload jumps 4 pieces ahead
+ *   /qa/fault?segment=fail&times=1      the next piece answers 500
+ *   /qa/fault?cut=1                     closes every open stream request
+ *   /qa/fault                           clears them all
+ *
+ * And /qa/count says how many stream requests were made, and the most ever
+ * open at once, since the last /qa/count?reset=1.
+ */
+const fault = { playlist: null, segment: null, ms: 0, times: 0, segmentTimes: 0 };
+let lastPlaylist = null;
+let skipAhead = 0;
+const counts = { playlists: 0, segments: 0, streams: 0, mostOpen: 0 };
+const openSockets = new Set();
+
+function serveFault(q, res) {
+  if (q.get('cut')) {
+    for (const socket of openSockets) {
+      socket.destroy();
+    }
+  }
+  fault.playlist = q.get('playlist');
+  fault.segment = q.get('segment');
+  fault.ms = Number(q.get('ms') ?? 0);
+  fault.times = Number(q.get('times') ?? 1);
+  fault.segmentTimes = Number(q.get('times') ?? 1);
+  console.log('fault:', JSON.stringify(fault));
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(fault));
+}
+
+/** Whether a playlist request is answered by a fault instead; true when it was. */
+function playlistFault(pathname, res) {
+  if (!fault.playlist || fault.times <= 0) {
+    return false;
+  }
+  const kind = fault.playlist;
+  if (kind !== 'slow') {
+    fault.times--;
+  } else {
+    fault.playlist = null;
+  }
+  console.log('fault: playlist', kind);
+  if (kind === 'fail' || kind === 'gone') {
+    res.writeHead(kind === 'fail' ? 500 : 404);
+    res.end();
+    return true;
+  }
+  if (kind === 'hang') {
+    return true;
+  }
+  if (kind === 'slow') {
+    setTimeout(() => serveLivePlaylist(pathname, res), fault.ms);
+    return true;
+  }
+  if (kind === 'stale' && lastPlaylist) {
+    res.writeHead(200, { 'Content-Type': 'application/vnd.apple.mpegurl', 'Cache-Control': 'no-store' });
+    res.end(lastPlaylist);
+    return true;
+  }
+  if (kind === 'skip') {
+    skipAhead += 4;
+  }
+  return false;
+}
+
 function serveLivePlaylist(pathname, res) {
   const pieces = hlsPieces();
   const seconds = Math.max(1, Math.round(pieces.reduce((all, piece) => all + piece.seconds, 0) / pieces.length));
-  const newest = Math.floor(Date.now() / 1000 / seconds);
+  const newest = Math.floor(Date.now() / 1000 / seconds) + skipAhead;
   const first = newest - 5;
   const base = pathname.replace(/\.m3u8$/, '');
   const lines = [
@@ -120,6 +195,12 @@ function serveMaster(pathname, res) {
 }
 
 function serveLiveSegment(pathname, res) {
+  if (fault.segment === 'fail' && fault.segmentTimes > 0) {
+    fault.segmentTimes--;
+    console.log('fault: segment fail');
+    res.writeHead(500);
+    return res.end();
+  }
   const pieces = hlsPieces();
   const seq = Number(/seg-(\d+)\.ts$/.exec(pathname)[1]);
   const body = require('fs').readFileSync(require('path').join(LIVE_HLS, pieces[seq % pieces.length].file));
@@ -305,7 +386,29 @@ http
     const stream = /^\/(hls|live)\//.test(url.pathname);
     if (stream) {
       openRequests++;
-      res.on('close', () => openRequests--);
+      counts.streams++;
+      counts.mostOpen = Math.max(counts.mostOpen, openRequests);
+      if (/\.m3u8$/.test(url.pathname)) {
+        counts.playlists++;
+      } else if (/seg-\d+\.ts$/.test(url.pathname)) {
+        counts.segments++;
+      }
+      openSockets.add(req.socket);
+      res.on('close', () => {
+        openRequests--;
+        openSockets.delete(req.socket);
+      });
+    }
+    if (url.pathname === '/qa/fault') {
+      return serveFault(q, res);
+    }
+    if (url.pathname === '/qa/count') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ...counts, openNow: openRequests }));
+      if (q.get('reset')) {
+        Object.assign(counts, { playlists: 0, segments: 0, streams: 0, mostOpen: openRequests });
+      }
+      return undefined;
     }
     console.log(new Date().toISOString().slice(11, 23), url.pathname, q.get('action') ?? '', stream ? `open=${openRequests}${openRequests > 1 ? ' OVERLAP' : ''}` : '');
     if (req.method === 'OPTIONS') {
@@ -332,7 +435,7 @@ http
         return res.end();
       }
       if (LIVE_HLS && /\/live\/[^/]+\/[^/]+\/\d+\.m3u8$/.test(url.pathname)) {
-        return serveLivePlaylist(url.pathname, res);
+        return playlistFault(url.pathname, res) ? undefined : serveLivePlaylist(url.pathname, res);
       }
       if (LIVE_HLS && /^\/(live\/[^/]+\/[^/]+|hls)\/.*\/seg-\d+\.ts$/.test(url.pathname)) {
         return serveLiveSegment(url.pathname, res);
@@ -344,7 +447,7 @@ http
         return serveMaster(url.pathname, res);
       }
       if (LIVE_HLS && /^\/hls\/\d+(\/(low|high))?\.m3u8$/.test(url.pathname)) {
-        return serveLivePlaylist(url.pathname, res);
+        return playlistFault(url.pathname, res) ? undefined : serveLivePlaylist(url.pathname, res);
       }
       if (LIVE && /\/live\/[^/]+\/[^/]+\/\d+\.(ts|m3u8)$/.test(url.pathname)) {
         return serveLive(req, res);

@@ -28,6 +28,10 @@ An Angular app, zoneless and built on signals.
   matching and remote control navigation everywhere.
 - **Windows** wraps it with Electron (`frontend/electron/`). Video plays in
   mpv, which comes with the installer, because Chromium can't decode HEVC.
+  Every time mpv starts, stops or is reopened goes into `playback.log` in
+  the app's data folder (`%APPDATA%\Tvinto\playback.log`), with mpv's reason
+  for ending a stream and no addresses or passwords. A live channel that mpv
+  ends by itself is opened again at the live edge, up to three times in a row.
 - **A browser** can run the same build, minus the parts that need a device
   (talking to the provider directly, keeping everything locally).
 

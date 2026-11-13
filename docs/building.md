@@ -108,7 +108,11 @@ Each of these has cost someone hours.
   channels, films and guides (user and password are both `walk`) and refuses
   every stream. Add `--demo` for a believable line-up to take screenshots of.
   Real providers usually allow one connection and may block a client that
-  hammers them.
+  hammers them. With `--live-hls <folder of ffmpeg HLS segments>` its live
+  channels play, and `/qa/fault` makes the playlist fail, hang, repeat or
+  skip, so you can test what the player does when a provider has a hiccup.
+  `/qa/count` says how many stream requests were made and the most open at
+  once.
 - **A TV change isn't finished until you've walked it.**
   `tools/qa/tv-walk.js` presses every direction from every focusable element
   on each screen of the TV emulator and reports where focus gets lost.

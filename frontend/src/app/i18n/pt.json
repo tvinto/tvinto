@@ -1536,7 +1536,10 @@
       "noSubtitles": "Este canal não tem legendas",
       "behind": "{0} atrás do ao vivo",
       "backToLive": "Voltar ao vivo",
-      "cannotPause": "Este canal não pode ser pausado"
+      "cannotPause": "Este canal não pode ser pausado",
+      "reconnecting": "A ligar novamente…",
+      "stopped": "O canal parou. O fornecedor pode ter terminado a ligação.",
+      "tryAgain": "Enter: tentar novamente · Esc: fechar"
     },
     "sleep": {
       "title": "Timer para desligar",

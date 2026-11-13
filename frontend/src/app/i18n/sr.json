@@ -1572,7 +1572,10 @@
       "noSubtitles": "Ovaj kanal nema titlove",
       "behind": "{0} iza prenosa uživo",
       "backToLive": "Nazad na uživo",
-      "cannotPause": "Ovaj kanal ne može da se pauzira"
+      "cannotPause": "Ovaj kanal ne može da se pauzira",
+      "reconnecting": "Ponovno povezivanje…",
+      "stopped": "Kanal je stao. Provajder je možda prekinuo vezu.",
+      "tryAgain": "Enter: pokušaj ponovo · Esc: zatvori"
     },
     "sleep": {
       "title": "Automatsko gašenje",

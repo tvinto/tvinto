@@ -1536,7 +1536,10 @@
       "noSubtitles": "Deze zender heeft geen ondertitels",
       "behind": "{0} achter op live",
       "backToLive": "Terug naar live",
-      "cannotPause": "Dit kanaal kan niet worden gepauzeerd"
+      "cannotPause": "Dit kanaal kan niet worden gepauzeerd",
+      "reconnecting": "Opnieuw verbinden…",
+      "stopped": "Het kanaal is gestopt. De aanbieder heeft de verbinding misschien verbroken.",
+      "tryAgain": "Enter: opnieuw proberen · Esc: sluiten"
     },
     "sleep": {
       "title": "Slaaptimer",
