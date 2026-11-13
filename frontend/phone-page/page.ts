@@ -20,6 +20,16 @@ function say(text: string, kind: 'info' | 'done' | 'error'): void {
 
 function build(page: PhoneFormPage, key: Uint8Array): void {
   (document.getElementById('title') as HTMLElement).textContent = page.title;
+  // Where to get what is asked for (a TMDB key), opened here on the phone.
+  if (page.link && /^https:\/\//.test(page.link.href)) {
+    const link = document.createElement('a');
+    link.className = 'link';
+    link.href = page.link.href;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = page.link.words;
+    root.append(link);
+  }
   const element = document.createElement('form');
   element.autocomplete = 'off';
   for (const field of page.fields) {

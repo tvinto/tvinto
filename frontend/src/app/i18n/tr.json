@@ -257,8 +257,8 @@
     "reset": "Sıfırla",
     "sample": "Bir altyazı böyle görünür.",
     "look": "Altyazıların görünümü",
-    "auto": "Altyazıları kendiliğinden göster",
-    "autoHelp": "Dilinizde bir iz olduğunda. Aksi halde oynatıcıdan açın.",
+    "auto": "Altyazıları otomatik aç",
+    "autoHelp": "Bir film ya da bölümün dilinizde altyazısı olduğunda. Aksi halde oynatıcıdan açabilirsiniz.",
     "on": "Açık",
     "off": "Kapalı",
     "subtitleLanguage": "Altyazı dili",
@@ -362,7 +362,8 @@
     "copyFailed": "Bu kopya oynatılamadı",
     "tryingCopy": "Bu kopya oynatılamadı. {{name}} deneniyor",
     "skipIntroDesktop": "Girişi atla · Enter",
-    "skipRecapDesktop": "Özeti atla · Enter"
+    "skipRecapDesktop": "Özeti atla · Enter",
+    "skipIntrosHelp": "Düğmeyle, giriş ya da özet sırasında bir Atla düğmesi gösterir. Kendiliğinden, sormadan atlar. Yalnızca zamanları bilinen bölümlerde: bunlar ücretsiz, ortak bir veritabanı olan TheIntroDB'den gelir ve bir diziyi orada bulmak için TMDB gerekir."
   },
   "guides": {
     "reading": "Bu cihazdaki rehberler okunuyor…",
@@ -1241,7 +1242,7 @@
       "en": "English",
       "hr": "Hrvatski"
     },
-    "notSetUp": "TMDB açıklamaları bu eşitleme hizmetinde henüz kurulmadı, bu yüzden sağlayıcınınkiler gösteriliyor.",
+    "notSetUp": "Bu eşitleme hizmetinin TMDB anahtarı yok, bu yüzden sağlayıcınızın açıklamaları gösteriliyor. Onları TMDB'den almak için aşağıya kendi anahtarınızı ekleyin.",
     "attribution": "Bu ürün TMDB API'sini kullanır ancak TMDB tarafından onaylanmamış veya sertifikalandırılmamıştır.",
     "ownKey": "Kendi TMDB anahtarınız",
     "ownKeyBody": "Hesabı olmayan bir cihaz veya TMDB anahtarı olmayan bir eşitleme hizmeti için. themoviedb.org'da Ayarlar, API altında ücretsiz. Yalnızca bu cihazda tutulur.",
@@ -1255,7 +1256,9 @@
     "ownKeyUnreachable": "Anahtarı kontrol etmek için TMDB'ye ulaşılamadı",
     "fromTmdb": "TMDB'den",
     "more": "Daha fazla",
-    "read": "Açıklama"
+    "read": "Açıklama",
+    "languageHelp": "Sağlayıcılar açıklamaları çoğu zaman başka bir dilde gönderir. Bir dil seçin, Tvinto onları TMDB'den o dilde getirsin. Bir TMDB anahtarı gerekir: aşağıdaki kendi anahtarınız ya da eşitleme hizmetinizinki.",
+    "needsKey": "Bunun için ücretsiz bir TMDB anahtarı gerekir. Kendi anahtarınızı aşağıya ekleyin. Ya da anahtarı olan bir eşitleme hizmetinde oturum açın; tüm cihazlarınız hiçbir şey yazmadan onu alır."
   },
   "remind": {
     "set": "Bana hatırlat",
@@ -1341,7 +1344,8 @@
       "server": "Eşitleme hizmetiniz",
       "xtream": "Sağlayıcınız (Xtream kodları)",
       "m3u": "M3U çalma listeniz",
-      "signin": "Eşitlemek için giriş yapın"
+      "signin": "Eşitlemek için giriş yapın",
+      "tmdb": "TMDB anahtarınız"
     },
     "field": {
       "guide": "Adres",
@@ -1350,7 +1354,11 @@
       "username": "Kullanıcı adı",
       "password": "Parola",
       "playlist": "Çalma listesi adresi",
-      "name": "Ad"
+      "name": "Ad",
+      "key": "API anahtarı veya okuma erişim belirteci"
+    },
+    "link": {
+      "tmdb": "themoviedb.org'da ücretsiz anahtar (Settings → API)"
     }
   },
   "onboarding": {
@@ -1402,7 +1410,12 @@
     },
     "opensOn": "{{page}} ile açılır",
     "startWatching": "İzlemeye başla",
-    "syncWithAccount": "Bir hesapla eşitle"
+    "syncWithAccount": "Bir hesapla eşitle",
+    "tmdbTitle": "Afişler ve açıklamalar",
+    "tmdbLead": "TMDB ücretsiz bir film ve dizi veritabanıdır. Ondan alınan bir anahtar Tvinto'ya afişler, açıklamalar, oyuncular, puanlar ve popüler olanları verir.",
+    "tmdbWithout": "Anahtar olmadan Popüler ile film ve dizi sayfaları büyük ölçüde boş kalır. Daha sonra Hesap'ta, Açıklamalar altında ekleyebilirsiniz.",
+    "tmdbSkip": "Şimdilik atla",
+    "tmdbAdded": "Anahtar eklendi"
   },
   "startup": {
     "title": "Başlangıç",
@@ -1591,5 +1604,15 @@
         "other": "{0} kanal"
       }
     }
+  },
+  "tmdbKey": {
+    "how": "Ücretsizdir: themoviedb.org'da bir hesap açın, ardından Settings → API'yi açıp anahtar isteyin.",
+    "qrAlt": "TMDB'nin API sayfasını telefonda açmak için QR kodu",
+    "looksLike": "TMDB orada iki değer gösterir. Herhangi birini yapıştırın. Şöyle görünürler (uydurma örnekler):",
+    "apiKey": "API anahtarı",
+    "apiKeyShape": "32 harf ve rakam",
+    "token": "API okuma erişim belirteci",
+    "tokenShape": "uzun, eyJ ile başlar",
+    "notAKey": "Bu iki değerden hiçbirine benzemiyor. API anahtarını ya da okuma erişim belirtecini eksiksiz kopyalayın."
   }
 }

@@ -260,8 +260,8 @@
     "reset": "Vrati",
     "sample": "Ovako izgleda titl.",
     "look": "Izgled titlova",
-    "auto": "Sami prikaži titlove",
-    "autoHelp": "Kad postoji zapis na vašem jeziku. Inače ih uključite u plejeru.",
+    "auto": "Automatski uključi titlove",
+    "autoHelp": "Kad film ili epizoda ima titlove na vašem jeziku. Inače ih možete uključiti u plejeru.",
     "on": "Uključeno",
     "off": "Isključeno",
     "subtitleLanguage": "Jezik titlova",
@@ -366,7 +366,8 @@
     "copyFailed": "Ta kopija nije proradila",
     "tryingCopy": "Ta kopija nije proradila. Probam {{name}}",
     "skipIntroDesktop": "Preskoči uvod · Enter",
-    "skipRecapDesktop": "Preskoči rezime · Enter"
+    "skipRecapDesktop": "Preskoči rezime · Enter",
+    "skipIntrosHelp": "Dugmetom prikazuje dugme Preskoči tokom uvoda ili rezimea. Sami ga preskače bez pitanja. Samo za epizode čija su vremena poznata: dolaze iz TheIntroDB-a, besplatne zajedničke baze, a za pronalaženje serije tamo treba TMDB."
   },
   "guides": {
     "reading": "Čitam vodiče na ovom uređaju…",
@@ -1274,7 +1275,7 @@
       "en": "English",
       "hr": "Hrvatski"
     },
-    "notSetUp": "Opisi sa TMDB-a još nisu podešeni na ovom servisu za sinhronizaciju, pa se prikazuju opisi provajdera.",
+    "notSetUp": "Ovaj servis za sinhronizaciju nema TMDB ključ, pa se prikazuju opisi vašeg provajdera. Dodajte svoj ključ ispod da biste ih dobili sa TMDB-a.",
     "attribution": "Ovaj proizvod koristi TMDB API, ali ga TMDB ne podržava niti sertifikuje.",
     "ownKey": "Vaš sopstveni TMDB ključ",
     "ownKeyBody": "Za uređaj bez naloga ili servis za sinhronizaciju bez TMDB ključa. Besplatno na themoviedb.org, pod Podešavanja, API. Čuva se samo na ovom uređaju.",
@@ -1288,7 +1289,9 @@
     "ownKeyUnreachable": "TMDB nije dostupan za proveru ključa",
     "fromTmdb": "Sa TMDB-a",
     "more": "Više",
-    "read": "Opis"
+    "read": "Opis",
+    "languageHelp": "Provajderi opise često šalju na drugom jeziku. Izaberite jezik i Tvinto će ih preuzeti sa TMDB-a na tom jeziku. Potreban je TMDB ključ: vaš sopstveni, ispod, ili ključ vašeg servisa za sinhronizaciju.",
+    "needsKey": "Za ovo je potreban TMDB ključ, koji je besplatan. Dodajte svoj ispod. Ili se prijavite na servis za sinhronizaciju koji ga ima, pa ga dobijaju svi vaši uređaji bez kucanja."
   },
   "remind": {
     "set": "Podseti me",
@@ -1374,7 +1377,8 @@
       "server": "Vaš servis za sinhronizaciju",
       "xtream": "Vaš provajder (Xtream kodovi)",
       "m3u": "Vaša M3U lista",
-      "signin": "Prijava za sinhronizaciju"
+      "signin": "Prijava za sinhronizaciju",
+      "tmdb": "Vaš TMDB ključ"
     },
     "field": {
       "guide": "Adresa",
@@ -1383,7 +1387,11 @@
       "username": "Korisničko ime",
       "password": "Lozinka",
       "playlist": "Adresa liste",
-      "name": "Naziv"
+      "name": "Naziv",
+      "key": "API ključ ili token za čitanje"
+    },
+    "link": {
+      "tmdb": "Besplatan ključ na themoviedb.org (Settings → API)"
     }
   },
   "onboarding": {
@@ -1438,7 +1446,12 @@
     },
     "opensOn": "Otvara se na: {{page}}",
     "startWatching": "Počnite da gledate",
-    "syncWithAccount": "Sinhronizuj sa nalogom"
+    "syncWithAccount": "Sinhronizuj sa nalogom",
+    "tmdbTitle": "Posteri i opisi",
+    "tmdbLead": "TMDB je besplatna baza filmova i serija. Ključ sa njega Tvintu daje postere, opise, glumce, ocene i ono što je popularno.",
+    "tmdbWithout": "Bez njega su Popularno i stranice filmova i serija uglavnom prazne. Možete ga dodati i kasnije, na Nalogu, pod Opisi.",
+    "tmdbSkip": "Preskoči za sada",
+    "tmdbAdded": "Ključ dodat"
   },
   "startup": {
     "title": "Pokretanje",
@@ -1628,5 +1641,15 @@
         "other": "{0} kanala"
       }
     }
+  },
+  "tmdbKey": {
+    "how": "Besplatan je: otvorite nalog na themoviedb.org, zatim Settings → API i zatražite ključ.",
+    "qrAlt": "QR kod za otvaranje TMDB-ove stranice za API na telefonu",
+    "looksLike": "TMDB tamo prikazuje dve vrednosti. Nalepite bilo koju. Izgledaju ovako (izmišljeni primeri):",
+    "apiKey": "API ključ",
+    "apiKeyShape": "32 slova i broja",
+    "token": "Token za čitanje (API read access token)",
+    "tokenShape": "dug, počinje sa eyJ",
+    "notAKey": "To ne liči ni na jednu od te dve vrednosti. Kopirajte API ključ ili token za čitanje, ceo."
   }
 }

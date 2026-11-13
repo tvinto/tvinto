@@ -257,8 +257,8 @@
     "reset": "Reset",
     "sample": "This is what a subtitle looks like.",
     "look": "How subtitles look",
-    "auto": "Show subtitles by themselves",
-    "autoHelp": "When a track in your language is there. Otherwise turn them on from the player.",
+    "auto": "Turn on subtitles automatically",
+    "autoHelp": "When a film or episode has subtitles in your language. Otherwise you can turn them on in the player.",
     "on": "On",
     "off": "Off",
     "subtitleLanguage": "Subtitle language",
@@ -362,7 +362,8 @@
     "copyFailed": "That copy didn't play",
     "tryingCopy": "That copy didn't play. Trying {{name}}",
     "skipIntroDesktop": "Skip intro · Enter",
-    "skipRecapDesktop": "Skip recap · Enter"
+    "skipRecapDesktop": "Skip recap · Enter",
+    "skipIntrosHelp": "Button shows a Skip button during an intro or recap. By themselves skips it without asking. Only on episodes whose times are known: they come from TheIntroDB, a free shared database, and finding a show there needs TMDB."
   },
   "guides": {
     "reading": "Reading the guides on this device…",
@@ -1223,7 +1224,7 @@
       "en": "English",
       "hr": "Hrvatski"
     },
-    "notSetUp": "Descriptions from TMDB are not set up on this sync service yet, so the provider's are shown.",
+    "notSetUp": "This sync service has no TMDB key, so your provider's descriptions are shown. Add your own key below to get them from TMDB.",
     "attribution": "This product uses the TMDB API but is not endorsed or certified by TMDB.",
     "ownKey": "Your own TMDB key",
     "ownKeyBody": "For a device without an account, or a sync service without a TMDB key. Free from themoviedb.org, under Settings, API. Kept on this device only.",
@@ -1237,7 +1238,9 @@
     "ownKeyUnreachable": "Could not reach TMDB to check the key",
     "fromTmdb": "From TMDB",
     "more": "More",
-    "read": "Description"
+    "read": "Description",
+    "languageHelp": "Providers often send descriptions in another language. Choose one and Tvinto gets them from TMDB in that language. Needs a TMDB key: your own, below, or your sync service's.",
+    "needsKey": "This needs a TMDB key, which is free. Add your own below. Or sign in to a sync service that has one, and all your devices get it without typing anything."
   },
   "remind": {
     "set": "Remind me",
@@ -1323,7 +1326,8 @@
       "server": "Your sync service",
       "xtream": "Your provider (Xtream codes)",
       "m3u": "Your M3U playlist",
-      "signin": "Sign in to sync"
+      "signin": "Sign in to sync",
+      "tmdb": "Your TMDB key"
     },
     "field": {
       "guide": "Address",
@@ -1332,7 +1336,11 @@
       "username": "Username",
       "password": "Password",
       "playlist": "Playlist address",
-      "name": "Name"
+      "name": "Name",
+      "key": "API key or read access token"
+    },
+    "link": {
+      "tmdb": "Get a free key at themoviedb.org (Settings → API)"
     }
   },
   "onboarding": {
@@ -1375,7 +1383,12 @@
     "guides": { "one": "{{count}} guide", "other": "{{count}} guides" },
     "opensOn": "Opens on {{page}}",
     "startWatching": "Start watching",
-    "syncWithAccount": "Sync with an account"
+    "syncWithAccount": "Sync with an account",
+    "tmdbTitle": "Posters and descriptions",
+    "tmdbLead": "TMDB is a free database of films and TV. A key from it gives Tvinto posters, descriptions, cast, ratings and what's popular.",
+    "tmdbWithout": "Without one, Popular and the film and show pages stay mostly empty. You can add it later on Account, under Descriptions.",
+    "tmdbSkip": "Skip for now",
+    "tmdbAdded": "Key added"
   },
   "startup": {
     "title": "Starting up",
@@ -1564,5 +1577,15 @@
         "other": "{0} channels"
       }
     }
+  },
+  "tmdbKey": {
+    "how": "It's free: make an account at themoviedb.org, then open Settings → API and request a key.",
+    "qrAlt": "QR code to open TMDB's API page on a phone",
+    "looksLike": "TMDB shows two values there. Paste either one. They look like this (made-up examples):",
+    "apiKey": "API key",
+    "apiKeyShape": "32 letters and numbers",
+    "token": "API read access token",
+    "tokenShape": "long, starts with eyJ",
+    "notAKey": "That doesn't look like either value. Copy the API key or the read access token, whole."
   }
 }

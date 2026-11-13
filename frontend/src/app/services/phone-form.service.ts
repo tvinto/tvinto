@@ -3,7 +3,7 @@ import { Capacitor, PluginListenerHandle } from '@capacitor/core';
 import qrcode from 'qrcode-generator';
 import { PhoneForm } from './native/phoneFormPlugin';
 import { TvNavigationService } from './tv-navigation.service';
-import { PHONE_FIELDS, PhoneFormKind, PhoneFormPage, newPhoneKey, openForm, phoneFormAddress } from '../utils/phone-form.utils';
+import { PHONE_FIELDS, PHONE_LINKS, PhoneFormKind, PhoneFormPage, newPhoneKey, openForm, phoneFormAddress } from '../utils/phone-form.utils';
 import { t } from '../utils/i18n';
 
 /** An offer on screen: the QR code for the phone, and the address it holds without its key. */
@@ -92,6 +92,7 @@ function pageFor(template: string, kind: PhoneFormKind): string {
     kind,
     title: t(`phoneForm.title.${kind}`),
     fields: PHONE_FIELDS[kind].map(field => ({ ...field, label: t(`phoneForm.field.${field.name}`) })),
+    ...(PHONE_LINKS[kind] ? { link: { href: PHONE_LINKS[kind], words: t(`phoneForm.link.${kind}`) } } : {}),
     send: t('phoneForm.send'),
     sent: t('phoneForm.sent'),
     noKey: t('phoneForm.noKey'),
@@ -102,7 +103,8 @@ function pageFor(template: string, kind: PhoneFormKind): string {
   return template.replace('__TVINTO_FORM__', () => json);
 }
 
-function qrSvg(text: string): string {
+/** A QR code for `text`, as an SVG data address for an <img>. */
+export function qrSvg(text: string): string {
   const code = qrcode(0, 'M');
   code.addData(text);
   code.make();

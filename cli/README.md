@@ -119,4 +119,6 @@ a terminal yourself. Either way the agent can't apply a change on its own.
 ## Your own sync service
 
 `tvinto server init` sets up a sync service on your own Cloudflare account.
-See [server/README.md](../server/README.md).
+See [server/README.md](../server/README.md). `tvinto server tmdb-key`, in the
+same folder, gives it a TMDB key, so every app signed in to it gets posters,
+descriptions and Popular without typing a key of its own.

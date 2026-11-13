@@ -260,8 +260,8 @@
     "reset": "Vrati zadano",
     "sample": "Ovo je primjer titla.",
     "look": "Izgled titlova",
-    "auto": "Sami prikaži titlove",
-    "autoHelp": "Kad postoji zapis na vašem jeziku. Inače ih uključite u playeru.",
+    "auto": "Automatski uključi titlove",
+    "autoHelp": "Kad film ili epizoda ima titlove na vašem jeziku. Inače ih možete uključiti u playeru.",
     "on": "Uključeno",
     "off": "Isključeno",
     "subtitleLanguage": "Jezik titlova",
@@ -366,7 +366,8 @@
     "copyFailed": "Ta se kopija nije pokrenula",
     "tryingCopy": "Ta se kopija nije pokrenula. Pokušavam {{name}}",
     "skipIntroDesktop": "Preskoči uvod · Enter",
-    "skipRecapDesktop": "Preskoči sažetak · Enter"
+    "skipRecapDesktop": "Preskoči sažetak · Enter",
+    "skipIntrosHelp": "Gumb prikazuje gumb Preskoči tijekom uvoda ili sažetka. Samo od sebe preskače ga bez pitanja. Samo za epizode čija su vremena poznata: dolaze iz TheIntroDB-a, besplatne zajedničke baze, a za pronalazak serije tamo treba TMDB."
   },
   "guides": {
     "reading": "Čitamo vodiče na ovom uređaju…",
@@ -1250,7 +1251,7 @@
       "en": "English",
       "hr": "Hrvatski"
     },
-    "notSetUp": "Opisi s TMDB-a još nisu postavljeni na ovom sinkronizacijskom servisu, pa se prikazuju pružateljevi.",
+    "notSetUp": "Ovaj servis za sinkronizaciju nema TMDB ključ, pa se prikazuju opisi vašeg pružatelja. Dodajte svoj ključ ispod da biste ih dobili s TMDB-a.",
     "attribution": "Ovaj proizvod koristi TMDB API, ali ga TMDB ne podržava niti certificira.",
     "ownKey": "Vaš vlastiti TMDB ključ",
     "ownKeyBody": "Za uređaj bez računa ili uslugu sinkronizacije bez TMDB ključa. Besplatan je na themoviedb.org, pod Settings, API. Čuva se samo na ovom uređaju.",
@@ -1264,7 +1265,9 @@
     "ownKeyUnreachable": "TMDB nije dostupan za provjeru ključa",
     "fromTmdb": "S TMDB-a",
     "more": "Više",
-    "read": "Opis"
+    "read": "Opis",
+    "languageHelp": "Pružatelji opise često šalju na drugom jeziku. Odaberite jezik i Tvinto će ih dohvatiti s TMDB-a na tom jeziku. Treba TMDB ključ: vaš vlastiti, ispod, ili onaj vašeg servisa za sinkronizaciju.",
+    "needsKey": "Za ovo treba TMDB ključ, koji je besplatan. Dodajte svoj ispod. Ili se prijavite na servis za sinkronizaciju koji ga ima, pa ga dobivaju svi vaši uređaji bez upisivanja."
   },
   "remind": {
     "set": "Podsjeti me",
@@ -1350,7 +1353,8 @@
       "server": "Vaša usluga sinkronizacije",
       "xtream": "Vaš pružatelj (Xtream codes)",
       "m3u": "Vaš M3U popis",
-      "signin": "Prijava za sinkronizaciju"
+      "signin": "Prijava za sinkronizaciju",
+      "tmdb": "Vaš TMDB ključ"
     },
     "field": {
       "guide": "Adresa",
@@ -1359,7 +1363,11 @@
       "username": "Korisničko ime",
       "password": "Lozinka",
       "playlist": "Adresa popisa",
-      "name": "Ime"
+      "name": "Ime",
+      "key": "API ključ ili read access token"
+    },
+    "link": {
+      "tmdb": "Besplatan ključ na themoviedb.org (Settings → API)"
     }
   },
   "onboarding": {
@@ -1402,7 +1410,12 @@
     "guides": { "one": "{{count}} vodič", "few": "{{count}} vodiča", "other": "{{count}} vodiča" },
     "opensOn": "Otvara se na: {{page}}",
     "startWatching": "Počni gledati",
-    "syncWithAccount": "Sinkroniziraj s računom"
+    "syncWithAccount": "Sinkroniziraj s računom",
+    "tmdbTitle": "Posteri i opisi",
+    "tmdbLead": "TMDB je besplatna baza filmova i serija. Ključ s njega Tvintu daje postere, opise, glumce, ocjene i ono što je popularno.",
+    "tmdbWithout": "Bez njega su Popularno i stranice filmova i serija uglavnom prazne. Možete ga dodati i kasnije, na Računu, pod Opisi.",
+    "tmdbSkip": "Preskoči zasad",
+    "tmdbAdded": "Ključ dodan"
   },
   "startup": {
     "title": "Pokretanje",
@@ -1592,5 +1605,15 @@
         "other": "{0} kanala"
       }
     }
+  },
+  "tmdbKey": {
+    "how": "Besplatan je: otvorite račun na themoviedb.org, zatim Settings → API i zatražite ključ.",
+    "qrAlt": "QR kod za otvaranje TMDB-ove stranice za API na mobitelu",
+    "looksLike": "TMDB ondje prikazuje dvije vrijednosti. Zalijepite bilo koju. Izgledaju ovako (izmišljeni primjeri):",
+    "apiKey": "API ključ",
+    "apiKeyShape": "32 slova i broja",
+    "token": "API read access token",
+    "tokenShape": "dug, počinje s eyJ",
+    "notAKey": "To ne izgleda kao nijedna od te dvije vrijednosti. Kopirajte API ključ ili read access token, cijeli."
   }
 }

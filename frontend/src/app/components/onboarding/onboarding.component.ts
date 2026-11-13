@@ -32,8 +32,10 @@ import { TvNavigationService } from '../../services/tv-navigation.service';
 import { XtreamService } from '../../services/xtream.service';
 import { StartupSettingsComponent } from '../startup-settings/startup-settings.component';
 import { TvintoMarkComponent } from '../../ui/tvinto-mark.component';
+import { TmdbKeyComponent } from '../tmdb-key/tmdb-key.component';
+import { TmdbService } from '../../services/tmdb.service';
 
-type Step = 'welcome' | 'provider' | 'guide' | 'startup' | 'done';
+type Step = 'welcome' | 'provider' | 'guide' | 'tmdb' | 'startup' | 'done';
 
 /** How long checking a provider waits for its category list. */
 const CHECK_TIMEOUT_MS = 30_000;
@@ -45,11 +47,15 @@ const CHECK_TIMEOUT_MS = 30_000;
  * the right. One column on a phone and a computer, the step's buttons at the
  * bottom of a phone. Every step can be skipped and changed later where it
  * lives today; a television gets Starting up, the others do not.
+ *
+ * The TMDB step asks for a key of the device's own (TmdbService): without an
+ * account there is no sync service to hand one out, and Popular, New in your
+ * shows and the film and show pages' details stay empty without one.
  */
 @Component({
   selector: 'app-onboarding',
   standalone: true,
-  imports: [TPipe, NgIcon, HlmButton, HlmInput, HlmLabel, StartupSettingsComponent, TvintoMarkComponent, PhoneFormOfferComponent, LanguagePickerComponent],
+  imports: [TPipe, NgIcon, HlmButton, HlmInput, HlmLabel, StartupSettingsComponent, TvintoMarkComponent, PhoneFormOfferComponent, LanguagePickerComponent, TmdbKeyComponent],
   providers: [provideIcons({ lucideArrowLeft, lucideCheck, lucideEye, lucideEyeOff, lucideGlobe, lucideLoaderCircle, lucidePlus })],
   templateUrl: './onboarding.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -66,6 +72,7 @@ export class OnboardingComponent {
   readonly guide = inject(GuideService);
   readonly preview = inject(ChannelPreviewService);
   readonly tv = inject(TvNavigationService);
+  readonly tmdb = inject(TmdbService);
 
   readonly step = signal<Step>(inject(ActivatedRoute).snapshot.queryParamMap.get('step') === 'startup' ? 'startup' : 'welcome');
 
@@ -73,7 +80,9 @@ export class OnboardingComponent {
   readonly signedIn = !this.accounts.localProfile.active();
 
   /** The numbered steps after Welcome, as this device has them. */
-  readonly numbered = computed<Step[]>(() => (this.tv.isTelevision() ? ['provider', 'guide', 'startup', 'done'] : ['provider', 'guide', 'done']));
+  readonly numbered = computed<Step[]>(() =>
+    this.tv.isTelevision() ? ['provider', 'guide', 'tmdb', 'startup', 'done'] : ['provider', 'guide', 'tmdb', 'done']
+  );
   readonly stepNumber = computed(() => this.numbered().indexOf(this.step()) + 1);
 
   /** Back goes to the step before, down to Welcome; not from Starting up after signing in. */

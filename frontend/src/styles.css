@@ -2565,8 +2565,12 @@ button.setting-row:hover {
   color: var(--muted-foreground);
   overflow-wrap: anywhere;
 }
+/* Shrinks to its ellipsis rather than pushing the row past a phone's edge:
+   "Whatever the stream offers" beside "Subtitle language" did, and the whole
+   Playback page scrolled sideways (13 November). */
 .setting-row-value {
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
   max-width: 50%;
   overflow: hidden;
   text-overflow: ellipsis;

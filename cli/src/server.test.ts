@@ -2,7 +2,8 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { run } from './cli';
-import { Runner, WRANGLER, serverInit } from './server';
+import { Runner, WRANGLER, serverInit, serverTmdbKey } from './server';
+import { TMDB_KEY_EXAMPLES } from '../../shared/tmdb/key';
 import { SERVER_FILES } from './serverFiles.generated';
 import { MemoryStore } from './store';
 
@@ -129,5 +130,70 @@ describe('tvinto server init', () => {
 
     expect(code).toBe(1);
     expect(printed).toContain('run by a person, at a terminal');
+  });
+});
+
+/** A made-up key of the right shape. Never a real one, and TMDB is never called. */
+const KEY = TMDB_KEY_EXAMPLES.apiKey;
+
+/** TMDB stood in for: takes KEY, refuses anything else, and records what it was asked. */
+const fakeTmdb = () => {
+  const asked: string[] = [];
+  const fetch = (async (url: string) => {
+    asked.push(url);
+    const taken = new URL(url).searchParams.get('api_key') === KEY;
+    return { ok: taken, status: taken ? 200 : 401, json: async () => (taken ? { images: {} } : { status_message: 'Invalid API key' }) };
+  }) as never;
+  return { asked, fetch };
+};
+
+describe('tvinto server tmdb-key', () => {
+  const madeService = async () => {
+    const folder = tempFolder();
+    await serverInit(folder, { run: fakeWrangler().runner, fetch: health, write: () => undefined });
+    return folder;
+  };
+
+  it('checks the key with TMDB, then gives it to wrangler as TMDB_API_KEY, never to the screen', async () => {
+    const folder = await madeService();
+    const { calls, runner } = fakeWrangler();
+    const tmdb = fakeTmdb();
+    let printed = '';
+
+    const code = await serverTmdbKey(folder, { run: runner, fetch: tmdb.fetch, write: text => (printed += text), askKey: async () => `  "${KEY}"\n` });
+
+    expect(code).toBe(0);
+    expect(tmdb.asked).toHaveLength(1);
+    expect(calls).toEqual([{ args: ['secret', 'put', 'TMDB_API_KEY'], input: KEY }]);
+    expect(printed).toContain('TMDB key set');
+    expect(printed).not.toContain(KEY);
+  });
+
+  it("refuses what is neither of TMDB's values without asking TMDB or wrangler", async () => {
+    const folder = await madeService();
+    const { calls, runner } = fakeWrangler();
+    const tmdb = fakeTmdb();
+
+    await expect(serverTmdbKey(folder, { run: runner, fetch: tmdb.fetch, write: () => undefined, askKey: async () => '12345' })).rejects.toThrow(
+      "neither of TMDB's two values"
+    );
+    expect(tmdb.asked).toEqual([]);
+    expect(calls).toEqual([]);
+  });
+
+  it('sets nothing when TMDB refuses the key', async () => {
+    const folder = await madeService();
+    const { calls, runner } = fakeWrangler();
+
+    await expect(
+      serverTmdbKey(folder, { run: runner, fetch: fakeTmdb().fetch, write: () => undefined, askKey: async () => 'b'.repeat(32) })
+    ).rejects.toThrow('TMDB did not accept that key');
+    expect(calls).toEqual([]);
+  });
+
+  it('wants the folder tvinto server init made', async () => {
+    await expect(
+      serverTmdbKey(tempFolder(), { run: fakeWrangler().runner, fetch: fakeTmdb().fetch, write: () => undefined, askKey: async () => KEY })
+    ).rejects.toThrow('holds no service');
   });
 });

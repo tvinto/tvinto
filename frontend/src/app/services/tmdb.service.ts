@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { TmdbClient, TmdbFetch, tmdbClient } from '@shared/tmdb/client';
+import { normaliseTmdbKey } from '@shared/tmdb/key';
 import { API_URL } from './api-url';
 import { LocalProfileService } from './local-profile.service';
 
@@ -61,7 +62,8 @@ export class TmdbService {
    * (a TmdbError) otherwise, and keeps nothing.
    */
   async setOwnKey(key: string): Promise<void> {
-    const trimmed = key.trim();
+    // As pasted: a token broken across lines, in quotes, or after "Bearer".
+    const trimmed = normaliseTmdbKey(key);
     await tmdbClient((url, init) => this.fetchImpl(url, init), trimmed).check();
     try {
       localStorage.setItem(OWN_KEY, trimmed);

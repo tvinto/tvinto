@@ -34,6 +34,7 @@ input { font: inherit; color: var(--ink); background: var(--panel); border: 1px 
 input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 button { font: inherit; font-weight: 600; border: 0; border-radius: 999px; padding: 14px 20px; background: var(--accent); color: #0b1220; }
 button:disabled { opacity: 0.6; }
+.link { display: block; margin-bottom: 20px; color: var(--accent); font-weight: 600; text-underline-offset: 4px; }
 .status { margin: 0; font-size: 15px; }
 .status.done { color: var(--ok); font-weight: 600; font-size: 18px; }
 .status.error { color: var(--bad); }

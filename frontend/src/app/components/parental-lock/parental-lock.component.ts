@@ -55,9 +55,9 @@ import { IDLE_CHOICES, countOf, noCategories, writeCategorySets } from '../../ut
           />
         </app-setting-row>
         <app-setting-row [label]="'lock.account.changePin' | t" focusKey="lock-change-pin" (activate)="lock.choosePin()" />
-        <app-setting-row [label]="'lock.account.removePin' | t" focusKey="lock-remove-pin" (activate)="lock.removePin()" />
+        <app-setting-row [label]="'lock.account.removePin' | t" [sub]="'lock.account.removeHint' | t" focusKey="lock-remove-pin" (activate)="lock.removePin()" />
       } @else {
-        <app-setting-row [label]="'lock.account.choosePin' | t" focusKey="lock-choose-pin" (activate)="lock.choosePin()" />
+        <app-setting-row [label]="'lock.account.choosePin' | t" [sub]="'lock.account.offBody' | t" focusKey="lock-choose-pin" (activate)="lock.choosePin()" />
       }
 
       @if (hiddenCount() > 0) {

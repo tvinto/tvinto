@@ -18,12 +18,12 @@ import { TPipe } from '../../pipes/t.pipe';
   host: { class: 'contents' },
   template: `
     <app-setting-group [heading]="'picture.title' | t" data-tv-only-block data-picture-settings>
-      <app-setting-row [label]="'picture.matchRate' | t" kind="switch" [checked]="matching()" focusKey="picture-match" (activate)="toggle()" />
+      <app-setting-row [label]="'picture.matchRate' | t" [sub]="'picture.matchRateHelp' | t" kind="switch" [checked]="matching()" focusKey="picture-match" (activate)="toggle()" />
     </app-setting-group>
 
     <!-- Every device's player skips, so this is not the television's alone. -->
     <app-setting-group [heading]="'player.skipIntros' | t" data-skip-settings>
-      <app-setting-row [label]="'player.skipIntrosSub' | t" kind="static">
+      <app-setting-row [label]="'player.skipIntrosSub' | t" [sub]="'player.skipIntrosHelp' | t" kind="static">
         <app-choice-chips
           rowEnd
           [label]="'player.skipIntros' | t"

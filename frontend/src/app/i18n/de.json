@@ -257,8 +257,8 @@
     "reset": "Zurücksetzen",
     "sample": "So sieht ein Untertitel aus.",
     "look": "Aussehen der Untertitel",
-    "auto": "Untertitel automatisch zeigen",
-    "autoHelp": "Wenn es eine Spur in deiner Sprache gibt. Sonst schalte sie im Player ein.",
+    "auto": "Untertitel automatisch einschalten",
+    "autoHelp": "Wenn ein Film oder eine Folge Untertitel in deiner Sprache hat. Sonst kannst du sie im Player einschalten.",
     "on": "An",
     "off": "Aus",
     "subtitleLanguage": "Untertitelsprache",
@@ -362,7 +362,8 @@
     "copyFailed": "Diese Version lief nicht",
     "tryingCopy": "Diese Version lief nicht. Versuche {{name}}",
     "skipIntroDesktop": "Intro überspringen · Enter",
-    "skipRecapDesktop": "Rückblick überspringen · Enter"
+    "skipRecapDesktop": "Rückblick überspringen · Enter",
+    "skipIntrosHelp": "Mit Taste zeigt während eines Intros oder Rückblicks eine Überspringen-Taste. Automatisch überspringt es ohne Nachfrage. Nur bei Folgen, deren Zeiten bekannt sind: Sie kommen von TheIntroDB, einer freien gemeinsamen Datenbank, und um eine Serie dort zu finden, braucht es TMDB."
   },
   "guides": {
     "reading": "Programmführer auf diesem Gerät werden gelesen…",
@@ -1241,7 +1242,7 @@
       "en": "English",
       "hr": "Hrvatski"
     },
-    "notSetUp": "Beschreibungen von TMDB sind auf diesem Sync-Dienst noch nicht eingerichtet, deshalb werden die des Anbieters gezeigt.",
+    "notSetUp": "Dieser Sync-Dienst hat keinen TMDB-Schlüssel, deshalb werden die Beschreibungen deines Anbieters gezeigt. Füg unten deinen eigenen Schlüssel hinzu, um sie von TMDB zu bekommen.",
     "attribution": "Dieses Produkt nutzt die TMDB-API, ist aber nicht von TMDB unterstützt oder zertifiziert.",
     "ownKey": "Dein eigener TMDB-Schlüssel",
     "ownKeyBody": "Für ein Gerät ohne Konto oder einen Sync-Dienst ohne TMDB-Schlüssel. Kostenlos bei themoviedb.org unter Einstellungen, API. Nur auf diesem Gerät gespeichert.",
@@ -1255,7 +1256,9 @@
     "ownKeyUnreachable": "TMDB war zum Prüfen des Schlüssels nicht erreichbar",
     "fromTmdb": "Von TMDB",
     "more": "Mehr",
-    "read": "Beschreibung"
+    "read": "Beschreibung",
+    "languageHelp": "Anbieter schicken Beschreibungen oft in einer anderen Sprache. Wähl eine Sprache, und Tvinto holt sie in dieser Sprache von TMDB. Dafür braucht es einen TMDB-Schlüssel: deinen eigenen, unten, oder den deines Sync-Dienstes.",
+    "needsKey": "Dafür braucht es einen TMDB-Schlüssel, und der ist kostenlos. Füg unten deinen eigenen hinzu. Oder melde dich bei einem Sync-Dienst an, der einen hat. Dann bekommen ihn alle deine Geräte, ohne dass du etwas eintippst."
   },
   "remind": {
     "set": "Erinnern",
@@ -1341,7 +1344,8 @@
       "server": "Dein Sync-Dienst",
       "xtream": "Dein Anbieter (Xtream-Codes)",
       "m3u": "Deine M3U-Playlist",
-      "signin": "Zum Synchronisieren anmelden"
+      "signin": "Zum Synchronisieren anmelden",
+      "tmdb": "Dein TMDB-Schlüssel"
     },
     "field": {
       "guide": "Adresse",
@@ -1350,7 +1354,11 @@
       "username": "Benutzername",
       "password": "Passwort",
       "playlist": "Playlist-Adresse",
-      "name": "Name"
+      "name": "Name",
+      "key": "API-Schlüssel oder Lese-Zugriffstoken"
+    },
+    "link": {
+      "tmdb": "Kostenloser Schlüssel auf themoviedb.org (Settings → API)"
     }
   },
   "onboarding": {
@@ -1402,7 +1410,12 @@
     },
     "opensOn": "Öffnet mit {{page}}",
     "startWatching": "Losschauen",
-    "syncWithAccount": "Mit einem Konto synchronisieren"
+    "syncWithAccount": "Mit einem Konto synchronisieren",
+    "tmdbTitle": "Poster und Beschreibungen",
+    "tmdbLead": "TMDB ist eine freie Datenbank für Filme und Serien. Ein Schlüssel dafür gibt Tvinto Poster, Beschreibungen, Besetzung, Bewertungen und was gerade beliebt ist.",
+    "tmdbWithout": "Ohne ihn bleiben Beliebt und die Film- und Serienseiten größtenteils leer. Du kannst ihn auch später unter Konto, Beschreibungen hinzufügen.",
+    "tmdbSkip": "Vorerst überspringen",
+    "tmdbAdded": "Schlüssel hinzugefügt"
   },
   "startup": {
     "title": "Start",
@@ -1591,5 +1604,15 @@
         "other": "{0} Sender"
       }
     }
+  },
+  "tmdbKey": {
+    "how": "Er ist kostenlos: Leg ein Konto auf themoviedb.org an, öffne dann Settings → API und beantrage einen Schlüssel.",
+    "qrAlt": "QR-Code, um die API-Seite von TMDB auf dem Handy zu öffnen",
+    "looksLike": "TMDB zeigt dort zwei Werte. Füg einen davon ein, beide gehen. So sehen sie aus (ausgedachte Beispiele):",
+    "apiKey": "API-Schlüssel",
+    "apiKeyShape": "32 Buchstaben und Ziffern",
+    "token": "API-Lese-Zugriffstoken",
+    "tokenShape": "lang, beginnt mit eyJ",
+    "notAKey": "Das sieht nach keinem der beiden Werte aus. Kopier den API-Schlüssel oder das Lese-Zugriffstoken vollständig."
   }
 }
