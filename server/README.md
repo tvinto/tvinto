@@ -66,6 +66,10 @@ Secrets, and add them as secrets named `TMDB_API_KEY` and
 them. Without them the app tells you those features aren't set up, and
 everything else still works.
 
+With the tvinto command line tool, `tvinto server tmdb-key` in the folder
+`tvinto server init` made asks for the TMDB key without showing it, checks it
+with TMDB, and sets it for you.
+
 For subtitles, each person also links their own free OpenSubtitles account in
 the app (Account, then Subtitles). A free account allows 20 downloads a day,
 and subtitles someone adds are saved to their account for all their devices.

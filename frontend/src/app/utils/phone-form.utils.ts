@@ -1,5 +1,6 @@
 import { xchacha20poly1305 } from '@noble/ciphers/chacha.js';
 import { randomBytes } from '@noble/ciphers/utils.js';
+import { TMDB_KEY_ADDRESS } from '@shared/tmdb/key';
 
 /**
  * Typing on a television from a phone (private plan: sign-in-from-phone).
@@ -18,8 +19,8 @@ import { randomBytes } from '@noble/ciphers/utils.js';
  * message is refused rather than misread.
  */
 
-/** What is being typed: a provider, signing in to a sync service, that service's address, or a guide's. */
-export type PhoneFormKind = 'xtream' | 'm3u' | 'stalker' | 'signin' | 'server' | 'guide';
+/** What is being typed: a provider, signing in to a sync service, that service's address, a guide's, or a TMDB key. */
+export type PhoneFormKind = 'xtream' | 'm3u' | 'stalker' | 'signin' | 'server' | 'guide' | 'tmdb';
 
 export interface PhoneField {
   name: string;
@@ -31,6 +32,8 @@ export interface PhoneField {
 export interface PhoneFormPage {
   kind: PhoneFormKind;
   title: string;
+  /** Where to get what is asked for, opened on the phone: TMDB's API page for a key. */
+  link?: { href: string; words: string };
   fields: PhoneField[];
   send: string;
   sent: string;
@@ -66,7 +69,14 @@ export const PHONE_FIELDS: Record<PhoneFormKind, readonly { name: string; type: 
   guide: [
     { name: 'guide', type: 'url' },
     { name: 'name', type: 'text' }
-  ]
+  ],
+  // A TMDB key: the API key or the read access token, pasted on the phone.
+  tmdb: [{ name: 'key', type: 'password' }]
+};
+
+/** A page to open on the phone first, for the forms whose value comes from somewhere else. */
+export const PHONE_LINKS: Partial<Record<PhoneFormKind, string>> = {
+  tmdb: TMDB_KEY_ADDRESS
 };
 
 /** The largest form accepted, sealed: far more than three fields need, far less than a burden. */

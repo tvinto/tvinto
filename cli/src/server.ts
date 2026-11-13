@@ -3,6 +3,8 @@ import fs from 'fs';
 import path from 'path';
 import { SERVER_FILES } from './serverFiles.generated';
 import { Fetch } from './service';
+import { TmdbError, tmdbClient } from '../../shared/tmdb/client';
+import { TMDB_KEY_ADDRESS_SHORT, normaliseTmdbKey, tmdbKeyKind } from '../../shared/tmdb/key';
 
 /**
  * `tvinto server init`: a sync service of one's own on one's own Cloudflare
@@ -71,7 +73,7 @@ const addressIn = (output: string): string | null => /https:\/\/[a-z0-9.-]+\.wor
 
 const must = (step: string, result: { code: number }): void => {
   if (result.code !== 0) {
-    throw new Error(`${step} did not finish (wrangler said why, above). Run tvinto server init again once that is sorted.`);
+    throw new Error(`${step} did not finish (wrangler said why, above). Run it again once that is sorted.`);
   }
 };
 
@@ -133,5 +135,43 @@ export async function serverInit(folderArg: string | undefined, deps: ServerInit
       .filter((line, index, lines) => line !== '' || index === 0 || index === lines.length - 1)
       .join('\n')
   );
+  return 0;
+}
+
+export interface ServerTmdbKeyDeps {
+  run: Runner;
+  fetch: Fetch;
+  write(text: string): void;
+  /** The key, typed at the terminal and not shown. */
+  askKey(): Promise<string>;
+}
+
+/**
+ * `tvinto server tmdb-key`: the service's TMDB key, which it hands to every
+ * app signed in to it (worker/src/tmdb.ts), so nobody types one on each
+ * device. Checked with TMDB first, then given to wrangler as the secret
+ * TMDB_API_KEY; neither shown nor kept here.
+ */
+export async function serverTmdbKey(folderArg: string | undefined, deps: ServerTmdbKeyDeps): Promise<number> {
+  const folder = path.resolve(folderArg || 'tvinto-server');
+  if (whatIsIn(folder) !== 'ours') {
+    throw new Error(`${folder} holds no service from tvinto server init. Run this in the folder it made, or name it.`);
+  }
+  const key = normaliseTmdbKey(await deps.askKey());
+  if (!tmdbKeyKind(key)) {
+    throw new Error(
+      `That is neither of TMDB's two values: the API key (32 letters and numbers) or the API read access token (long, starts with eyJ), from ${TMDB_KEY_ADDRESS_SHORT}.`
+    );
+  }
+  try {
+    await tmdbClient((url, init) => deps.fetch(url, init), key).check();
+  } catch (error) {
+    if (error instanceof TmdbError && (error.status === 401 || error.status === 403)) {
+      throw new Error(`TMDB did not accept that key. Copy the API key or the read access token from ${TMDB_KEY_ADDRESS_SHORT}, whole.`);
+    }
+    throw new Error(`Could not reach TMDB to check the key: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  must('Setting the TMDB key', await wrangler(deps.run, folder, ['secret', 'put', 'TMDB_API_KEY'], key));
+  deps.write('TMDB key set. Every app signed in to this service uses it from its next launch, with nothing to type on each device.\n');
   return 0;
 }

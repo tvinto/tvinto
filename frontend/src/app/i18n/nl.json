@@ -264,8 +264,8 @@
     "reset": "Herstellen",
     "sample": "Zo ziet een ondertitel eruit.",
     "look": "Hoe ondertitels eruitzien",
-    "auto": "Ondertitels vanzelf tonen",
-    "autoHelp": "Als er een spoor in jouw taal is. Zet ze anders aan in de speler.",
+    "auto": "Ondertitels automatisch aanzetten",
+    "autoHelp": "Als een film of aflevering ondertitels in jouw taal heeft. Anders kun je ze in de speler aanzetten.",
     "on": "Aan",
     "off": "Uit",
     "subtitleLanguage": "Taal van de ondertitels",
@@ -369,7 +369,8 @@
     "copyFailed": "Die versie speelde niet af",
     "tryingCopy": "Die versie speelde niet af. {{name}} wordt geprobeerd",
     "skipIntroDesktop": "Intro overslaan · Enter",
-    "skipRecapDesktop": "Samenvatting overslaan · Enter"
+    "skipRecapDesktop": "Samenvatting overslaan · Enter",
+    "skipIntrosHelp": "Met een knop toont een Overslaan-knop tijdens een intro of samenvatting. Vanzelf slaat die over zonder te vragen. Alleen bij afleveringen waarvan de tijden bekend zijn: die komen van TheIntroDB, een vrije gedeelde database, en om een serie daar te vinden is TMDB nodig."
   },
   "guides": {
     "reading": "De gidsen op dit apparaat worden gelezen…",
@@ -1248,7 +1249,7 @@
       "en": "English",
       "hr": "Hrvatski"
     },
-    "notSetUp": "Beschrijvingen van TMDB zijn op deze synchronisatiedienst nog niet ingesteld, dus die van de aanbieder worden getoond.",
+    "notSetUp": "Deze synchronisatiedienst heeft geen TMDB-sleutel, dus de beschrijvingen van je aanbieder worden getoond. Voeg hieronder je eigen sleutel toe om ze van TMDB te krijgen.",
     "attribution": "Dit product gebruikt de TMDB-API maar wordt niet door TMDB ondersteund of gecertificeerd.",
     "ownKey": "Je eigen TMDB-sleutel",
     "ownKeyBody": "Voor een apparaat zonder account, of een synchronisatiedienst zonder TMDB-sleutel. Gratis op themoviedb.org, onder Instellingen, API. Alleen op dit apparaat bewaard.",
@@ -1262,7 +1263,9 @@
     "ownKeyUnreachable": "TMDB was niet bereikbaar om de sleutel te controleren",
     "fromTmdb": "Van TMDB",
     "more": "Meer",
-    "read": "Beschrijving"
+    "read": "Beschrijving",
+    "languageHelp": "Aanbieders sturen beschrijvingen vaak in een andere taal. Kies een taal en Tvinto haalt ze in die taal van TMDB. Daarvoor is een TMDB-sleutel nodig: je eigen, hieronder, of die van je synchronisatiedienst.",
+    "needsKey": "Hiervoor is een TMDB-sleutel nodig, en die is gratis. Voeg hieronder je eigen toe. Of meld je aan bij een synchronisatiedienst die er een heeft, dan krijgen al je apparaten hem zonder dat je iets typt."
   },
   "remind": {
     "set": "Herinner me",
@@ -1348,7 +1351,8 @@
       "server": "Je synchronisatiedienst",
       "xtream": "Je aanbieder (Xtream-codes)",
       "m3u": "Je M3U-afspeellijst",
-      "signin": "Aanmelden om te synchroniseren"
+      "signin": "Aanmelden om te synchroniseren",
+      "tmdb": "Je TMDB-sleutel"
     },
     "field": {
       "guide": "Adres",
@@ -1357,7 +1361,11 @@
       "username": "Gebruikersnaam",
       "password": "Wachtwoord",
       "playlist": "Adres van de afspeellijst",
-      "name": "Naam"
+      "name": "Naam",
+      "key": "API-sleutel of leestoken"
+    },
+    "link": {
+      "tmdb": "Gratis sleutel op themoviedb.org (Settings → API)"
     }
   },
   "onboarding": {
@@ -1409,7 +1417,12 @@
     },
     "opensOn": "Opent op {{page}}",
     "startWatching": "Begin met kijken",
-    "syncWithAccount": "Synchroniseren met een account"
+    "syncWithAccount": "Synchroniseren met een account",
+    "tmdbTitle": "Posters en beschrijvingen",
+    "tmdbLead": "TMDB is een vrije database van films en series. Een sleutel ervan geeft Tvinto posters, beschrijvingen, cast, beoordelingen en wat populair is.",
+    "tmdbWithout": "Zonder blijven Populair en de film- en seriepagina's grotendeels leeg. Je kunt hem later toevoegen bij Account, onder Beschrijvingen.",
+    "tmdbSkip": "Nu overslaan",
+    "tmdbAdded": "Sleutel toegevoegd"
   },
   "startup": {
     "title": "Opstarten",
@@ -1619,5 +1632,15 @@
     "whereSub": "In de app met de eigen bediening, of zoals eerder in het venster van mpv",
     "inApp": "In de app",
     "inWindow": "Venster van mpv"
+  },
+  "tmdbKey": {
+    "how": "Hij is gratis: maak een account op themoviedb.org, open dan Settings → API en vraag een sleutel aan.",
+    "qrAlt": "QR-code om de API-pagina van TMDB op een telefoon te openen",
+    "looksLike": "TMDB toont daar twee waarden. Plak er een van. Ze zien er zo uit (verzonnen voorbeelden):",
+    "apiKey": "API-sleutel",
+    "apiKeyShape": "32 letters en cijfers",
+    "token": "API-leestoken",
+    "tokenShape": "lang, begint met eyJ",
+    "notAKey": "Dat lijkt op geen van beide waarden. Kopieer de API-sleutel of het leestoken, helemaal."
   }
 }

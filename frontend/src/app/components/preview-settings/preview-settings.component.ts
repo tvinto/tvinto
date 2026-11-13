@@ -18,7 +18,7 @@ import { TPipe } from '../../pipes/t.pipe';
   template: `
     @if (preview.supported) {
       <app-setting-group [heading]="'preview.heading' | t" data-tv-only-block data-preview-settings>
-        <app-setting-row [label]="'preview.title' | t" kind="switch" [checked]="preview.enabled()" focusKey="preview-on" (activate)="toggle()" />
+        <app-setting-row [label]="'preview.title' | t" [sub]="'preview.body' | t" kind="switch" [checked]="preview.enabled()" focusKey="preview-on" (activate)="toggle()" />
       </app-setting-group>
     }
   `,

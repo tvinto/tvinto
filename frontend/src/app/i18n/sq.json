@@ -264,8 +264,8 @@
     "reset": "Rivendos",
     "sample": "Kështu duket një titër.",
     "look": "Pamja e titrave",
-    "auto": "Shfaq titrat automatikisht",
-    "autoHelp": "Kur ka një gjurmë në gjuhën tuaj. Përndryshe ndizini në luajtës.",
+    "auto": "Ndiz titrat automatikisht",
+    "autoHelp": "Kur një film ose episod ka titra në gjuhën tuaj. Përndryshe mund t'i ndizni në luajtës.",
     "on": "Ndezur",
     "off": "Fikur",
     "subtitleLanguage": "Gjuha e titrave",
@@ -369,7 +369,8 @@
     "copyFailed": "Ajo kopje nuk luajti",
     "tryingCopy": "Ajo kopje nuk luajti. Po provohet {{name}}",
     "skipIntroDesktop": "Kapërce hyrjen · Enter",
-    "skipRecapDesktop": "Kapërce përmbledhjen · Enter"
+    "skipRecapDesktop": "Kapërce përmbledhjen · Enter",
+    "skipIntrosHelp": "Me buton shfaq një buton Kapërce gjatë hyrjes ose përmbledhjes. Automatikisht e kapërcen pa pyetur. Vetëm për episodet, kohët e të cilave dihen: vijnë nga TheIntroDB, një bazë të dhënash falas e përbashkët, dhe për të gjetur një serial atje duhet TMDB."
   },
   "guides": {
     "reading": "Po lexohen udhëzuesit në këtë pajisje…",
@@ -1248,7 +1249,7 @@
       "en": "English",
       "hr": "Hrvatski"
     },
-    "notSetUp": "Përshkrimet nga TMDB ende nuk janë konfiguruar në këtë shërbim sinkronizimi, ndaj shfaqen ato të ofruesit.",
+    "notSetUp": "Ky shërbim sinkronizimi nuk ka çelës TMDB, ndaj shfaqen përshkrimet e ofruesit tuaj. Shtoni çelësin tuaj më poshtë për t'i marrë nga TMDB.",
     "attribution": "Ky produkt përdor API-në e TMDB, por nuk mbështetet as nuk certifikohet nga TMDB.",
     "ownKey": "Çelësi juaj TMDB",
     "ownKeyBody": "Për një pajisje pa llogari, ose një shërbim sinkronizimi pa çelës TMDB. Falas në themoviedb.org, te Cilësimet, API. Ruhet vetëm në këtë pajisje.",
@@ -1262,7 +1263,9 @@
     "ownKeyUnreachable": "TMDB nuk u arrit për të kontrolluar çelësin",
     "fromTmdb": "Nga TMDB",
     "more": "Më shumë",
-    "read": "Përshkrimi"
+    "read": "Përshkrimi",
+    "languageHelp": "Ofruesit shpesh i dërgojnë përshkrimet në një gjuhë tjetër. Zgjidhni një gjuhë dhe Tvinto i merr nga TMDB në atë gjuhë. Duhet një çelës TMDB: i juaji, më poshtë, ose ai i shërbimit tuaj të sinkronizimit.",
+    "needsKey": "Për këtë duhet një çelës TMDB, që është falas. Shtoni tuajin më poshtë. Ose hyni në një shërbim sinkronizimi që ka një të tillë, dhe e marrin të gjitha pajisjet tuaja pa shkruar asgjë."
   },
   "remind": {
     "set": "Më kujto",
@@ -1348,7 +1351,8 @@
       "server": "Shërbimi juaj i sinkronizimit",
       "xtream": "Ofruesi juaj (kode Xtream)",
       "m3u": "Lista juaj M3U",
-      "signin": "Hyni për sinkronizim"
+      "signin": "Hyni për sinkronizim",
+      "tmdb": "Çelësi juaj TMDB"
     },
     "field": {
       "guide": "Adresa",
@@ -1357,7 +1361,11 @@
       "username": "Emri i përdoruesit",
       "password": "Fjalëkalimi",
       "playlist": "Adresa e listës",
-      "name": "Emri"
+      "name": "Emri",
+      "key": "Çelës API ose token leximi"
+    },
+    "link": {
+      "tmdb": "Çelës falas në themoviedb.org (Settings → API)"
     }
   },
   "onboarding": {
@@ -1409,7 +1417,12 @@
     },
     "opensOn": "Hapet në: {{page}}",
     "startWatching": "Filloni të shikoni",
-    "syncWithAccount": "Sinkronizo me një llogari"
+    "syncWithAccount": "Sinkronizo me një llogari",
+    "tmdbTitle": "Postera dhe përshkrime",
+    "tmdbLead": "TMDB është një bazë të dhënash falas filmash dhe serialesh. Një çelës prej saj i jep Tvinto postera, përshkrime, aktorë, vlerësime dhe çfarë është popullore.",
+    "tmdbWithout": "Pa të, Popullore dhe faqet e filmave e serialeve mbeten pothuajse bosh. Mund ta shtoni më vonë te Llogaria, nën Përshkrimet.",
+    "tmdbSkip": "Kapërce tani për tani",
+    "tmdbAdded": "Çelësi u shtua"
   },
   "startup": {
     "title": "Nisja",
@@ -1619,5 +1632,15 @@
     "whereSub": "Brenda aplikacionit me kontrollet e tij, ose në dritaren e mpv si më parë",
     "inApp": "Në aplikacion",
     "inWindow": "Dritarja e mpv"
+  },
+  "tmdbKey": {
+    "how": "Është falas: hapni një llogari në themoviedb.org, pastaj Settings → API dhe kërkoni një çelës.",
+    "qrAlt": "Kod QR për të hapur faqen e API-së së TMDB në telefon",
+    "looksLike": "TMDB atje shfaq dy vlera. Ngjitni cilëndo. Duken kështu (shembuj të sajuar):",
+    "apiKey": "Çelës API",
+    "apiKeyShape": "32 shkronja dhe shifra",
+    "token": "Token leximi API",
+    "tokenShape": "i gjatë, fillon me eyJ",
+    "notAKey": "Kjo nuk duket si asnjëra nga dy vlerat. Kopjoni çelësin API ose tokenin e leximit, të plotë."
   }
 }

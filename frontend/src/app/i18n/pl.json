@@ -270,8 +270,8 @@
     "reset": "Resetuj",
     "sample": "Tak wygląda napis.",
     "look": "Wygląd napisów",
-    "auto": "Pokazuj napisy automatycznie",
-    "autoHelp": "Gdy jest ścieżka w Twoim języku. W przeciwnym razie włącz je w odtwarzaczu.",
+    "auto": "Włączaj napisy automatycznie",
+    "autoHelp": "Gdy film lub odcinek ma napisy w Twoim języku. W przeciwnym razie możesz włączyć je w odtwarzaczu.",
     "on": "Wł.",
     "off": "Wył.",
     "subtitleLanguage": "Język napisów",
@@ -377,7 +377,8 @@
     "copyFailed": "Ta kopia się nie odtworzyła",
     "tryingCopy": "Ta kopia się nie odtworzyła. Próbuję {{name}}",
     "skipIntroDesktop": "Pomiń czołówkę · Enter",
-    "skipRecapDesktop": "Pomiń streszczenie · Enter"
+    "skipRecapDesktop": "Pomiń streszczenie · Enter",
+    "skipIntrosHelp": "Przyciskiem pokazuje przycisk Pomiń w czasie czołówki lub streszczenia. Automatycznie pomija je bez pytania. Tylko w odcinkach, których czasy są znane: pochodzą z TheIntroDB, darmowej wspólnej bazy, a do znalezienia tam serialu potrzebny jest TMDB."
   },
   "guides": {
     "reading": "Czytam przewodniki na tym urządzeniu…",
@@ -1314,7 +1315,7 @@
       "en": "English",
       "hr": "Hrvatski"
     },
-    "notSetUp": "Opisy z TMDB nie są jeszcze skonfigurowane w tej usłudze synchronizacji, więc pokazywane są opisy dostawcy.",
+    "notSetUp": "Ta usługa synchronizacji nie ma klucza TMDB, więc pokazywane są opisy Twojego dostawcy. Dodaj poniżej własny klucz, aby pobierać je z TMDB.",
     "attribution": "Ten produkt używa API TMDB, ale nie jest wspierany ani certyfikowany przez TMDB.",
     "ownKey": "Twój własny klucz TMDB",
     "ownKeyBody": "Dla urządzenia bez konta albo usługi synchronizacji bez klucza TMDB. Za darmo na themoviedb.org, w Ustawieniach, API. Zapisywany tylko na tym urządzeniu.",
@@ -1328,7 +1329,9 @@
     "ownKeyUnreachable": "Nie można połączyć się z TMDB, aby sprawdzić klucz",
     "fromTmdb": "Z TMDB",
     "more": "Więcej",
-    "read": "Opis"
+    "read": "Opis",
+    "languageHelp": "Dostawcy często wysyłają opisy w innym języku. Wybierz język, a Tvinto pobierze je z TMDB w tym języku. Potrzebny jest klucz TMDB: Twój własny, poniżej, albo klucz Twojej usługi synchronizacji.",
+    "needsKey": "Do tego potrzebny jest klucz TMDB, który jest darmowy. Dodaj swój poniżej. Albo zaloguj się do usługi synchronizacji, która go ma, a dostaną go wszystkie Twoje urządzenia bez wpisywania."
   },
   "remind": {
     "set": "Przypomnij mi",
@@ -1414,7 +1417,8 @@
       "server": "Twoja usługa synchronizacji",
       "xtream": "Twój dostawca (kody Xtream)",
       "m3u": "Twoja lista M3U",
-      "signin": "Zaloguj się, aby synchronizować"
+      "signin": "Zaloguj się, aby synchronizować",
+      "tmdb": "Twój klucz TMDB"
     },
     "field": {
       "guide": "Adres",
@@ -1423,7 +1427,11 @@
       "username": "Nazwa użytkownika",
       "password": "Hasło",
       "playlist": "Adres listy",
-      "name": "Nazwa"
+      "name": "Nazwa",
+      "key": "Klucz API lub token odczytu"
+    },
+    "link": {
+      "tmdb": "Darmowy klucz na themoviedb.org (Settings → API)"
     }
   },
   "onboarding": {
@@ -1481,7 +1489,12 @@
     },
     "opensOn": "Otwiera się na: {{page}}",
     "startWatching": "Zacznij oglądać",
-    "syncWithAccount": "Synchronizuj z kontem"
+    "syncWithAccount": "Synchronizuj z kontem",
+    "tmdbTitle": "Plakaty i opisy",
+    "tmdbLead": "TMDB to darmowa baza filmów i seriali. Klucz z niej daje Tvinto plakaty, opisy, obsadę, oceny i to, co popularne.",
+    "tmdbWithout": "Bez niego Popularne oraz strony filmów i seriali są prawie puste. Możesz go dodać później w Koncie, w sekcji Opisy.",
+    "tmdbSkip": "Na razie pomiń",
+    "tmdbAdded": "Klucz dodany"
   },
   "startup": {
     "title": "Uruchamianie",
@@ -1693,5 +1706,15 @@
     "whereSub": "W aplikacji z jej własnymi przyciskami albo jak dotąd w oknie mpv",
     "inApp": "W aplikacji",
     "inWindow": "Okno mpv"
+  },
+  "tmdbKey": {
+    "how": "Jest darmowy: załóż konto na themoviedb.org, otwórz Settings → API i poproś o klucz.",
+    "qrAlt": "Kod QR do otwarcia strony API TMDB na telefonie",
+    "looksLike": "TMDB pokazuje tam dwie wartości. Wklej którąkolwiek. Wyglądają tak (zmyślone przykłady):",
+    "apiKey": "Klucz API",
+    "apiKeyShape": "32 litery i cyfry",
+    "token": "Token odczytu API",
+    "tokenShape": "długi, zaczyna się od eyJ",
+    "notAKey": "To nie wygląda na żadną z tych dwóch wartości. Skopiuj klucz API albo token odczytu w całości."
   }
 }

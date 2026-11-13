@@ -35,6 +35,7 @@
             @case ('welcome') { {{ 'onboarding.welcome' | t }} }
             @case ('provider') { {{ 'onboarding.providerTitle' | t }} }
             @case ('guide') { {{ 'onboarding.guideTitle' | t }} }
+            @case ('tmdb') { {{ 'onboarding.tmdbTitle' | t }} }
             @case ('startup') { {{ 'startup.title' | t }} }
             @case ('done') { {{ 'onboarding.doneTitle' | t }} }
           }
@@ -43,6 +44,10 @@
           @case ('welcome') { <p class="text-sm text-muted-foreground">{{ 'onboarding.welcomeLead' | t }}</p> }
           @case ('provider') { <p class="text-sm text-muted-foreground">{{ 'onboarding.providerLead' | t }}</p> }
           @case ('guide') { <p class="text-sm text-muted-foreground">{{ 'onboarding.guideLead' | t }}</p> }
+          @case ('tmdb') {
+            <p class="text-sm text-muted-foreground">{{ 'onboarding.tmdbLead' | t }}</p>
+            <p class="text-sm text-muted-foreground">{{ 'onboarding.tmdbWithout' | t }}</p>
+          }
           @case ('startup') { <p class="text-sm text-muted-foreground">{{ 'onboarding.startupLead' | t }}</p> }
         }
       </div>
@@ -206,6 +211,23 @@
           </div>
         }
 
+        <!-- Optional: a TMDB key of this device's own, as on Settings, Descriptions. -->
+        @case ('tmdb') {
+          <div class="flex flex-col" data-onboarding-tmdb>
+            <app-tmdb-key [compact]="true" />
+          </div>
+          <!-- Skip as plain to reach as Continue: a full button, first in focus on a television. -->
+          <div class="mt-auto flex flex-col gap-2 sm:flex-row" data-onboarding-actions>
+            @if (tmdb.ownKey()) {
+              <button hlmBtn variant="primary" type="button" class="sm:flex-1" data-onboarding-first (click)="next()">{{ 'onboarding.continue' | t }}</button>
+            } @else {
+              <button hlmBtn variant="secondary" type="button" class="sm:flex-1" data-onboarding-first data-onboarding-skip (click)="next()">
+                {{ 'onboarding.tmdbSkip' | t }}
+              </button>
+            }
+          </div>
+        }
+
         @case ('startup') {
           <app-startup-settings [embedded]="true" />
           @if (preview.supported) {
@@ -235,6 +257,10 @@
             <div class="flex items-center gap-3 border-b border-border py-3">
               <span class="w-28 shrink-0 text-sm text-muted-foreground">{{ 'onboarding.doneGuide' | t }}</span>
               <span class="text-sm font-semibold">{{ guideCount() ? ('onboarding.guides' | t: { count: guideCount() }) : '–' }}</span>
+            </div>
+            <div class="flex items-center gap-3 border-b border-border py-3">
+              <span class="w-28 shrink-0 text-sm text-muted-foreground">TMDB</span>
+              <span class="text-sm font-semibold">{{ tmdb.ownKey() ? ('onboarding.tmdbAdded' | t) : '–' }}</span>
             </div>
             @if (tv.isTelevision()) {
               <div class="flex items-center gap-3 border-b border-border py-3">

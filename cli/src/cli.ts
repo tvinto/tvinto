@@ -54,7 +54,7 @@ import { readCategorySets } from '../../shared/categoryLock';
 import { Terminal } from './prompt';
 import { Fetch } from './service';
 import { SecretStore, readConfig } from './store';
-import { Runner, serverInit } from './server';
+import { Runner, serverInit, serverTmdbKey } from './server';
 import fs from 'fs';
 import path from 'path';
 
@@ -189,6 +189,11 @@ Asked of the app, which does it on a click (a password it makes shows there only
                         account, written to the folder (tvinto-server unless
                         given) and deployed with wrangler, which signs you in
                         to Cloudflare itself. Again in the same folder: an update.
+  tvinto server tmdb-key [folder]
+                        The service's TMDB key (free, from
+                        themoviedb.org/settings/api), checked with TMDB and set
+                        with wrangler. Every app signed in to it then gets
+                        posters, descriptions and Popular without a key of its own.
 
   tvinto mcp            An MCP server on stdin/stdout, for an AI agent, using
                         this sign-in. Reads and previews only; apply needs a code.
@@ -942,13 +947,22 @@ export async function run(argv: string[], deps: Deps): Promise<number> {
       }
 
       case 'server': {
-        if (args[0] !== 'init' || args.length > 2) {
-          throw new Error('tvinto server init [folder]');
+        if ((args[0] !== 'init' && args[0] !== 'tmdb-key') || args.length > 2) {
+          throw new Error('tvinto server init [folder]  or  tvinto server tmdb-key [folder]');
         }
         // A person at a terminal, never an agent: wrangler signs in to
         // Cloudflare in a browser, and a deploy is theirs to make.
         if (!deps.terminal.isTTY || !deps.run) {
-          throw new Error('tvinto server init is run by a person, at a terminal.');
+          throw new Error(`tvinto server ${args[0]} is run by a person, at a terminal.`);
+        }
+        if (args[0] === 'tmdb-key') {
+          const terminal = deps.terminal;
+          return await serverTmdbKey(args[1], {
+            run: deps.run,
+            fetch: deps.fetch,
+            write: deps.write,
+            askKey: () => terminal.askHidden('TMDB API key or read access token (not shown): ')
+          });
         }
         return await serverInit(args[1], { run: deps.run, fetch: deps.fetch, write: deps.write });
       }

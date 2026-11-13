@@ -1,4 +1,5 @@
-import { fromBase64Url, keyFromFragment, newPhoneKey, openForm, phoneFormAddress, sealForm, toBase64Url } from './phone-form.utils';
+import { TMDB_KEY_ADDRESS, TMDB_KEY_EXAMPLES } from '@shared/tmdb/key';
+import { PHONE_LINKS, fromBase64Url, keyFromFragment, newPhoneKey, openForm, phoneFormAddress, sealForm, toBase64Url } from './phone-form.utils';
 
 describe('typing on the TV from a phone', () => {
   it('puts the key in the address after the #, where the browser never sends it', () => {
@@ -32,6 +33,15 @@ describe('typing on the TV from a phone', () => {
 
     expect(openForm(key, sealed, 'm3u')).toEqual({ playlist: 'http://lists.example/a.m3u' });
     expect(openForm(key, sealed, 'xtream')).toEqual({ server: '', username: '', password: '' });
+  });
+
+  it("takes a TMDB key typed on the phone, which first opens TMDB's API page", () => {
+    const key = newPhoneKey();
+    const sealed = sealForm(key, { key: TMDB_KEY_EXAMPLES.apiKey });
+
+    expect(openForm(key, sealed, 'tmdb')).toEqual({ key: TMDB_KEY_EXAMPLES.apiKey });
+    expect(PHONE_LINKS.tmdb).toBe(TMDB_KEY_ADDRESS);
+    expect(PHONE_LINKS.xtream).toBeUndefined();
   });
 
   it('makes nothing of what is not a sealed form', () => {
