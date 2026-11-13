@@ -22,11 +22,19 @@ import { VideoState } from './videoState';
  * picture. mpv carries its own decoders, so it plays them whatever Windows has
  * installed.
  *
- * A separate window driven over a pipe, rather than a surface embedded in the
- * app. Embedding means handing mpv a native window handle and owning its
- * lifetime, sizing and focus; a separate window is what the Android player
- * already is, and the app above already knows how to ask for playback and be
- * told where it got to afterwards.
+ * Inside the app's window since November 2026: tvinto-player.exe is the same
+ * mpv as a library, drawing into textures the page shows under its own
+ * controls (native/tvinto-player.cpp, src/videoFrames.ts, src/videoState.ts,
+ * the page's app-desktop-player). It takes mpv.exe's command line and serves
+ * its JSON pipe, so everything below -- live pause, Skip intro, switching
+ * channel, reopening a dropped one -- talks to either the same way.
+ *
+ * mpv.exe's own window over the app is the fallback: no helper, a machine
+ * where it cannot start, or the account's player setting `desktopPlayer:
+ * 'window'`. Kept for one release. What goes with it then: overlayGeometry
+ * and the window-only arguments (--ontop, --no-border, --geometry, --screen),
+ * the preload's full-window canvas and its key forwarding, the mpv OSD
+ * banner (osdBanner) and live pause badge (badgeAss), and the setting.
  */
 
 /**
