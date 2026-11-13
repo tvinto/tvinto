@@ -1,5 +1,7 @@
-# tvinto: the command line and AI tool
+# tvinto: the command line and AI tool for Tvinto
 
+[Tvinto](https://github.com/tvinto/tvinto) is an open-source IPTV app for
+Android TV, phones and Windows, with a sync service you can run yourself.
 `tvinto` changes your Tvinto account from a terminal, the same way the app
 does: providers, guides, channel matches, sorting, hidden and locked
 categories, player settings, profile pictures and the family. Every change
@@ -11,19 +13,18 @@ change only happens after you confirm it.
 
 ## Install
 
-It isn't on npm yet, so build it from this repository. You need Node.js 20 or
-newer.
+Nothing to install if you have Node.js 20 or newer: `npx tvinto` fetches it
+and runs it. Every command below works as `npx tvinto <command>`.
+
+If you'd rather have a `tvinto` command on your PATH:
 
 ```bash
-git clone https://github.com/tvinto/tvinto.git
-cd tvinto/cli
-npm install
-npm run build
-npm link        # puts the tvinto command on your PATH
+npm install -g tvinto
 ```
 
-Check it works with `tvinto --help`. If you'd rather not use `npm link`, run it
-as `node <path to>/tvinto/cli/dist/tvinto.js` instead.
+**No Node?** The Tvinto desktop app carries tvinto and runs it itself. Open
+Account, Tools, "Use with an AI agent": it shows the commands for your
+computer, with the paths filled in, ready to copy.
 
 ## Sign in
 
@@ -93,11 +94,11 @@ Sign in first (above). Then add tvinto to your agent as an MCP server. For
 Claude Code:
 
 ```bash
-claude mcp add tvinto -- tvinto mcp
+claude mcp add tvinto -- npx -y tvinto mcp
 ```
 
-Other MCP clients need the command `tvinto mcp` (or
-`node <path to>/cli/dist/tvinto.js mcp`) in their settings.
+Other MCP clients take the same command in their settings: `npx` with the
+arguments `-y tvinto mcp` (or `tvinto mcp` if you installed it globally).
 
 The agent can then read your setup and prepare changes. When it wants to
 apply one, your agent app asks **you** to confirm, showing the change. If
@@ -116,7 +117,21 @@ a terminal yourself. Either way the agent can't apply a change on its own.
   for example) is marked as untrusted, so an agent doesn't take it as
   instructions.
 
+## From the source
+
+```bash
+git clone https://github.com/tvinto/tvinto.git
+cd tvinto/cli
+npm install
+npm run build
+node dist/tvinto.js --help
+```
+
+Its tests run in the backend's Jest (`cd backend && npx jest`).
+`npm run publish:cli` builds, tests and shows what would go to npm;
+`npm run publish:cli -- --yes` publishes it.
+
 ## Your own sync service
 
 `tvinto server init` sets up a sync service on your own Cloudflare account.
-See [server/README.md](../server/README.md).
+See [server/README.md](https://github.com/tvinto/tvinto/blob/main/server/README.md).

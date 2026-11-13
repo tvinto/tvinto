@@ -73,6 +73,19 @@ npx wrangler dev --local                      # runs it on your machine
 npx wrangler deploy                           # deploys it to your Cloudflare account
 ```
 
+The `tvinto` command line, from `cli/`. People get it from npm (`npx tvinto`)
+or inside the desktop app; building it is only for working on it:
+
+```bash
+cd cli && npm install && npm run build        # into cli/dist/tvinto.js
+node dist/tvinto.js --help
+../backend/node_modules/.bin/tsc -p .         # its types; esbuild checks none
+npm run publish:cli                           # build, test, npm publish --dry-run
+```
+
+`electron:make` builds it too (`npm run build:cli`) and packages it into the
+installer's `resources/cli`, where the app runs it with its own executable.
+
 After changing `worker/`, rebuild the copy used by the Deploy button with
 `node worker/scripts/build-server.mjs`. CI checks that it's up to date. If you
 change the database schema, also add the next numbered file in

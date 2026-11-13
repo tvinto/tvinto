@@ -1,14 +1,37 @@
 {
   "name": "tvinto",
   "version": "0.1.0",
-  "private": true,
-  "description": "Change a Tvinto account from the command line, and let an AI agent do it safely",
+  "description": "Change a Tvinto account from the command line, and let an AI agent do it safely through MCP",
+  "keywords": [
+    "tvinto",
+    "iptv",
+    "mcp",
+    "mcp-server",
+    "cli",
+    "ai-agent",
+    "claude",
+    "epg"
+  ],
+  "homepage": "https://github.com/tvinto/tvinto/tree/main/cli#readme",
+  "bugs": {
+    "url": "https://github.com/tvinto/tvinto/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tvinto/tvinto.git",
+    "directory": "cli"
+  },
   "license": "GPL-3.0-only",
   "bin": {
     "tvinto": "dist/tvinto.js"
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "esbuild src/main.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/tvinto.js --external:@napi-rs/keyring --banner:js=\"#!/usr/bin/env node\""
+    "build": "esbuild src/main.ts --bundle --platform=node --target=node18 --format=cjs --outfile=dist/tvinto.js --external:@napi-rs/keyring --banner:js=\"#!/usr/bin/env node\"",
+    "prepublishOnly": "npm run build",
+    "publish:cli": "node scripts/publish.js"
   },
   "engines": {
     "node": ">=20"

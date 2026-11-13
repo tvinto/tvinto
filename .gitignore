@@ -110,3 +110,6 @@ skills-lock.json
 # design work in progress and the design checker's output
 site-next/
 .taste-skill/
+
+# Copied in by cli/scripts/publish.js for the npm package; the real one is at the root.
+cli/LICENSE

@@ -13,6 +13,7 @@ import { registerNativePlayer } from './player';
 import { desktopRecorder, registerRecorder } from './recorderIpc';
 import { registerSubtitleFetch } from './subtitles';
 import { ElectronCapacitorApp, setupContentSecurityPolicy, setupReloadWatcher, setupRequestHeaders } from './setup';
+import { registerToolCli } from './toolCli';
 import { startUpdates } from './updates';
 import { join } from 'path';
 
@@ -100,6 +101,8 @@ if (electronIsDev) {
   registerRecorder();
   desktopRecorder();
   registerExternalLinks();
+  // tvinto, carried in the app for connecting an AI agent (src/toolCli.ts).
+  registerToolCli();
   // The country Windows is set to, for the guide suggested (EpgShareService):
   // the page's languages say only which language the app is in, and an
   // English Windows in Croatia gives en-US.
