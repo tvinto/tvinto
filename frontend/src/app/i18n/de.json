@@ -752,6 +752,22 @@
     "failedBody": "Beliebte Listen, Bilder und Filmdetails können gerade nicht abgerufen werden. Alles, was du abspielen kannst, funktioniert weiter.",
     "tryAgain": "Erneut versuchen"
   },
+  "activity": {
+    "label": "Läuft",
+    "sync": "Dein Verlauf und deine Favoriten werden geholt",
+    "library": {
+      "live": "Senderliste",
+      "vod": "Filmbibliothek",
+      "series": "Serienbibliothek"
+    },
+    "downloading": "Wird heruntergeladen",
+    "categories": "{{filed}} von {{total}} Kategorien",
+    "categoriesSoFar": "{{filed}} Kategorien",
+    "guide": "TV-Programm · {{name}}",
+    "guideUnnamed": "TV-Programm",
+    "guideRead": "{{channels}} Sender · {{size}} MB gelesen",
+    "waiting": "Wartet, bis es dran ist"
+  },
   "fy": {
     "newInShows": "Neu in deinen Serien",
     "announced": "Angekündigt",
@@ -791,11 +807,8 @@
     "nextAfter": "Danach nach {{after}}",
     "more": "+ {{count}} weitere",
     "show": "Serie",
-    "settling": {
-      "sync": "Dein Verlauf und deine Favoriten werden geholt",
-      "library": "Deine Film- und Serienbibliothek wird geladen",
-      "guide": "Der Programmführer wird geladen"
-    }
+    "guideComing": "Der Programmführer wird heruntergeladen",
+    "guideComingDetail": "Was gerade läuft, erscheint hier, sobald er fertig ist."
   },
   "actions": {
     "playLive": "Live abspielen",

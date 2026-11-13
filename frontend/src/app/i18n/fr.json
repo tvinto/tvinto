@@ -752,6 +752,22 @@
     "failedBody": "Les listes populaires, les visuels et les détails des films ne peuvent pas être récupérés pour l'instant. Tout ce que tu peux lire fonctionne normalement.",
     "tryAgain": "Réessayer"
   },
+  "activity": {
+    "label": "En cours",
+    "sync": "Récupération de votre historique et de vos favoris",
+    "library": {
+      "live": "Liste des chaînes",
+      "vod": "Bibliothèque de films",
+      "series": "Bibliothèque de séries"
+    },
+    "downloading": "Téléchargement",
+    "categories": "{{filed}} catégories sur {{total}}",
+    "categoriesSoFar": "{{filed}} catégories",
+    "guide": "Guide TV · {{name}}",
+    "guideUnnamed": "Guide TV",
+    "guideRead": "{{channels}} chaînes · {{size}} Mo lus",
+    "waiting": "En attente de son tour"
+  },
   "fy": {
     "newInShows": "Nouveautés dans tes séries",
     "announced": "Annoncé",
@@ -791,11 +807,8 @@
     "nextAfter": "Ensuite après {{after}}",
     "more": "+ {{count}} de plus",
     "show": "Série TV",
-    "settling": {
-      "sync": "Récupération de votre historique et de vos favoris",
-      "library": "Chargement de votre bibliothèque de films et de séries",
-      "guide": "Chargement du guide TV"
-    }
+    "guideComing": "Téléchargement du guide TV",
+    "guideComingDetail": "Ce qui passe en ce moment s'affichera ici une fois terminé."
   },
   "actions": {
     "playLive": "Regarder en direct",

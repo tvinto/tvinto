@@ -29,13 +29,13 @@ const CURSOR = syncCursorKey('xtream_sync_cursor', ACCOUNT.username, API, fnv1aH
 
 describe('DeviceSyncService, signing in', () => {
   const account = signal<Account | null>(null);
-  let guides: { applyIncoming: jest.Mock; loadFirstTimeHere: jest.Mock };
+  let guides: { applyIncoming: jest.Mock; loadFirstTimeHereAfter: jest.Mock };
   let http: HttpTestingController;
 
   const build = (): DeviceSyncService => {
     guides = {
       applyIncoming: jest.fn().mockResolvedValue(undefined),
-      loadFirstTimeHere: jest.fn().mockResolvedValue(undefined)
+      loadFirstTimeHereAfter: jest.fn().mockResolvedValue(undefined)
     };
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
@@ -103,7 +103,7 @@ describe('DeviceSyncService, signing in', () => {
     await Promise.resolve();
 
     expect(service.firstSync()).toBe(false);
-    expect(guides.loadFirstTimeHere).toHaveBeenCalledTimes(1);
+    expect(guides.loadFirstTimeHereAfter).toHaveBeenCalledTimes(1);
   });
 
   it('is not waiting, nor downloads guides, on a device that has synced before', async () => {
@@ -115,7 +115,7 @@ describe('DeviceSyncService, signing in', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(guides.loadFirstTimeHere).not.toHaveBeenCalled();
+    expect(guides.loadFirstTimeHereAfter).not.toHaveBeenCalled();
   });
 
   it('stops waiting when the first sync fails, rather than for ever', () => {

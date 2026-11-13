@@ -752,6 +752,22 @@
     "failedBody": "Popüler listeler, görseller ve film ayrıntıları şu anda alınamıyor. Oynatabildiğiniz her şey etkilenmez.",
     "tryAgain": "Tekrar dene"
   },
+  "activity": {
+    "label": "Sürüyor",
+    "sync": "Geçmişiniz ve favorileriniz getiriliyor",
+    "library": {
+      "live": "Kanal listesi",
+      "vod": "Film kitaplığı",
+      "series": "Dizi kitaplığı"
+    },
+    "downloading": "İndiriliyor",
+    "categories": "{{filed}} / {{total}} kategori",
+    "categoriesSoFar": "{{filed}} kategori",
+    "guide": "TV rehberi · {{name}}",
+    "guideUnnamed": "TV rehberi",
+    "guideRead": "{{channels}} kanal · {{size}} MB okundu",
+    "waiting": "Sırasını bekliyor"
+  },
   "fy": {
     "newInShows": "Dizilerinizde yeni",
     "announced": "Duyuruldu",
@@ -791,11 +807,8 @@
     "nextAfter": "{{after}} sonrasında",
     "more": "+ {{count}} tane daha",
     "show": "TV dizisi",
-    "settling": {
-      "sync": "Geçmişiniz ve favorileriniz getiriliyor",
-      "library": "Film ve dizi kütüphaneniz yükleniyor",
-      "guide": "TV rehberi yükleniyor"
-    }
+    "guideComing": "TV rehberi indiriliyor",
+    "guideComingDetail": "Şu an yayında olanlar bittiğinde burada görünecek."
   },
   "actions": {
     "playLive": "Canlı oynat",

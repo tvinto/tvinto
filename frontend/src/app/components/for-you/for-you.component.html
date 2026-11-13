@@ -82,23 +82,16 @@
 
     <app-storage-banner />
 
-    <!-- What a device that has just signed in is still bringing in: the
-         account's history first, then a library or a guide it has never
-         held. Quiet, and gone once it is done. -->
-    @if (settling(); as what) {
-      <p class="flex items-center gap-2 text-sm text-muted-foreground" role="status" data-fy-settling>
-        <ng-icon name="lucideLoaderCircle" size="16" class="animate-spin" />
-        {{ what | t }}
-      </p>
-    }
+    <!-- What is still loading is said once, by the shell's activity notice
+         at the top right (12 November); the page only holds the places. -->
     @if (waitingForAccount()) {
       <!-- Where Continue watching will be, while the first sync is out:
            plain tiles, nothing to focus (TV-34's placeholder row). -->
       <section class="flex flex-col gap-2" data-fy-account-loading aria-hidden="true">
-        <span class="block h-5 w-48 rounded bg-card"></span>
+        <span class="block h-5 w-48 rounded glass-card"></span>
         <div class="flex gap-3 overflow-hidden pb-2" data-tv-rail>
           @for (tile of LOADING_TILES; track tile) {
-            <span class="block aspect-video w-[16rem] shrink-0 rounded-md bg-card"></span>
+            <span class="block aspect-video w-[16rem] shrink-0 rounded-md glass-card"></span>
           }
         </div>
       </section>
@@ -107,16 +100,16 @@
     @if (dayOne()) {
       <!-- FY-TV · Day one: four equal doors rather than empty rails. -->
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-fy-doors>
-        <button type="button" class="flex min-h-32 flex-col gap-1 rounded-lg border-l-4 border-live bg-card p-5 text-left hover:bg-card-2" data-focus-key="fy-door-guide" (click)="browseGuide()">
+        <button type="button" class="flex min-h-32 flex-col gap-1 rounded-lg border-l-4 border-live glass-card p-5 text-left" data-focus-key="fy-door-guide" (click)="browseGuide()">
           <span class="text-lg font-bold">{{ 'fy.browseGuide' | t }}</span>
         </button>
-        <button type="button" class="flex min-h-32 flex-col gap-1 rounded-lg border-l-4 border-vod bg-card p-5 text-left hover:bg-card-2" (click)="go('/movies')">
+        <button type="button" class="flex min-h-32 flex-col gap-1 rounded-lg border-l-4 border-vod glass-card p-5 text-left" (click)="go('/movies')">
           <span class="text-lg font-bold">{{ 'nav.movies' | t }}</span>
         </button>
-        <button type="button" class="flex min-h-32 flex-col gap-1 rounded-lg border-l-4 border-series bg-card p-5 text-left hover:bg-card-2" (click)="go('/shows')">
+        <button type="button" class="flex min-h-32 flex-col gap-1 rounded-lg border-l-4 border-series glass-card p-5 text-left" (click)="go('/shows')">
           <span class="text-lg font-bold">{{ 'nav.shows' | t }}</span>
         </button>
-        <button type="button" class="flex min-h-32 flex-col gap-1 rounded-lg border-l-4 border-primary-bright bg-card p-5 text-left hover:bg-card-2" (click)="openSearch()">
+        <button type="button" class="flex min-h-32 flex-col gap-1 rounded-lg border-l-4 border-primary-bright glass-card p-5 text-left" (click)="openSearch()">
           <span class="text-lg font-bold">{{ 'nav.search' | t }}</span>
         </button>
       </div>
@@ -154,7 +147,7 @@
                       (activate)="resume(entry)"
                       (menu)="openMenu({ kind: 'recent', entry })"
                     >
-                      <span class="relative block h-[11.8rem] w-full overflow-hidden rounded-md bg-card-2" data-fy-poster-image>
+                      <span class="relative block h-[11.8rem] w-full overflow-hidden rounded-md glass-card" data-fy-poster-image>
                         @if (entry.type === "live") {
                           <span class="absolute inset-0 flex items-center justify-center p-3">
                             @if ((entry.icon && !failedIcons().has(entry.icon))) {
@@ -246,7 +239,7 @@
                     [title]="show.name"
                     (activate)="openNewShow(show)"
                   >
-                    <span class="relative block h-[11.8rem] w-full overflow-hidden rounded-md bg-card-2" data-fy-poster-image>
+                    <span class="relative block h-[11.8rem] w-full overflow-hidden rounded-md glass-card" data-fy-poster-image>
                       @if (show.poster && !failedIcons().has(show.poster)) {
                         <img [src]="show.poster" (error)="iconFailed(show.poster)" alt="" loading="lazy" class="h-full w-full object-cover" />
                       } @else {
@@ -271,9 +264,19 @@
                 {{ 'fy.onNow' | t }}
               </h2>
 
-              @if (!hasGuide() && !guideOfferDismissed()) {
+              @if (!hasGuide() && guideComing()) {
+                <!-- The guide the account uses is on its way: no offer to
+                     download it while it downloads. The activity notice says how far. -->
+                <div class="glass-card flex flex-wrap items-center gap-3 rounded-lg p-4" role="status" data-fy-guide-coming>
+                  <ng-icon name="lucideLoaderCircle" size="20" class="shrink-0 animate-spin text-muted-foreground" />
+                  <div class="min-w-[12rem] flex-1">
+                    <p class="font-semibold">{{ 'fy.guideComing' | t }}</p>
+                    <p class="text-sm text-muted-foreground">{{ 'fy.guideComingDetail' | t }}</p>
+                  </div>
+                </div>
+              } @else if (!hasGuide() && !guideOfferDismissed()) {
                 <!-- FY-D · Guide not downloaded: the rail degrades, it does not vanish. -->
-                <div class="poster-placeholder flex flex-wrap items-center gap-4 rounded-lg border border-border-2 p-4" data-fy-no-guide>
+                <div class="glass-card flex flex-wrap items-center gap-4 rounded-lg p-4" data-fy-no-guide>
                   <div class="min-w-[16rem] flex-1">
                     <p class="font-semibold">{{ 'fy.noGuideHere' | t }}</p>
                     <p class="text-sm text-muted-foreground">
@@ -299,7 +302,7 @@
                     <button
                       type="button"
                       appCardGestures
-                      class="relative flex h-[5.5rem] w-[14.25rem] items-center gap-3 overflow-hidden rounded-lg bg-card p-2.5 text-left transition-colors hover:bg-card-2"
+                      class="relative flex h-[5.5rem] w-[14.25rem] items-center gap-3 overflow-hidden rounded-lg glass-card p-2.5 text-left transition-colors"
                       data-fy-card
                       [class.poster-placeholder]="guideRead() && hasGuide() && !fav.onNow"
                       [attr.data-focus-key]="'fy-now-' + favourite.stream.stream_id"
@@ -307,7 +310,7 @@
                       (activate)="openFavourite(favourite)"
                       (menu)="openMenu({ kind: 'favourite', favourite })"
                     >
-                      <span class="flex h-full w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-card-2" data-fy-thumb>
+                      <span class="flex h-full w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-[var(--glass-quiet)]" data-fy-thumb>
                         @if ((favourite.stream.stream_icon && !failedIcons().has(favourite.stream.stream_icon))) {
                           <img [src]="favourite.stream.stream_icon" (error)="iconFailed(favourite.stream.stream_icon)" alt="" loading="lazy" class="h-full w-full object-contain p-1.5" />
                         } @else {
@@ -400,7 +403,7 @@
                     (activate)="openPopular(card)"
                     (menu)="openMenu({ kind: 'popular', popular: card })"
                   >
-                    <span class="relative block h-[11.8rem] w-full overflow-hidden rounded-md bg-card-2" data-fy-poster-image>
+                    <span class="relative block h-[11.8rem] w-full overflow-hidden rounded-md glass-card" data-fy-poster-image>
                       @if (card.poster && !failedIcons().has(card.poster)) {
                         <img [src]="card.poster" (error)="iconFailed(card.poster)" alt="" loading="lazy" class="h-full w-full object-cover" />
                       } @else {
@@ -427,7 +430,7 @@
                     data-fy-popular-end
                     [attr.data-focus-key]="'fy-popular-all-' + end.kind"
                   >
-                    <span class="relative flex h-[11.8rem] w-full flex-col justify-end gap-1 overflow-hidden rounded-md border-t-4 bg-card p-3" [class]="end.kind === 'tv' ? 'border-series' : 'border-vod'" data-fy-poster-image>
+                    <span class="relative flex h-[11.8rem] w-full flex-col justify-end gap-1 overflow-hidden rounded-md border-t-4 glass-card p-3" [class]="end.kind === 'tv' ? 'border-series' : 'border-vod'" data-fy-poster-image>
                       <span class="text-base font-bold leading-tight">{{ end.label | t }}</span>
                       <span class="text-xs text-muted-foreground">{{ 'fy.thisWeek' | t }}</span>
                     </span>
@@ -442,7 +445,7 @@
               <div class="flex gap-3 overflow-hidden pb-2" data-tv-rail>
                 @for (tile of LOADING_TILES; track tile) {
                   <span class="flex w-[7.875rem] shrink-0 flex-col gap-1.5" data-fy-poster>
-                    <span class="block h-[11.8rem] w-full rounded-md bg-card" data-fy-poster-image></span>
+                    <span class="block h-[11.8rem] w-full rounded-md glass-card" data-fy-poster-image></span>
                   </span>
                 }
               </div>
@@ -454,16 +457,16 @@
                on day one the doors above are them. -->
           @if (!dayOne()) {
           <section class="grid grid-cols-2 gap-3 lg:grid-cols-4" data-fy-inline>
-            <button type="button" class="flex items-center gap-3 rounded-lg border-l-4 border-live bg-card px-5 py-4 text-left hover:bg-card-2" data-fy-way (click)="browseGuide()">
+            <button type="button" class="flex items-center gap-3 rounded-lg border-l-4 border-live glass-card px-5 py-4 text-left" data-fy-way (click)="browseGuide()">
               <span class="flex-1 font-semibold">{{ 'fy.browseGuide' | t }}</span><span class="text-muted-foreground" aria-hidden="true">→</span>
             </button>
-            <button type="button" class="flex items-center gap-3 rounded-lg border-l-4 border-vod bg-card px-5 py-4 text-left hover:bg-card-2" data-fy-way (click)="go('/movies')">
+            <button type="button" class="flex items-center gap-3 rounded-lg border-l-4 border-vod glass-card px-5 py-4 text-left" data-fy-way (click)="go('/movies')">
               <span class="flex-1 font-semibold">{{ 'nav.movies' | t }}</span><span class="text-muted-foreground" aria-hidden="true">→</span>
             </button>
-            <button type="button" class="flex items-center gap-3 rounded-lg border-l-4 border-series bg-card px-5 py-4 text-left hover:bg-card-2" data-fy-way (click)="go('/shows')">
+            <button type="button" class="flex items-center gap-3 rounded-lg border-l-4 border-series glass-card px-5 py-4 text-left" data-fy-way (click)="go('/shows')">
               <span class="flex-1 font-semibold">{{ 'nav.shows' | t }}</span><span class="text-muted-foreground" aria-hidden="true">→</span>
             </button>
-            <button type="button" class="flex items-center gap-3 rounded-lg border-l-4 border-primary-bright bg-card px-5 py-4 text-left hover:bg-card-2" data-fy-way (click)="openSearch()">
+            <button type="button" class="flex items-center gap-3 rounded-lg border-l-4 border-primary-bright glass-card px-5 py-4 text-left" data-fy-way (click)="openSearch()">
               <span class="flex-1 font-semibold">{{ 'nav.search' | t }}</span><span class="text-muted-foreground" aria-hidden="true">→</span>
             </button>
           </section>
@@ -497,7 +500,7 @@
                     (activate)="openAdded(item)"
                     (menu)="openMenu({ kind: 'added', item })"
                   >
-                    <span class="relative block h-[11.8rem] w-full overflow-hidden rounded-md bg-card-2" data-fy-poster-image>
+                    <span class="relative block h-[11.8rem] w-full overflow-hidden rounded-md glass-card" data-fy-poster-image>
                       @if ((item.stream.stream_icon && !failedIcons().has(item.stream.stream_icon))) {
                         <img [src]="item.stream.stream_icon" (error)="iconFailed(item.stream.stream_icon)" alt="" loading="lazy" class="h-full w-full object-cover" />
                       } @else {
@@ -525,13 +528,13 @@
                   <button
                     type="button"
                     appCardGestures
-                    class="flex h-[5.5rem] w-[14.25rem] shrink-0 items-center gap-3 overflow-hidden rounded-lg bg-card p-2.5 text-left hover:bg-card-2"
+                    class="flex h-[5.5rem] w-[14.25rem] shrink-0 items-center gap-3 overflow-hidden rounded-lg glass-card p-2.5 text-left"
                     data-fy-card
                     [attr.data-focus-key]="'fy-fav-' + favourite.type + '-' + favourite.stream.stream_id"
                     (activate)="openFavourite(favourite)"
                     (menu)="openMenu({ kind: 'favourite', favourite })"
                   >
-                    <span class="flex h-full w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-card-2" data-fy-thumb>
+                    <span class="flex h-full w-14 shrink-0 items-center justify-center overflow-hidden rounded-md glass-card" data-fy-thumb>
                       @if ((favourite.stream.stream_icon && !failedIcons().has(favourite.stream.stream_icon))) {
                         <img [src]="favourite.stream.stream_icon" (error)="iconFailed(favourite.stream.stream_icon)" alt="" loading="lazy" class="h-full w-full" [class]="favourite.type === 'live' ? 'object-contain p-1.5' : 'object-cover'" />
                       } @else {
@@ -556,16 +559,16 @@
         <aside class="hidden flex-col gap-6 lg:flex" data-fy-side>
           <section class="flex flex-col gap-2">
             <h2 class="nx-row-title">{{ 'fy.quickWays' | t }}</h2>
-            <button type="button" class="flex items-center rounded-md border-l-4 border-live bg-card px-4 py-3 text-left text-sm font-semibold hover:bg-card-2" (click)="browseGuide()">
+            <button type="button" class="flex items-center rounded-md border-l-4 border-live glass-card px-4 py-3 text-left text-sm font-semibold" (click)="browseGuide()">
               <span class="flex-1">{{ 'fy.browseGuide' | t }}</span><span class="text-muted-foreground">→</span>
             </button>
-            <button type="button" class="flex items-center rounded-md border-l-4 border-vod bg-card px-4 py-3 text-left text-sm font-semibold hover:bg-card-2" (click)="go('/movies')">
+            <button type="button" class="flex items-center rounded-md border-l-4 border-vod glass-card px-4 py-3 text-left text-sm font-semibold" (click)="go('/movies')">
               <span class="flex-1">{{ 'nav.movies' | t }}</span><span class="text-muted-foreground">→</span>
             </button>
-            <button type="button" class="flex items-center rounded-md border-l-4 border-series bg-card px-4 py-3 text-left text-sm font-semibold hover:bg-card-2" (click)="go('/shows')">
+            <button type="button" class="flex items-center rounded-md border-l-4 border-series glass-card px-4 py-3 text-left text-sm font-semibold" (click)="go('/shows')">
               <span class="flex-1">{{ 'nav.shows' | t }}</span><span class="text-muted-foreground">→</span>
             </button>
-            <button type="button" class="flex items-center rounded-md border-l-4 border-primary-bright bg-card px-4 py-3 text-left text-sm font-semibold hover:bg-card-2" (click)="openSearch()">
+            <button type="button" class="flex items-center rounded-md border-l-4 border-primary-bright glass-card px-4 py-3 text-left text-sm font-semibold" (click)="openSearch()">
               <span class="flex-1">{{ 'nav.search' | t }}</span><span class="text-muted-foreground">→</span>
             </button>
           </section>
@@ -577,11 +580,11 @@
                 <button
                   type="button"
                   appCardGestures
-                  class="flex h-12 items-center gap-3 overflow-hidden rounded-md bg-card px-2 text-left hover:bg-card-2"
+                  class="flex h-12 items-center gap-3 overflow-hidden rounded-md glass-card px-2 text-left"
                   (activate)="openFavourite(favourite)"
                   (menu)="openMenu({ kind: 'favourite', favourite })"
                 >
-                  <span class="flex h-9 w-12 shrink-0 items-center justify-center overflow-hidden rounded-sm bg-card-2">
+                  <span class="flex h-9 w-12 shrink-0 items-center justify-center overflow-hidden rounded-sm bg-[var(--glass-quiet)]">
                     @if ((favourite.stream.stream_icon && !failedIcons().has(favourite.stream.stream_icon))) {
                       <img [src]="favourite.stream.stream_icon" (error)="iconFailed(favourite.stream.stream_icon)" alt="" loading="lazy" class="h-full w-full" [class]="favourite.type === 'live' ? 'object-contain p-1' : 'object-cover'" />
                     } @else {
@@ -597,7 +600,7 @@
                 </button>
               }
               @if (favourites().length > 6) {
-                <button type="button" class="rounded-md border border-border-2 px-4 py-3 text-sm text-muted-foreground hover:bg-card" (click)="moreFavourites()">
+                <button type="button" class="rounded-md border border-border-2 px-4 py-3 text-sm text-muted-foreground hover:bg-[var(--glass-quiet)]" (click)="moreFavourites()">
                   {{ 'fy.more' | t: { count: favourites().length - 6 } }}
                 </button>
               }

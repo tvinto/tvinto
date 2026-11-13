@@ -78,6 +78,23 @@ export class GuideService {
 
   readonly isLoading = computed(() => this.loading() !== null);
 
+  /**
+   * Guides waiting their turn behind the one loading, by source id, in order:
+   * what a caller loading several one after another has said it will load
+   * next. Each leaves when its load starts, or when the caller lets it go.
+   */
+  readonly queued = signal<readonly string[]>([]);
+
+  /** Says these guides will be loaded here next, one at a time. */
+  willLoad(sourceIds: readonly string[]): void {
+    this.queued.update(held => [...held, ...sourceIds.filter(id => !held.includes(id))]);
+  }
+
+  /** Takes guides off the queue that will not be loaded after all. */
+  wontLoad(sourceIds: readonly string[]): void {
+    this.queued.update(held => held.filter(id => !sourceIds.includes(id)));
+  }
+
   /** What the last load did, kept so a screen can say what happened. */
   readonly lastReport = signal<GuideLoadReport | null>(null);
 
@@ -101,6 +118,7 @@ export class GuideService {
     }
 
     this.loading.set({ sourceId, channels: 0, programmes: 0, chars: 0 });
+    this.wontLoad([sourceId]);
     let source: GuideBytes | null = null;
 
     try {

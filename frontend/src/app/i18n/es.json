@@ -752,6 +752,22 @@
     "failedBody": "Ahora mismo no se pueden obtener las listas populares, las imágenes ni los detalles. Todo lo que puedes reproducir sigue funcionando.",
     "tryAgain": "Reintentar"
   },
+  "activity": {
+    "label": "En curso",
+    "sync": "Trayendo tu historial y tus favoritos",
+    "library": {
+      "live": "Lista de canales",
+      "vod": "Biblioteca de películas",
+      "series": "Biblioteca de series"
+    },
+    "downloading": "Descargando",
+    "categories": "{{filed}} de {{total}} categorías",
+    "categoriesSoFar": "{{filed}} categorías",
+    "guide": "Guía de TV · {{name}}",
+    "guideUnnamed": "Guía de TV",
+    "guideRead": "{{channels}} canales · {{size}} MB leídos",
+    "waiting": "Esperando su turno"
+  },
   "fy": {
     "newInShows": "Novedades en tus series",
     "announced": "Anunciado",
@@ -791,11 +807,8 @@
     "nextAfter": "Después de {{after}}",
     "more": "+ {{count}} más",
     "show": "Serie de TV",
-    "settling": {
-      "sync": "Trayendo tu historial y tus favoritos",
-      "library": "Cargando tu biblioteca de películas y series",
-      "guide": "Cargando la guía de TV"
-    }
+    "guideComing": "Descargando la guía de TV",
+    "guideComingDetail": "Lo que se emite ahora aparecerá aquí cuando termine."
   },
   "actions": {
     "playLive": "Ver en directo",

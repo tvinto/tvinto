@@ -458,7 +458,7 @@ export class DeviceSyncService {
           // found the offer (`loadFirstTimeHere` says when it does not).
           const guides = this.guideSources.applyIncoming(changes);
           if (!cursor) {
-            void guides.then(() => this.guideSources.loadFirstTimeHere());
+            void this.guideSources.loadFirstTimeHereAfter(guides);
           }
 
           const moved = countChanges(changes);

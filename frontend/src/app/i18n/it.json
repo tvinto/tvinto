@@ -752,6 +752,22 @@
     "failedBody": "Le liste popolari, le immagini e i dettagli dei film non si possono recuperare in questo momento. Tutto ciò che puoi riprodurre funziona comunque.",
     "tryAgain": "Riprova"
   },
+  "activity": {
+    "label": "In corso",
+    "sync": "Recupero della cronologia e dei preferiti",
+    "library": {
+      "live": "Elenco canali",
+      "vod": "Libreria film",
+      "series": "Libreria serie"
+    },
+    "downloading": "Download in corso",
+    "categories": "{{filed}} di {{total}} categorie",
+    "categoriesSoFar": "{{filed}} categorie",
+    "guide": "Guida TV · {{name}}",
+    "guideUnnamed": "Guida TV",
+    "guideRead": "{{channels}} canali · {{size}} MB letti",
+    "waiting": "In attesa del suo turno"
+  },
   "fy": {
     "newInShows": "Novità nelle tue serie",
     "announced": "Annunciato",
@@ -791,11 +807,8 @@
     "nextAfter": "Poi dopo {{after}}",
     "more": "+ altri {{count}}",
     "show": "Serie TV",
-    "settling": {
-      "sync": "Recupero della cronologia e dei preferiti",
-      "library": "Caricamento della libreria di film e serie",
-      "guide": "Caricamento della guida TV"
-    }
+    "guideComing": "Download della guida TV in corso",
+    "guideComingDetail": "Quello che va in onda ora apparirà qui al termine."
   },
   "actions": {
     "playLive": "Guarda in diretta",

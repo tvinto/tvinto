@@ -752,6 +752,22 @@
     "failedBody": "Listat popullore, imazhet dhe detajet e filmave nuk mund të merren tani. Gjithçka që mund të luani funksionon normalisht.",
     "tryAgain": "Provo sërish"
   },
+  "activity": {
+    "label": "Në vazhdim",
+    "sync": "Po sjellim historikun dhe të preferuarat tuaja",
+    "library": {
+      "live": "Lista e kanaleve",
+      "vod": "Biblioteka e filmave",
+      "series": "Biblioteka e serialeve"
+    },
+    "downloading": "Po shkarkohet",
+    "categories": "{{filed}} nga {{total}} kategori",
+    "categoriesSoFar": "{{filed}} kategori",
+    "guide": "Udhëzuesi TV · {{name}}",
+    "guideUnnamed": "Udhëzuesi TV",
+    "guideRead": "{{channels}} kanale · {{size}} MB të lexuara",
+    "waiting": "Pret radhën"
+  },
   "fy": {
     "newInShows": "E re në serialet tuaja",
     "announced": "E njoftuar",
@@ -791,11 +807,8 @@
     "nextAfter": "Pastaj pas {{after}}",
     "more": "+ edhe {{count}}",
     "show": "Serial TV",
-    "settling": {
-      "sync": "Po sjellim historikun dhe të preferuarat tuaja",
-      "library": "Po ngarkojmë bibliotekën tuaj të filmave dhe serialeve",
-      "guide": "Po ngarkojmë udhëzuesin e TV-së"
-    }
+    "guideComing": "Po shkarkojmë udhëzuesin TV",
+    "guideComingDetail": "Çfarë po shfaqet tani do të dalë këtu kur të mbarojë."
   },
   "actions": {
     "playLive": "Luaj live",

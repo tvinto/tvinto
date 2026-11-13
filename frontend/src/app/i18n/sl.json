@@ -792,6 +792,22 @@
     "failedBody": "Priljubljenih seznamov, slik in podrobnosti o filmih trenutno ni mogoče pridobiti. Vse, kar lahko predvajate, deluje normalno.",
     "tryAgain": "Poskusi znova"
   },
+  "activity": {
+    "label": "V teku",
+    "sync": "Prenašamo vašo zgodovino in priljubljene",
+    "library": {
+      "live": "Seznam kanalov",
+      "vod": "Knjižnica filmov",
+      "series": "Knjižnica serij"
+    },
+    "downloading": "Prenašanje",
+    "categories": "{{filed}} od {{total}} kategorij",
+    "categoriesSoFar": "{{filed}} kategorij",
+    "guide": "TV-vodnik · {{name}}",
+    "guideUnnamed": "TV-vodnik",
+    "guideRead": "{{channels}} kanalov · prebranih {{size}} MB",
+    "waiting": "Čaka na vrsto"
+  },
   "fy": {
     "newInShows": "Novo v vaših serijah",
     "announced": "Napovedano",
@@ -831,11 +847,8 @@
     "nextAfter": "Nato po {{after}}",
     "more": "+ še {{count}}",
     "show": "TV serija",
-    "settling": {
-      "sync": "Prenašamo vašo zgodovino in priljubljene",
-      "library": "Nalagamo vašo knjižnico filmov in serij",
-      "guide": "Nalagamo TV vodnik"
-    }
+    "guideComing": "Prenašamo TV-vodnik",
+    "guideComingDetail": "Kaj je zdaj na sporedu, se bo pokazalo tukaj, ko bo končano."
   },
   "actions": {
     "playLive": "Predvajaj v živo",

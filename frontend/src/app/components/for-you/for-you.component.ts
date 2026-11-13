@@ -196,23 +196,18 @@ export class ForYouComponent {
   readonly dayOne = computed(() => this.nothingYet() && !this.deviceSync.firstSync());
 
   /**
-   * What this device is still bringing in, for the quiet line that says so:
-   * the account's history and favourites, a first library, a first guide --
-   * the first of them still running, or null. A library or guide refreshed
-   * behind rows already shown goes unmentioned: the page is not waiting on it.
+   * Whether a guide is downloading here or about to: one loading, one queued
+   * behind it, or the first sync that downloads the account's guides still
+   * out or still working out which. "No guide on this device yet" offers a
+   * download only when none of that is so.
    */
-  readonly settling = computed<string | null>(() => {
-    if (this.deviceSync.firstSync()) {
-      return 'fy.settling.sync';
-    }
-    if (this.xtream.indexing() && !this.popular().length && !this.added().length) {
-      return 'fy.settling.library';
-    }
-    if (this.guide.isLoading() && !this.hasGuide()) {
-      return 'fy.settling.guide';
-    }
-    return null;
-  });
+  readonly guideComing = computed(
+    () =>
+      this.guide.isLoading() ||
+      this.guide.queued().length > 0 ||
+      this.guideSources.firstLoadsComing() ||
+      this.deviceSync.firstSync()
+  );
 
   /** Placeholder rows in place of the doors while the first sync is out. */
   readonly waitingForAccount = computed(() => this.nothingYet() && this.deviceSync.firstSync());

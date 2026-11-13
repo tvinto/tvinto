@@ -752,6 +752,22 @@
     "failedBody": "Populaire lijsten, afbeeldingen en filmdetails kunnen nu niet worden opgehaald. Alles wat je kunt afspelen, werkt gewoon.",
     "tryAgain": "Opnieuw proberen"
   },
+  "activity": {
+    "label": "Bezig",
+    "sync": "Je geschiedenis en favorieten worden opgehaald",
+    "library": {
+      "live": "Zenderlijst",
+      "vod": "Filmbibliotheek",
+      "series": "Seriebibliotheek"
+    },
+    "downloading": "Downloaden",
+    "categories": "{{filed}} van {{total}} categorieën",
+    "categoriesSoFar": "{{filed}} categorieën",
+    "guide": "Tv-gids · {{name}}",
+    "guideUnnamed": "Tv-gids",
+    "guideRead": "{{channels}} zenders · {{size}} MB gelezen",
+    "waiting": "Wacht op zijn beurt"
+  },
   "fy": {
     "newInShows": "Nieuw in je series",
     "announced": "Aangekondigd",
@@ -791,11 +807,8 @@
     "nextAfter": "Daarna na {{after}}",
     "more": "+ nog {{count}}",
     "show": "Tv-serie",
-    "settling": {
-      "sync": "Je geschiedenis en favorieten worden opgehaald",
-      "library": "Je film- en seriebibliotheek wordt geladen",
-      "guide": "De tv-gids wordt geladen"
-    }
+    "guideComing": "De tv-gids wordt gedownload",
+    "guideComingDetail": "Wat er nu op is, verschijnt hier zodra hij klaar is."
   },
   "actions": {
     "playLive": "Live afspelen",

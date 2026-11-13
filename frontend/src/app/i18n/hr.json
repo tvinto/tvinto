@@ -748,12 +748,25 @@
     "failedBody": "Popularni popisi, slike i podaci o filmovima trenutno se ne mogu dohvatiti. Sve što možete gledati i dalje radi.",
     "tryAgain": "Pokušaj ponovno"
   },
-  "fy": {
-    "settling": {
-      "sync": "Preuzimamo vašu povijest i favorite",
-      "library": "Učitavamo vašu knjižnicu filmova i serija",
-      "guide": "Učitavamo TV vodič"
+  "activity": {
+    "label": "U tijeku",
+    "sync": "Preuzimamo vašu povijest i favorite",
+    "library": {
+      "live": "Popis kanala",
+      "vod": "Knjižnica filmova",
+      "series": "Knjižnica serija"
     },
+    "downloading": "Preuzimanje",
+    "categories": "{{filed}} od {{total}} kategorija",
+    "categoriesSoFar": "{{filed}} kategorija",
+    "guide": "TV vodič · {{name}}",
+    "guideUnnamed": "TV vodič",
+    "guideRead": "{{channels}} kanala · pročitano {{size}} MB",
+    "waiting": "Čeka na red"
+  },
+  "fy": {
+    "guideComing": "Preuzimamo TV vodič",
+    "guideComingDetail": "Što je sada na programu pojavit će se ovdje kad završi.",
     "newInShows": "Novo u vašim serijama",
     "announced": "Najavljeno",
     "newEpisodeOut": "S{{s}} E{{e}} · izašla danas",

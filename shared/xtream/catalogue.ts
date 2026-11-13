@@ -101,6 +101,9 @@ const DEFAULT_POLICY: CataloguePolicy = {
   now: () => new Date()
 };
 
+/** Categories written so far, and of how many: null where that is not known yet. */
+export type FiledProgress = (filed: number, total: number | null) => void;
+
 /**
  * The catalogue, as a device sees it: local first, provider only when it must.
  *
@@ -251,11 +254,14 @@ export class Catalogue {
    *
    * One at a time per library: a second call while one is running shares it,
    * so a search typed twice does not ask twice.
+   *
+   * `onFiled` hears how many categories are written of how many there are,
+   * once the download is in: the one part of an index whose length is known.
    */
-  index(type: StreamType, timeoutMs = INDEX_TIMEOUT_MS): Promise<number> {
+  index(type: StreamType, timeoutMs = INDEX_TIMEOUT_MS, onFiled?: FiledProgress): Promise<number> {
     return this.once(type, async () => {
       const all = await this.client.getStreams(type, undefined, timeoutMs);
-      return this.fileLibrary(type, all.map(slim));
+      return this.fileLibrary(type, all.map(slim), onFiled);
     });
   }
 
@@ -288,14 +294,21 @@ export class Catalogue {
    * (shared/xtream/libraryWorker.ts) -- on a television, a worker that reads
    * the listing away from the page. Each category is written as it is handed
    * over, and the whole library is marked last, so an index cut short is not
-   * taken for a finished one.
+   * taken for a finished one. `onFiled` hears each category written; how
+   * many there will be is not known until the reader is done.
    */
-  indexWith(type: StreamType, read: (file: (categoryId: string, streams: Stream[]) => Promise<void>) => Promise<number>): Promise<number> {
+  indexWith(
+    type: StreamType,
+    read: (file: (categoryId: string, streams: Stream[]) => Promise<void>) => Promise<number>,
+    onFiled?: FiledProgress
+  ): Promise<number> {
     return this.once(type, async () => {
       const at = this.policy.now().toISOString();
+      let filed = 0;
       const count = await read(async (categoryId, streams) => {
         await this.store.writeStreams(type, categoryId, streams);
         await this.store.markFetched(type, categoryId, at);
+        onFiled?.(++filed, null);
       });
       await this.store.markFetched(type, WHOLE_LIBRARY, at);
       return count;
@@ -312,7 +325,7 @@ export class Catalogue {
     return started;
   }
 
-  private async fileLibrary(type: StreamType, all: Stream[]): Promise<number> {
+  private async fileLibrary(type: StreamType, all: Stream[], onFiled?: FiledProgress): Promise<number> {
     const at = this.policy.now().toISOString();
 
     const byCategory = new Map<string, Stream[]>();
@@ -327,9 +340,12 @@ export class Catalogue {
       byCategory.set(key, list);
     }
 
+    let filed = 0;
+    onFiled?.(0, byCategory.size);
     for (const [categoryId, streams] of byCategory) {
       await this.store.writeStreams(type, categoryId, streams);
       await this.store.markFetched(type, categoryId, at);
+      onFiled?.(++filed, byCategory.size);
     }
 
     // Last, so an index cut short is not taken for a finished one.

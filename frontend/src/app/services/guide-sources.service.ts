@@ -501,13 +501,19 @@ export class GuideSourcesService {
       this.add(guide.url, guide.label);
     }
     if (missing.length && this.accounts.profileScope() !== 'setup' && !isMeteredConnection()) {
+      const ids = missing.map(guide => guide.id);
+      this.guide.willLoad(ids);
       void (async () => {
-        for (const guide of missing) {
-          // One at a time, as the guide store allows; the addresses carry the
-          // provider's password, so a failure is logged without them.
-          await this.guide
-            .load(guide.id, guide.url)
-            .catch((error: unknown) => console.warn('Could not load a provider guide', technicalDetail(error)));
+        try {
+          for (const guide of missing) {
+            // One at a time, as the guide store allows; the addresses carry the
+            // provider's password, so a failure is logged without them.
+            await this.guide
+              .load(guide.id, guide.url)
+              .catch((error: unknown) => console.warn('Could not load a provider guide', technicalDetail(error)));
+          }
+        } finally {
+          this.guide.wontLoad(ids);
         }
       })();
     }
@@ -534,22 +540,41 @@ export class GuideSourcesService {
     const owner = this.accounts.storageName();
     await this.refreshMissing();
     const fresh = this.missingHere().filter(source => !wasLoadedHere(source.id));
-    for (const source of fresh) {
-      // The guide store takes one at a time; one somebody started waits its turn.
-      while (this.guide.isLoading()) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+    const ids = fresh.map(source => source.id);
+    this.guide.willLoad(ids);
+    try {
+      for (const source of fresh) {
+        // The guide store takes one at a time; one somebody started waits its turn.
+        while (this.guide.isLoading()) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        // Signed out, or somebody else, while waiting.
+        if (this.accounts.storageName() !== owner) {
+          return;
+        }
+        await this.guide
+          .load(source.id, source.url)
+          .catch((error: unknown) => console.warn('Could not load a guide from the account', technicalDetail(error)));
       }
-      // Signed out, or somebody else, while waiting.
-      if (this.accounts.storageName() !== owner) {
-        return;
-      }
-      await this.guide
-        .load(source.id, source.url)
-        .catch((error: unknown) => console.warn('Could not load a guide from the account', technicalDetail(error)));
+    } finally {
+      this.guide.wontLoad(ids);
     }
     if (fresh.length) {
       await this.refreshMissing();
     }
+  }
+
+  /**
+   * Set from the end of a device's first pull until `loadFirstTimeHere` is
+   * done: covers the gap before it has worked out what to download, in which
+   * no guide is loading yet but one is about to, so nothing offers it then.
+   */
+  readonly firstLoadsComing = signal(false);
+
+  /** `loadFirstTimeHere` once `ready` has settled, saying so from now. */
+  loadFirstTimeHereAfter(ready: Promise<unknown>): Promise<void> {
+    this.firstLoadsComing.set(true);
+    return ready.then(() => this.loadFirstTimeHere()).finally(() => this.firstLoadsComing.set(false));
   }
 
   /** Throws it all away, for a sign-out. */

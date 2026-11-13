@@ -1,3 +1,4 @@
+import { ActivityComponent } from '../activity/activity.component';
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, inject, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map } from 'rxjs/operators';
@@ -52,7 +53,7 @@ import { TvintoMarkComponent } from '../../ui/tvinto-mark.component';
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [TPipe, RouterOutlet, RouterLink, RouterLinkActive, NgIcon, HlmButton, HlmInput, NgTemplateOutlet, TvintoMarkComponent],
+  imports: [TPipe, RouterOutlet, RouterLink, RouterLinkActive, NgIcon, HlmButton, HlmInput, NgTemplateOutlet, TvintoMarkComponent, ActivityComponent],
   providers: [
     provideIcons({
       lucideClapperboard,

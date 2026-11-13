@@ -772,6 +772,22 @@
     "failedBody": "Popularne liste, slike i podaci o filmovima trenutno ne mogu da se preuzmu. Sve što možete da pustite radi normalno.",
     "tryAgain": "Pokušaj ponovo"
   },
+  "activity": {
+    "label": "U toku",
+    "sync": "Preuzimamo vašu istoriju i omiljene",
+    "library": {
+      "live": "Spisak kanala",
+      "vod": "Biblioteka filmova",
+      "series": "Biblioteka serija"
+    },
+    "downloading": "Preuzimanje",
+    "categories": "{{filed}} od {{total}} kategorija",
+    "categoriesSoFar": "{{filed}} kategorija",
+    "guide": "TV vodič · {{name}}",
+    "guideUnnamed": "TV vodič",
+    "guideRead": "{{channels}} kanala · pročitano {{size}} MB",
+    "waiting": "Čeka na red"
+  },
   "fy": {
     "newInShows": "Novo u vašim serijama",
     "announced": "Najavljeno",
@@ -811,11 +827,8 @@
     "nextAfter": "Zatim posle {{after}}",
     "more": "+ još {{count}}",
     "show": "TV serija",
-    "settling": {
-      "sync": "Preuzimamo vašu istoriju i omiljene",
-      "library": "Učitavamo vašu biblioteku filmova i serija",
-      "guide": "Učitavamo TV vodič"
-    }
+    "guideComing": "Preuzimamo TV vodič",
+    "guideComingDetail": "Šta je sada na programu pojaviće se ovde kad završi."
   },
   "actions": {
     "playLive": "Pusti uživo",
