@@ -77,6 +77,12 @@ contextBridge.exposeInMainWorld('xtreamDesktop', {
   },
 
   /**
+   * Where the tvinto carried in the app is, for the commands on Account,
+   * Tools (src/toolCli.ts): paths only, nothing it can run from here.
+   */
+  toolCli: (): Promise<unknown> => ipcRenderer.invoke('xtream:tool-cli'),
+
+  /**
    * tvinto with no account (src/localApi.ts): requests to the app's local
    * address, for the page to answer.
    */

@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { Capacitor } from '@capacitor/core';
 import { serverName } from '@shared/server';
 import { API_URL } from '../../services/api-url';
 import { TvNavigationService } from '../../services/tv-navigation.service';
@@ -12,16 +13,38 @@ import { LocalToolService } from '../../services/local-tool.service';
 import { ToastService } from '../../services/toast.service';
 import { locale, t } from '../../utils/i18n';
 import { technicalDetail } from '../../utils/failure-messages.utils';
+import { DesktopToolCli, ToolCommands, ToolTarget, asDesktopToolCli, desktopCommands, npmCommands } from '../../utils/tool-commands.utils';
+
+/** The desktop bridge's way to ask where its own tvinto is (electron/src/toolCli.ts); absent elsewhere. */
+const desktopToolCli = (): (() => Promise<unknown>) | null =>
+  typeof window === 'undefined' ? null : ((window as { xtreamDesktop?: { toolCli?: () => Promise<unknown> } }).xtreamDesktop?.toolCli ?? null);
+
+/** One command on screen, with its Copy button. */
+export interface ShownCommand {
+  id: string;
+  label: string;
+  command: string;
+}
+
+/** A way to get tvinto: npm, or the desktop app's own copy. */
+export interface ToolRoute {
+  id: 'npm' | 'desktop';
+  heading: string;
+  hint: string | null;
+  commands: ShownCommand[];
+}
 
 /**
  * The tvinto tools signed in to this account, a way to sign one out, and how
  * to set one up for an AI agent.
  *
  * A tool is how an AI agent reaches the account, so it has to be visible from
- * the account's own devices and easy to end. The setup steps are commands to
- * type on a computer, so a television shows only the tools signed in, and
- * nothing at all when there are none. A service from before tools shows
- * nothing either.
+ * the account's own devices and easy to end. How to set one up starts in
+ * plain words: what an agent can do with it and what it never can. The
+ * commands follow, from npm and then from the copy the desktop app carries,
+ * with its paths filled in -- commands for a computer, so a television or a
+ * phone shows the plain words only and says to set it up from a computer. A
+ * service from before tools shows nothing.
  *
  * Used without an account, the desktop answers tvinto itself
  * (LocalToolService), and the card lists the tools let in here instead.
@@ -71,7 +94,42 @@ export class ToolsComponent {
   /** Tools asking to be let in, to allow or refuse here (tvinto sign-in). */
   readonly requests = inject(ToolRequestsService);
 
-  readonly showHow = computed(() => this.supported() && !this.tv.isTelevision());
+  readonly showHow = this.supported;
+
+  /**
+   * A computer: not a television, and not the app on a phone. Commands are
+   * shown only here. By platform name, because the desktop app is a "native
+   * platform" to Capacitor too.
+   */
+  readonly onComputer = computed(() => !this.tv.isTelevision() && !['android', 'ios'].includes(Capacitor.getPlatform()));
+
+  /** The desktop app's own tvinto, once its main process has said where it is. */
+  private readonly desktopCli = signal<DesktopToolCli | null>(null);
+
+  private readonly target = computed<ToolTarget>(() =>
+    this.localOnly() ? { local: true } : { local: false, server: this.server, username: this.username() }
+  );
+
+  /** npm first; then, where this is the desktop app, its own copy, which needs no Node. */
+  readonly routes = computed<ToolRoute[]>(() => {
+    const routes: ToolRoute[] = [
+      { id: 'npm', heading: t('tools.howNpm'), hint: null, commands: this.shownCommands('npm', npmCommands(this.target())) }
+    ];
+    const cli = this.desktopCli();
+    if (cli) {
+      routes.push({
+        id: 'desktop',
+        heading: t('tools.howDesktop'),
+        hint: cli.platform === 'win32' ? t('tools.howPowerShell') : null,
+        commands: this.shownCommands('desktop', desktopCommands(cli, this.target()))
+      });
+    }
+    return routes;
+  });
+
+  /** Which command was just copied, for its button to say so for a moment. */
+  readonly copied = signal<string | null>(null);
+  private copiedTimer: ReturnType<typeof setTimeout> | undefined;
   readonly shown = computed(
     () =>
       this.showHow() ||
@@ -98,6 +156,36 @@ export class ToolsComponent {
 
   constructor() {
     this.load();
+    void this.findDesktopCli();
+  }
+
+  private async findDesktopCli(): Promise<void> {
+    const ask = desktopToolCli();
+    if (!ask) {
+      return;
+    }
+    try {
+      this.desktopCli.set(asDesktopToolCli(await ask()));
+    } catch {
+      // A main process from before it carried tvinto: npm only.
+    }
+  }
+
+  private shownCommands(route: ToolRoute['id'], commands: ToolCommands): ShownCommand[] {
+    return [
+      { id: `${route}-sign-in`, label: t('tools.howSignIn'), command: commands.signIn },
+      { id: `${route}-connect`, label: t('tools.howConnect'), command: commands.connect }
+    ];
+  }
+
+  async copy(command: ShownCommand): Promise<void> {
+    if (!(await copyText(command.command))) {
+      this.toasts.error(t('tools.notCopied'), t('tools.notCopiedBody'));
+      return;
+    }
+    this.copied.set(command.id);
+    clearTimeout(this.copiedTimer);
+    this.copiedTimer = setTimeout(() => this.copied.set(null), 2000);
   }
 
   async signOut(tool: ToolSession): Promise<void> {
@@ -152,5 +240,28 @@ export class ToolsComponent {
       parts.push(t('tools.history'));
     }
     return parts.join(' · ');
+  }
+}
+
+/** The clipboard, or the older way where the page may not use it. */
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.setAttribute('readonly', '');
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    try {
+      return document.execCommand('copy');
+    } catch {
+      return false;
+    } finally {
+      area.remove();
+    }
   }
 }

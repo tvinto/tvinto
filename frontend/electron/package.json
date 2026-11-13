@@ -15,9 +15,10 @@
     "build": "tsc && electron-rebuild",
     "electron:start-live": "node ./live-runner.js",
     "electron:start": "npm run build && electron --inspect=5858 ./",
-    "electron:pack": "npm run build && electron-builder build --dir -c ./electron-builder.config.js",
+    "build:cli": "node ./scripts/build-cli.js",
+    "electron:pack": "npm run build:cli && npm run build && electron-builder build --dir -c ./electron-builder.config.js",
     "fetch:mpv": "node ./scripts/fetch-mpv.js",
-    "electron:make": "npm run fetch:mpv && npm run build && electron-builder build -c ./electron-builder.config.js --publish never",
+    "electron:make": "npm run fetch:mpv && npm run build:cli && npm run build && electron-builder build -c ./electron-builder.config.js --publish never",
     "electron:publish": "node ./scripts/publish-update.js"
   },
   "dependencies": {

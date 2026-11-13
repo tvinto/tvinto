@@ -52,7 +52,20 @@ module.exports = {
    * `scripts/fetch-mpv.js` puts it there, pinned and hash-checked. It is 115 MB
    * and not in the repository.
    */
-  extraResources: [{ from: 'resources/mpv', to: 'mpv' }],
+  extraResources: [
+    { from: 'resources/mpv', to: 'mpv' },
+    /**
+     * tvinto, the command-line tool and MCP server, so that connecting an AI
+     * agent needs neither Node nor the source: the app's own executable runs
+     * it (src/toolCli.ts). One bundled file, built by `npm run build:cli`,
+     * and the credential store's native module beside it, which is the one
+     * thing the bundle leaves out. Node-API, so the same binary loads in
+     * Electron's runtime as in Node's.
+     */
+    { from: '../../cli/dist/tvinto.js', to: 'cli/tvinto.js' },
+    { from: '../../cli/node_modules/@napi-rs/keyring', to: 'cli/node_modules/@napi-rs/keyring', filter: ['**/*', '!*.d.ts'] },
+    { from: '../../cli/node_modules/@napi-rs/keyring-win32-x64-msvc', to: 'cli/node_modules/@napi-rs/keyring-win32-x64-msvc' }
+  ],
 
   publish: {
     /**

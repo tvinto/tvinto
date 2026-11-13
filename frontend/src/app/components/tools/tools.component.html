@@ -33,26 +33,40 @@
       </app-setting-row>
     }
 
-    <!-- How to set one up: commands for a computer, so not on a television. -->
+    <!-- How to set one up: plain words everywhere, the commands only on a computer. -->
     @if (showHow()) {
       <div class="setting-block flex flex-col gap-3 text-sm" data-tools-how>
         <h3 class="font-semibold">{{ 'tools.howTitle' | t }}</h3>
-        <ol class="flex list-decimal flex-col gap-2 pl-5 text-muted-foreground">
-          <li>{{ 'tools.howGet' | t }}</li>
-          <li>
-            {{ 'tools.howSignIn' | t }}
-            @if (localOnly()) {
-              <code class="mt-1 block rounded-lg bg-[var(--glass-quiet)] p-2 font-mono text-xs break-all text-foreground select-all" data-tools-sign-in>node dist/tvinto.js sign-in --local</code>
-            } @else {
-              <code class="mt-1 block rounded-lg bg-[var(--glass-quiet)] p-2 font-mono text-xs break-all text-foreground select-all" data-tools-sign-in>node dist/tvinto.js sign-in --server {{ server }} --user {{ username() }}</code>
+        <p class="text-muted-foreground" data-tools-what>{{ 'tools.howWhat' | t }}</p>
+        <p class="text-muted-foreground" data-tools-never>{{ 'tools.howNever' | t }}</p>
+
+        @if (onComputer()) {
+          @for (route of routes(); track route.id) {
+            <h4 class="mt-1 font-semibold" [attr.data-tools-route]="route.id">{{ route.heading }}</h4>
+            @if (route.hint) {
+              <p class="text-xs text-muted-foreground">{{ route.hint }}</p>
             }
-          </li>
-          <li>
-            {{ 'tools.howConnect' | t }}
-            <code class="mt-1 block rounded-lg bg-[var(--glass-quiet)] p-2 font-mono text-xs break-all text-foreground select-all" data-tools-connect>claude mcp add tvinto -- node &lt;path to cli&gt;/dist/tvinto.js mcp</code>
-          </li>
-        </ol>
-        <p class="text-xs text-muted-foreground">{{ 'tools.howNever' | t }}</p>
+            <ol class="flex list-decimal flex-col gap-2 pl-5 text-muted-foreground">
+              @for (item of route.commands; track item.id) {
+                <li>
+                  {{ item.label }}
+                  <span class="mt-1 flex items-start gap-2">
+                    <code
+                      class="block min-w-0 flex-1 rounded-lg bg-[var(--glass-quiet)] p-2 font-mono text-xs break-all text-foreground select-all"
+                      [attr.data-tools-command]="item.id"
+                      >{{ item.command }}</code
+                    >
+                    <button hlmBtn variant="quiet" size="sm" type="button" (click)="copy(item)" [attr.data-tools-copy]="item.id">
+                      {{ (copied() === item.id ? 'tools.copied' : 'tools.copy') | t }}
+                    </button>
+                  </span>
+                </li>
+              }
+            </ol>
+          }
+        } @else {
+          <p class="text-muted-foreground" data-tools-elsewhere>{{ 'tools.howElsewhere' | t }}</p>
+        }
       </div>
     }
   </app-setting-group>

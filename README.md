@@ -139,15 +139,19 @@ settings and more. It can also run as an MCP server, so an AI agent like
 Claude can do these things for you.
 
 ```bash
-tvinto sign-in --server https://tvinto-sync.yourname.workers.dev
-tvinto hide live 12 15      # shows what will change, and a code
-tvinto apply K7P2           # nothing changes until you apply it
-claude mcp add tvinto -- tvinto mcp
+npx tvinto sign-in --server https://tvinto-sync.yourname.workers.dev
+npx tvinto hide live 12 15      # shows what will change, and a code
+npx tvinto apply K7P2           # nothing changes until you apply it
+claude mcp add tvinto -- npx -y tvinto mcp
 ```
+
+That needs Node.js 20 or newer, and nothing else. Without Node, the desktop
+app carries tvinto and runs it itself: Account, Tools shows the commands for
+your computer, ready to copy.
 
 Every change is shown to you first and can be undone, and an agent can't
 apply anything without your confirmation. [cli/README.md](cli/README.md)
-explains how to install it and everything it can do.
+explains everything it can do.
 
 ## Building it
 
