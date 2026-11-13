@@ -1,3 +1,4 @@
+import { toPage } from './pageChannel';
 import { fromAppPage } from './appPage';
 import type { BrowserWindow } from 'electron';
 import { ipcMain } from 'electron';
@@ -77,7 +78,7 @@ export function startLocalApi(getWindow: () => BrowserWindow | null): void {
           headers[name.toLowerCase()] = value;
         }
       }
-      window.webContents.send('xtream:local-api', id, { method: req.method ?? 'GET', path: req.url ?? '/', headers, body: body || null });
+      toPage(window.webContents, 'xtream:local-api', id, { method: req.method ?? 'GET', path: req.url ?? '/', headers, body: body || null });
     });
   });
 

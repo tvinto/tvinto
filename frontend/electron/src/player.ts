@@ -1,14 +1,16 @@
+import { toPage } from './pageChannel';
 import { MpvChapter, Skip, handedSkips, skipAt, skipsFromChapters } from './skips';
 import { fromAppPage } from './appPage';
-import { ChildProcess, spawn } from 'child_process';
+import { ChildProcess, execFile, spawn } from 'child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { connect, Socket } from 'net';
-import { join } from 'path';
+import { dirname, join } from 'path';
 import { app, BrowserWindow, ipcMain, screen } from 'electron';
 import { desktopRecorder } from './recorderIpc';
 import { CacheState, LivePause, LiveWords } from './livePause';
 import { LiveRecovery } from './liveRecovery';
 import { playbackLog, redactUrl, setPlaybackLogFolder } from './playbackLog';
+import { VideoFrames } from './videoFrames';
 
 /**
  * Playback on the desktop, by mpv rather than by Chromium.
@@ -280,6 +282,39 @@ function findMpv(): string | null {
   return said('mpv');
 }
 
+/**
+ * Whether tvinto-player can play on this machine, asked once (its
+ * `--tvinto-check`: a D3D11 device, libmpv, mpv's D3D11 renderer). Null
+ * until asked.
+ */
+let helperWorks: boolean | null = null;
+
+/**
+ * tvinto-player.exe, mpv drawing into the app's own window (src/videoFrames.ts),
+ * when it is beside mpv.exe with its libmpv and works here. Null sends the
+ * play to mpv.exe's window, as before: no helper, a machine where it cannot
+ * start, or XTREAM_PLAYER=window.
+ */
+async function findHelper(mpv: string): Promise<string | null> {
+  if (process.platform !== 'win32' || process.env['XTREAM_PLAYER'] === 'window') {
+    return null;
+  }
+  const helper = join(dirname(mpv), 'tvinto-player.exe');
+  if (!existsSync(helper) || !existsSync(join(dirname(mpv), 'libmpv-2.dll'))) {
+    return null;
+  }
+  if (helperWorks === null) {
+    helperWorks = await new Promise<boolean>(resolve => {
+      execFile(helper, ['--tvinto-check'], { timeout: 10_000, windowsHide: true }, (error, stdout) => {
+        const works = !error && /ready/.test(stdout);
+        console.info(`[player] tvinto-player ${works ? 'works here' : `cannot play here: ${String(stdout).trim() || error?.message}`}`);
+        resolve(works);
+      });
+    });
+  }
+  return helperWorks ? helper : null;
+}
+
 let announced: string | null = null;
 
 /**
@@ -314,6 +349,9 @@ function said(mpv: string): string {
  *
  * A file because mpv has no way to bind a key on the command line.
  */
+/** `quit <code>` for input.conf, readable by tvinto-player too (`PositionWatcher.quitWith`). */
+const quitCommand = (code: number): string => `set user-data/tvinto-exit ${code}; quit ${code}`;
+
 function inputConf(channelKeys: boolean, inPlayer: boolean, live: boolean): string | null {
   const path = join(app.getPath('userData'), 'mpv-input.conf');
 
@@ -323,7 +361,7 @@ function inputConf(channelKeys: boolean, inPlayer: boolean, live: boolean): stri
   const keys = inPlayer
     ? 'ESC quit\nBS script-message xtream back\nPGUP script-message xtream channel previous\n' +
       'PGDWN script-message xtream channel next\ni script-message xtream banner\n'
-    : `ESC quit\nBS quit\n${channelKeys ? `PGUP quit ${CHANNEL_PREVIOUS_EXIT}\nPGDWN quit ${CHANNEL_NEXT_EXIT}\n` : ''}` +
+    : `ESC quit\nBS quit\n${channelKeys ? `PGUP ${quitCommand(CHANNEL_PREVIOUS_EXIT)}\nPGDWN ${quitCommand(CHANNEL_NEXT_EXIT)}\n` : ''}` +
       // A film or an episode: Enter takes the offer to skip an intro (skips.ts).
       (channelKeys ? '' : 'ENTER script-message xtream skip\nKP_ENTER script-message xtream skip\n');
   // A live channel steps within a pause (livePause.ts) rather than seeking in
@@ -425,8 +463,9 @@ function argumentsFor(
   ];
 
   if (!app.isPackaged && process.env['XTREAM_HEADLESS'] === '1') {
-    // Checked from a script while the owner uses the machine: not a sound.
-    args.push('--ao=null');
+    // Checked from a script while the owner uses the machine: not a sound,
+    // and a window that never takes the keyboard from what they are doing.
+    args.push('--ao=null', '--focus-on=never');
   }
 
   if (inside) {
@@ -595,6 +634,15 @@ class PositionWatcher {
   /** Sends a command, if the pipe is open. */
   send(command: unknown[]): void {
     this.command(command);
+  }
+
+  /**
+   * Quits with an exit code that says why. mpv.exe exits with it; libmpv
+   * cannot pass it on, so it is also left where tvinto-player reads it.
+   */
+  quitWith(code: number): void {
+    this.command(['set_property', 'user-data/tvinto-exit', String(code)]);
+    this.command(['quit', String(code)]);
   }
 
   /** Sends a command given by name with named arguments (`osd-overlay`). */
@@ -1138,7 +1186,7 @@ class DesktopChannels {
 
   private emit(payload: Record<string, unknown>): void {
     if (this.window && !this.window.isDestroyed()) {
-      this.window.webContents.send('xtream:player-event', payload);
+      toPage(this.window.webContents, 'xtream:player-event', payload);
     }
   }
 
@@ -1180,7 +1228,7 @@ class DesktopChannels {
         } else {
           this.closingWith = error;
           playbackLog(`app: closing the player over ${error}`);
-          this.watcher.send(['quit', String(CLOSED_OVER_FAILURE_EXIT)]);
+          this.watcher.quitWith(CLOSED_OVER_FAILURE_EXIT);
         }
       } else if (event.reason === 'eof') {
         // Idle would leave an empty window where a stream ended.
@@ -1229,7 +1277,7 @@ class DesktopChannels {
       case 'close':
         this.closingWith = this.lastError ?? 'mpv could not play this';
         playbackLog(`app: the page closes the player (${this.closingWith})`);
-        this.watcher.send(['quit', String(CLOSED_OVER_FAILURE_EXIT)]);
+        this.watcher.quitWith(CLOSED_OVER_FAILURE_EXIT);
         return;
     }
   }
@@ -1270,6 +1318,9 @@ function livePause(watcher: PositionWatcher, request: PlayRequest): LivePause {
 }
 
 let running: ChildProcess | null = null;
+/** The frames of tvinto-player while it plays, and the pipe its keys go to. */
+let frames: VideoFrames | null = null;
+let keys: PositionWatcher | null = null;
 
 /** Whether mpv has the screen. An update must not restart the app under it. */
 export const isPlaying = (): boolean => running !== null;
@@ -1282,6 +1333,19 @@ export function registerNativePlayer(): void {
       return;
     }
     channels?.command(command);
+  });
+
+  // tvinto-player's picture: the size the page shows it at, and keys
+  // pressed over it, which mpv binds as it always has (input.conf).
+  ipcMain.on('xtream:video-size', (event, width: unknown, height: unknown) => {
+    if (fromAppPage(event) && typeof width === 'number' && typeof height === 'number') {
+      frames?.resize(width, height);
+    }
+  });
+  ipcMain.on('xtream:video-key', (event, key: unknown) => {
+    if (fromAppPage(event) && typeof key === 'string' && /^[A-Za-z0-9_+-]{1,16}$|^.$/.test(key)) {
+      keys?.send(['keypress', key]);
+    }
   });
 
   ipcMain.handle('xtream:play', async (event, request: PlayRequest): Promise<PlayResult> => {
@@ -1313,13 +1377,33 @@ export function registerNativePlayer(): void {
     // rather than taken from `getAllWindows()`, which would be a guess the day
     // there are two.
     const window = BrowserWindow.fromWebContents(event.sender);
-    const inside = overlayGeometry(window);
+    // Inside the app's window when tvinto-player can (src/videoFrames.ts);
+    // mpv's own window over the app otherwise.
+    const helper = window ? await findHelper(mpv) : null;
+    const inside = helper ? null : overlayGeometry(window);
 
     return new Promise<PlayResult>(resolve => {
       let child: ChildProcess;
 
       try {
-        child = spawn(mpv, argumentsFor(request, mpv, inside), { windowsHide: false });
+        if (helper && window) {
+          const scale = screen.getDisplayMatching(window.getBounds()).scaleFactor;
+          const content = window.getContentBounds();
+          child = spawn(
+            helper,
+            [
+              `--tvinto-parent=${process.pid}`,
+              `--tvinto-size=${Math.round(content.width * scale)}x${Math.round(content.height * scale)}`,
+              ...argumentsFor(request, helper, null)
+            ],
+            { windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'] }
+          );
+          frames = new VideoFrames(child, window);
+          frames.onLog = line => playbackLog(`tvinto-player: ${line.replace(/^log /, '')}`);
+          toPage(window.webContents, 'xtream:video-open', true);
+        } else {
+          child = spawn(mpv, argumentsFor(request, mpv, inside), { windowsHide: false });
+        }
       } catch (error) {
         resolve({
           positionSeconds: 0,
@@ -1332,15 +1416,16 @@ export function registerNativePlayer(): void {
 
       running = child;
       playbackLog(
-        `app: opens ${isLive(request) ? 'a live channel' : 'a film or an episode'} ${redactUrl(request.url)} in mpv`
+        `app: opens ${isLive(request) ? 'a live channel' : 'a film or an episode'} ${redactUrl(request.url)} in ${helper ? 'tvinto-player' : 'mpv'}`
       );
+      keys = watcher;
       watcher.start();
       // Where a film or an episode has got to, every half minute, so a crash
       // of the app or the machine loses at most that much.
       const progress = request.reportProgress
         ? setInterval(() => {
             if (watcher.durationSeconds > 0 && watcher.positionSeconds > 0 && window && !window.isDestroyed()) {
-              window.webContents.send('xtream:player-event', {
+              toPage(window.webContents, 'xtream:player-event', {
                 type: 'progress',
                 positionSeconds: watcher.positionSeconds,
                 durationSeconds: watcher.durationSeconds
@@ -1370,7 +1455,7 @@ export function registerNativePlayer(): void {
             // Opened again, or the message is up.
           } else if (event.event === 'end-file' && event.reason === 'error') {
             playbackLog('app: closing the player: the channel would not open');
-            watcher.send(['quit', '2']);
+            watcher.quitWith(2);
           } else if (event.event === 'end-file' && event.reason === 'eof') {
             playbackLog('app: closing the player at the end of the stream');
             watcher.send(['quit']);
@@ -1401,6 +1486,13 @@ export function registerNativePlayer(): void {
           channels = null;
         }
         running = null;
+        keys = null;
+        if (helper) {
+          frames = null;
+          if (window && !window.isDestroyed()) {
+            toPage(window.webContents, 'xtream:video-open', false);
+          }
+        }
         window?.removeListener('closed', stopWithWindow);
       };
 

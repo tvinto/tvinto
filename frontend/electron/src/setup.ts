@@ -1,3 +1,4 @@
+import { openPageChannel } from './pageChannel';
 import type { CapacitorElectronConfig } from '@capacitor-community/electron';
 import {
   CapElectronEventEmitter,
@@ -164,6 +165,8 @@ export class ElectronCapacitorApp {
       }
     });
     this.mainWindowState.manage(this.MainWindow);
+    // What the main process tells the page goes over a port (src/pageChannel.ts).
+    openPageChannel(this.MainWindow.webContents);
 
     if (this.CapacitorFileConfig.backgroundColor) {
       this.MainWindow.setBackgroundColor(this.CapacitorFileConfig.electron.backgroundColor);

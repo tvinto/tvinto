@@ -1,3 +1,4 @@
+import { toPage } from './pageChannel';
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { join } from 'path';
 import { fromAppPage } from './appPage';
@@ -15,7 +16,7 @@ export function desktopRecorder(): DesktopRecorder {
     const dir = app.isPackaged ? join(app.getPath('videos'), 'Tvinto') : join(app.getPath('userData'), 'Recordings');
     recorder = new DesktopRecorder(dir, join(app.getPath('userData'), 'recording-bookings.json'), id => {
       for (const window of BrowserWindow.getAllWindows()) {
-        window.webContents.send('xtream:recorder-changed', id);
+        toPage(window.webContents, 'xtream:recorder-changed', id);
       }
     });
     recorder.reschedule();

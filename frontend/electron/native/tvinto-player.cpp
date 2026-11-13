@@ -532,7 +532,10 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
     mpv.command(player, load);
   }
 
-  bool anyPlayed = false;
+  // As mpv.exe counts them: 0 when anything played to an ordinary end, 2 when
+  // every file failed, 3 when some did.
+  int endedWell = 0;
+  int endedBadly = 0;
   bool anyFile = false;
   long long lastStats = GetTickCount64();
   for (;;) {
@@ -540,8 +543,13 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
     if (event->event_id == MPV_EVENT_SHUTDOWN) {
       break;
     }
-    if (event->event_id == MPV_EVENT_FILE_LOADED) {
-      anyPlayed = true;
+    if (event->event_id == MPV_EVENT_END_FILE) {
+      auto *ended = static_cast<mpv_event_end_file *>(event->data);
+      if (ended->reason == MPV_END_FILE_REASON_ERROR) {
+        endedBadly++;
+      } else if (ended->reason != MPV_END_FILE_REASON_REDIRECT) {
+        endedWell++;
+      }
     } else if (event->event_id == MPV_EVENT_START_FILE) {
       anyFile = true;
     } else if (event->event_id == MPV_EVENT_IDLE && anyFile && !idle) {
@@ -554,7 +562,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
     }
   }
 
-  int code = anyPlayed || !anyFile ? 0 : 2;
+  int code = endedBadly == 0 ? 0 : endedWell == 0 ? 2 : 3;
   if (char *asked = mpv.get_property_string(player, "user-data/tvinto-exit")) {
     code = atoi(asked);
     mpv.free(asked);
