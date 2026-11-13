@@ -196,6 +196,8 @@ const vod = [
   num: i + 1, name, stream_type: 'movie', stream_id: 2000 + i, stream_icon: ART, rating: '7.1', added,
   category_id: '11', container_extension: 'mkv'
 }));
+// A film whose description is cut on every screen.
+vod.find(film => film.name === 'Normal Film (2025)').plot = sentence(150);
 vod.push({ num: 8, name: '[4K] Dune (2021)', stream_type: 'movie', stream_id: 2100, stream_icon: '', rating: '8', added, category_id: '12', container_extension: 'mkv' });
 
 // One film three times, for trying another copy when one fails: the first is
@@ -221,13 +223,15 @@ const seriesCategories = [
 const series = [
   { name: 'Severance (2022)', seasons: 2, episodes: 9 },
   { name: 'A Show Whose Title Goes On For Far Longer Than Any Poster Could Ever Hope To Hold (2020)', seasons: 1, episodes: 3 },
-  { name: 'Twelve Seasons', seasons: 12, episodes: 4 },
+  // A description long enough to be cut on every screen, and longer than a
+  // television's reader holds without scrolling.
+  { name: 'Twelve Seasons', seasons: 12, episodes: 4, plot: sentence(260) },
   { name: 'No Episodes Yet', seasons: 0, episodes: 0 },
   // One show twice, for trying another copy when an episode fails.
   { name: 'EN - Spare Show FHD (2021)', seasons: 1, episodes: 3 },
   { name: 'EN - Spare Show HD (2021)', seasons: 1, episodes: 3 }
 ].map((show, i) => ({
-  ...show, num: i + 1, series_id: 3000 + i, cover: ART, plot: sentence(30), cast: 'Somebody, Somebody Else', director: '',
+  ...show, num: i + 1, series_id: 3000 + i, cover: ART, plot: show.plot ?? sentence(30), cast: 'Somebody, Somebody Else', director: '',
   genre: 'Drama', releaseDate: '2022-02-18', last_modified: added, rating: '8', rating_5based: 4, backdrop_path: [],
   youtube_trailer: '', episode_run_time: '50', category_id: i === 2 ? '22' : '21'
 }));

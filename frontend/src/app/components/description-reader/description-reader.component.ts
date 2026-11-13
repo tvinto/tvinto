@@ -59,23 +59,30 @@ export class DescriptionReaderService {
         aria-modal="true"
         [attr.aria-label]="reading.title"
         (click)="onBackdrop($event)"
+        (focusin)="toTop(card)"
       >
-        <div class="flex max-h-[85dvh] w-full flex-col gap-4 rounded-t-xl bg-card p-5 md:max-w-2xl md:rounded-lg">
+        <!-- The card scrolls as a whole, Close held at its foot: on a television
+             Close is the one place for focus, and Up and Down on it scroll
+             the nearest scroller -- this one -- so a description longer than
+             the screen can be read with the remote. -->
+        <div class="flex max-h-[85dvh] w-full flex-col gap-4 overflow-y-auto rounded-t-xl bg-card p-5 pb-0 md:max-w-2xl md:rounded-lg" data-reader-card #card>
           <div>
-            <h2 class="text-xl font-bold tracking-tight">{{ reading.title }}</h2>
+            <h2 class="text-xl font-bold tracking-tight" data-reader-title>{{ reading.title }}</h2>
             @if (reading.subtitle) {
-              <p class="mt-0.5 text-sm text-muted-foreground">{{ reading.subtitle }}</p>
+              <p class="mt-0.5 text-sm text-muted-foreground" data-reader-subtitle>{{ reading.subtitle }}</p>
             }
           </div>
-          <div class="min-h-0 overflow-y-auto">
-            <p class="text-base leading-relaxed whitespace-pre-line">{{ reading.text }}</p>
+          <div>
+            <p class="text-base leading-relaxed whitespace-pre-line" data-reader-text>{{ reading.text }}</p>
             @if (reading.source === 'tmdb') {
-              <p class="mt-2 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">{{ 'describe.fromTmdb' | t }}</p>
+              <p class="mt-2 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase" data-reader-source>{{ 'describe.fromTmdb' | t }}</p>
             }
           </div>
-          <button hlmBtn variant="primary" type="button" class="self-end" data-focus-first (click)="reader.close()">
-            {{ 'common.close' | t }}
-          </button>
+          <div class="sticky bottom-0 -mx-5 mt-auto flex justify-end bg-card px-5 pt-2 pb-5" data-reader-foot>
+            <button hlmBtn variant="primary" type="button" data-focus-first (click)="reader.close()">
+              {{ 'common.close' | t }}
+            </button>
+          </div>
         </div>
       </div>
     }
@@ -90,6 +97,18 @@ export class DescriptionReaderComponent {
       computed(() => this.reader.reading() !== null),
       () => this.reader.close()
     );
+  }
+
+  /**
+   * Back to the start of the text when Close takes focus as the reader opens:
+   * focusing Close, held at the foot, scrolled the card to bring it into
+   * view, and the reader opened with its first lines and the name cut off.
+   */
+  toTop(card: HTMLElement): void {
+    if (!card.dataset['opened']) {
+      card.dataset['opened'] = '1';
+      card.scrollTop = 0;
+    }
   }
 
   onBackdrop(event: MouseEvent): void {

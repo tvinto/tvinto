@@ -4,7 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideArrowLeft, lucideCaptions, lucideEllipsis, lucideLoaderCircle, lucidePlay, lucideRotateCcw, lucideStar } from '@ng-icons/lucide';
+import { lucideArrowLeft, lucideCaptions, lucideChevronRight, lucideEllipsis, lucideLoaderCircle, lucidePlay, lucideRotateCcw, lucideStar } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { Stream, WatchProgress } from '@shared/types';
 import { AgeLockService } from '../../services/age-lock.service';
@@ -24,6 +24,8 @@ import { formatTimecode, isComplete, remainingLabel } from '../../utils/progress
 import { namePrefix } from '../../utils/series-display.utils';
 import { t } from '../../utils/i18n';
 import { TMDB_LOGO } from '../description-settings/description-settings.component';
+import { DescriptionReaderService } from '../description-reader/description-reader.component';
+import { CutOffDirective } from '../../directives/cut-off.directive';
 
 /** What the copy button and a copy row call a copy: its language as a word, and its picture. */
 export function copyLabel(copy: FilmCopy): string {
@@ -63,8 +65,8 @@ export function filmFromList(router: Router, link: Pick<FilmLink, 'item' | 'post
 @Component({
   selector: 'app-film',
   standalone: true,
-  imports: [TPipe, NgIcon, HlmButton, ProviderNamePipe, ChannelMonogramPipe, SubtitlePickerComponent, ItemActionsComponent],
-  providers: [provideIcons({ lucideArrowLeft, lucideCaptions, lucideEllipsis, lucideLoaderCircle, lucidePlay, lucideRotateCcw, lucideStar })],
+  imports: [TPipe, NgIcon, HlmButton, ProviderNamePipe, ChannelMonogramPipe, SubtitlePickerComponent, ItemActionsComponent, CutOffDirective],
+  providers: [provideIcons({ lucideArrowLeft, lucideCaptions, lucideChevronRight, lucideEllipsis, lucideLoaderCircle, lucidePlay, lucideRotateCcw, lucideStar })],
   templateUrl: './film.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -175,6 +177,13 @@ export class FilmComponent {
   });
 
   /** More's panel closed: focus back on More, where it was. */
+  private readonly reader = inject(DescriptionReaderService);
+
+  /** The overview, whole: the page cuts it to three lines. */
+  readOverview(title: string, text: string): void {
+    this.reader.open({ title, text, source: 'provider' });
+  }
+
   closeMore(): void {
     this.moreOpen.set(false);
     setTimeout(() => document.querySelector<HTMLElement>('[data-focus-key="film-more"]')?.focus({ preventScroll: true }));

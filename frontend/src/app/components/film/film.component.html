@@ -46,7 +46,14 @@
           </div>
         }
         @if (film.overview) {
-          <p class="line-clamp-3 max-w-[48rem] text-base leading-relaxed" data-film-overview>{{ film.overview }}</p>
+          <div class="flex flex-col gap-2" data-nx-plot-block>
+            <p class="nx-plot line-clamp-3" data-film-overview appCutOff #overviewCut="cutOff">{{ film.overview }}</p>
+            @if (overviewCut.isCut()) {
+              <button type="button" class="pill pill-xs self-start" data-plot-more (click)="readOverview(film.title, film.overview)">
+                {{ 'describe.more' | t }}<ng-icon name="lucideChevronRight" />
+              </button>
+            }
+          </div>
         }
 
         <!-- One row of pills, the player's own (NX-TV-3): what is used most, and

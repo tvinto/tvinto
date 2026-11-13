@@ -786,9 +786,12 @@ html:not(.tv) [data-arrange-rows] {
 
 /* Reading a description whole, on a television, without a stop for the D-pad.
    A "More" button is one more place for focus to land on the way to what the
-   remote is for (2 October), so there is none: a show's and a
-   film's description are shown whole -- a television has the room -- and an
-   episode's is read by holding OK on its card. */
+   remote is for (2 October), so there is none in a panel, where the
+   description is shown whole, and an episode's is read by holding OK on its
+   card. A show's and a film's page are different: their description is cut to
+   three lines at reading size, and the owner, finding no More there, could
+   not read the rest at all (12 November). Those keep theirs
+   ([data-plot-more]). */
 .tv [data-read-more] {
   display: none !important;
 }
@@ -3251,6 +3254,35 @@ button.setting-row:hover {
   column-gap: 0.875rem;
 }
 
+/* A title page's description, over the backdrop: the page's own words colour
+   rather than a dimmed one, with a soft shadow of the page's ground under
+   each letter so a bright picture behind the right-hand end of a line does
+   not wash it out. 28 on a television (NX-TV-3, NX-TV-5), where 16 could not
+   be read from the sofa (12 November). Cut to three lines in the template;
+   More, under it, opens the rest. */
+.nx-plot {
+  max-width: 48rem;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--foreground);
+  text-shadow:
+    0 0 0.75rem color-mix(in oklch, var(--background) 70%, transparent),
+    0 1px 2px color-mix(in oklch, var(--background) 80%, transparent);
+}
+@media (min-width: 640px) {
+  :root:not(.tv) .nx-plot {
+    font-size: 1.0625rem;
+  }
+}
+.tv .nx-plot {
+  max-width: 56.25rem; /* 900 */
+  font-size: 1.75rem; /* 28 */
+  line-height: 1.45;
+}
+.tv [data-nx-plot-block] {
+  gap: 1rem;
+}
+
 /* A row's title: a plain heading in the page's own colour, not a small
    coloured label (NX-TV-2, NX-TV-4). */
 .nx-row-title {
@@ -3285,6 +3317,55 @@ button.setting-row:hover {
 }
 .tv [data-show-season-tabs] button {
   display: none;
+}
+/* The season chips stand over the backdrop's right-hand side, where nothing
+   fades it: at rest, the DS chip's grey words and faint edge vanished into a
+   bright picture (12 November). Here they sit on a veil of the page's own
+   ground, blurred like the film page's glass, with the words in the full
+   colour; the one chosen keeps the chip's white double edge and check and
+   takes a stronger veil, so it is still the different one on a dark picture
+   as on a bright one. */
+[data-show-season-tabs] .chip {
+  border-color: color-mix(in oklch, var(--foreground) 38%, transparent);
+  background: color-mix(in oklch, var(--background) 62%, transparent);
+  color: color-mix(in oklch, var(--foreground) 88%, transparent);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  backdrop-filter: blur(12px) saturate(1.2);
+}
+[data-show-season-tabs] .chip:hover {
+  border-color: color-mix(in oklch, var(--foreground) 70%, transparent);
+  background: color-mix(in oklch, var(--background) 72%, transparent);
+  color: var(--foreground);
+}
+[data-show-season-tabs] .chip[aria-pressed='true'] {
+  border-color: var(--foreground);
+  background: color-mix(in oklch, var(--background) 86%, transparent);
+  color: var(--foreground);
+}
+
+/* The same for the glass pills over a title page's backdrop -- Back, the row
+   under the description, More, and an episode's Subtitles where there is a pointer:
+   white glass on a white picture was white on white. The glass is laid over a
+   veil of the page's ground, so on a dark picture it looks as it always has.
+   `:where` so a television's focus, the solid fill, still wins. */
+:where([data-show-actions], [data-film-actions], [data-nx-plot-block], [data-desktop-rail]) .pill:not(.pill-primary),
+:where([data-show-page], [data-film-page]) .pill[data-screen-back] {
+  background-color: color-mix(in oklch, var(--background) 55%, transparent);
+  background-image: linear-gradient(var(--glass), var(--glass));
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  backdrop-filter: blur(12px) saturate(1.2);
+}
+:where([data-show-actions], [data-film-actions], [data-nx-plot-block], [data-desktop-rail]) .pill:not(.pill-primary):hover,
+:where([data-show-page], [data-film-page]) .pill[data-screen-back]:hover {
+  background-image: linear-gradient(var(--glass-strong), var(--glass-strong));
+}
+/* And the episodes' words, which run under the right of the picture too. */
+[data-show-page] header,
+[data-show-season-tabs] .nx-row-title,
+[data-show-episode-list] {
+  text-shadow:
+    0 0 0.75rem color-mix(in oklch, var(--background) 70%, transparent),
+    0 1px 2px color-mix(in oklch, var(--background) 80%, transparent);
 }
 .tv [data-show-season-list] button {
   font-size: 1.75rem; /* 28 */
@@ -3597,4 +3678,32 @@ button.setting-row:hover {
 .tv .picture-choice:focus .picture-face {
   box-shadow: 0 0 0 6px var(--foreground);
   transform: scale(1.06);
+}
+
+/* The description reader on a television: the board's reading size (28 for
+   the words, 44 for the name), wide enough for a screen, and the page's
+   pill for Close. `html.tv`, to outrank `html.tv .md:max-w-2xl`. */
+html.tv [data-reader-card] {
+  max-width: 75rem; /* 1200 */
+  max-height: 85vh;
+  gap: 1.5rem;
+  padding: 2.5rem 3rem 0;
+  border-radius: 1.25rem;
+}
+html.tv [data-reader-title] {
+  font-size: 2.75rem; /* 44 */
+}
+html.tv [data-reader-subtitle] {
+  font-size: 1.625rem; /* 26 */
+}
+html.tv [data-reader-text] {
+  font-size: 1.75rem; /* 28 */
+  line-height: 1.5;
+}
+html.tv [data-reader-source] {
+  font-size: 1.25rem; /* 20 */
+}
+html.tv [data-reader-foot] {
+  margin-inline: -3rem;
+  padding: 1rem 3rem 2.5rem;
 }
