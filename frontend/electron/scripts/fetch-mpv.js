@@ -40,14 +40,19 @@ const { join, resolve } = require('path');
  * the `shinchiro.mpv` winget package installs. Pinned rather than "latest"
  * because a release that changes underneath a build is a build that cannot be
  * repeated -- and because the hashes below would then be wrong every day.
+ *
+ * shinchiro keeps only about thirty days of releases. The previous pin,
+ * 20260903, was deleted by 13 November and this script answered 404, so a pin
+ * here goes stale within a month: move it forward (both hashes) before an
+ * `electron:make`, or keep a copy of the archive somewhere of the project's own.
  */
-const RELEASE = '20260903';
-const ARCHIVE = `mpv-x86_64-${RELEASE}-git-69e63f425a.7z`;
+const RELEASE = '20261111';
+const ARCHIVE = `mpv-x86_64-${RELEASE}-git-bcde6b93cc.7z`;
 const URL = `https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/${RELEASE}/${ARCHIVE}`;
 
 /** What must come back. Checked before anything is extracted or run. */
-const ARCHIVE_SHA256 = '418dbfb5feb851cbed33d6c05d8481ba71802621bfd6efe8974522b28d42ac97';
-const MPV_SHA256 = '4a0bc712bc98e6f80cd980930b74b6ac202b8ccf2041e887adab69906f82731c';
+const ARCHIVE_SHA256 = 'f259b5fd4b5c395617c948a4fadcdf55bba1c5282fb7c13e88626b3f71072baf';
+const MPV_SHA256 = '3ea89fe7a4284b25dff3c72e1bde83e27324c90cfc4a074fe679293d19ee7c85';
 
 const APP = resolve(__dirname, '..');
 
