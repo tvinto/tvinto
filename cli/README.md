@@ -134,6 +134,6 @@ Its tests run in the backend's Jest (`cd backend && npx jest`).
 ## Your own sync service
 
 `tvinto server init` sets up a sync service on your own Cloudflare account.
-See [server/README.md](https://github.com/tvinto/tvinto/blob/main/server/README.md). , in the
+See [server/README.md](https://github.com/tvinto/tvinto/blob/main/server/README.md). `tvinto server tmdb-key`, in the
 same folder, gives it a TMDB key, so every app signed in to it gets posters,
 descriptions and Popular without typing a key of its own.

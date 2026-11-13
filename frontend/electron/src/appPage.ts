@@ -16,5 +16,5 @@ export const isAppPage = (url: string | undefined | null): boolean =>
 /** The same, for an IPC event: its sending frame, which must be the top one. */
 export const fromAppPage = (event: IpcMainEvent | IpcMainInvokeEvent): boolean => {
   const frame = event.senderFrame;
-  return Boolean(frame) && frame.parent === null && isAppPage(frame.url);
+  return frame !== null && frame.parent === null && isAppPage(frame.url);
 };
