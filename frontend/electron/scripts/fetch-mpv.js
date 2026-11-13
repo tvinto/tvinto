@@ -47,63 +47,86 @@ const { join, resolve } = require('path');
  * `electron:make`, or keep a copy of the archive somewhere of the project's own.
  */
 const RELEASE = '20261111';
-const ARCHIVE = `mpv-x86_64-${RELEASE}-git-bcde6b93cc.7z`;
-const URL = `https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/${RELEASE}/${ARCHIVE}`;
-
-/** What must come back. Checked before anything is extracted or run. */
-const ARCHIVE_SHA256 = 'f259b5fd4b5c395617c948a4fadcdf55bba1c5282fb7c13e88626b3f71072baf';
-const MPV_SHA256 = '3ea89fe7a4284b25dff3c72e1bde83e27324c90cfc4a074fe679293d19ee7c85';
+const BASE = `https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/${RELEASE}`;
 
 const APP = resolve(__dirname, '..');
 
 /**
- * Where it goes.
+ * What comes from where, and what must come back: each archive and the one
+ * file taken out of it are checked against these before anything is unpacked
+ * or run.
  *
- * `resources/mpv/mpv.exe` is both what a build from source finds -- see
- * `findMpv` in src/player.ts -- and what electron-builder copies into the
+ * - mpv.exe, mpv in a window of its own: the player as it was, and the
+ *   fallback when tvinto-player cannot start.
+ * - libmpv-2.dll, from the same build's `mpv-dev` archive: the same mpv as a
+ *   library, which tvinto-player (native/, scripts/build-player.js) draws
+ *   into the app's window with.
+ *
+ * Both land in `resources/mpv/`, which is what a build from source finds --
+ * see `findMpv` in src/player.ts -- and what electron-builder copies into the
  * packaged app's own resources directory.
  */
-const TARGET = join(APP, 'resources', 'mpv', 'mpv.exe');
+const PIECES = [
+  {
+    archive: `mpv-x86_64-${RELEASE}-git-bcde6b93cc.7z`,
+    archiveSha256: 'f259b5fd4b5c395617c948a4fadcdf55bba1c5282fb7c13e88626b3f71072baf',
+    file: 'mpv.exe',
+    fileSha256: '3ea89fe7a4284b25dff3c72e1bde83e27324c90cfc4a074fe679293d19ee7c85'
+  },
+  {
+    archive: `mpv-dev-x86_64-${RELEASE}-git-bcde6b93cc.7z`,
+    archiveSha256: '273c079b11ea5575822f972756f4c9a71149a5c10130353abeb8586738938452',
+    file: 'libmpv-2.dll',
+    fileSha256: '88504ee5560942a955405e99dfb5971368e4cf851321f36565bf2a667271db1b'
+  }
+];
 
 const sha256 = file => createHash('sha256').update(readFileSync(file)).digest('hex');
 
 const die = message => {
-  console.error(`\n  ${message}\n`);
+  console.error(`
+  ${message}
+`);
   process.exit(1);
 };
 
-const main = async () => {
-  if (existsSync(TARGET) && sha256(TARGET) === MPV_SHA256) {
-    console.log(`\n  mpv ${RELEASE} is already in place.\n`);
+const fetchPiece = async ({ archive: name, archiveSha256, file, fileSha256 }) => {
+  const target = join(APP, 'resources', 'mpv', file);
+  if (existsSync(target) && sha256(target) === fileSha256) {
+    console.log(`
+  ${file} from mpv ${RELEASE} is already in place.`);
     return;
   }
 
-  console.log(`\n  Fetching ${ARCHIVE} (32 MB)`);
+  console.log(`
+  Fetching ${name}`);
 
-  const response = await fetch(URL);
+  const response = await fetch(`${BASE}/${name}`);
   if (!response.ok) {
     die(`The download answered ${response.status}.`);
   }
 
   const scratch = mkdtempSync(join(tmpdir(), 'xtream-mpv-'));
-  const archive = join(scratch, ARCHIVE);
+  const archive = join(scratch, name);
 
   try {
     writeFileSync(archive, Buffer.from(await response.arrayBuffer()));
 
     const got = sha256(archive);
-    if (got !== ARCHIVE_SHA256) {
+    if (got !== archiveSha256) {
       // Before it is unpacked, and long before it is run. This is the only
       // thing standing between "somebody replaced that file" and an installer
       // that ships whatever they replaced it with.
-      die(`That is not the archive this expects.\n  wanted ${ARCHIVE_SHA256}\n  got    ${got}`);
+      die(`That is not the archive this expects.
+  wanted ${archiveSha256}
+  got    ${got}`);
     }
 
     // Windows' own tar is libarchive, which reads 7z. Named explicitly because
     // in a Git Bash shell `tar` is GNU tar, which does not.
-    const bsdtar = join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe');
+    const bsdtar = join(process.env.SystemRoot ?? 'C:\Windows', 'System32', 'tar.exe');
 
-    const unpacked = spawnSync(bsdtar, ['-xf', archive, '-C', scratch, 'mpv.exe'], {
+    const unpacked = spawnSync(bsdtar, ['-xf', archive, '-C', scratch, file], {
       stdio: 'inherit'
     });
 
@@ -111,20 +134,25 @@ const main = async () => {
       die(`Could not unpack it: ${unpacked.error ? unpacked.error.message : unpacked.status}`);
     }
 
-    const extracted = join(scratch, 'mpv.exe');
-    if (sha256(extracted) !== MPV_SHA256) {
-      die('The mpv.exe inside the archive is not the one this expects.');
+    const extracted = join(scratch, file);
+    if (sha256(extracted) !== fileSha256) {
+      die(`The ${file} inside the archive is not the one this expects.`);
     }
 
     mkdirSync(join(APP, 'resources', 'mpv'), { recursive: true });
-    copyFileSync(extracted, TARGET);
+    copyFileSync(extracted, target);
   } finally {
     rmSync(scratch, { recursive: true, force: true });
   }
 
-  console.log(
-    `  ${(statSync(TARGET).size / 1048576).toFixed(0)} MB in resources/mpv/mpv.exe\n`
-  );
+  console.log(`  ${(statSync(target).size / 1048576).toFixed(0)} MB in resources/mpv/${file}`);
+};
+
+const main = async () => {
+  for (const piece of PIECES) {
+    await fetchPiece(piece);
+  }
+  console.log('');
 };
 
 main().catch(error => die(error.message));
