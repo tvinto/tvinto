@@ -415,7 +415,8 @@
     "useProviderNamed": "Gids toevoegen: {{name}}",
     "orShare": "Of EPG Share: {{address}}",
     "failed": "Gids niet toegevoegd",
-    "epgShare": "EPG Share · Kroatië",
+    "country": "Land",
+    "changeCountry": "Land wijzigen",
     "yourProvider": "Je aanbieder",
     "unknownTime": "op een onbekend tijdstip",
     "todayAt": "vandaag om {{time}}",
@@ -1335,6 +1336,7 @@
     "noKey": "Scan de QR-code op je tv opnieuw: dit adres mist zijn sleutel.",
     "failed": "De tv antwoordde niet. Staat de code nog op het scherm?",
     "title": {
+      "guide": "Gids toevoegen",
       "stalker": "Je portal (MAC)",
       "server": "Je synchronisatiedienst",
       "xtream": "Je aanbieder (Xtream-codes)",
@@ -1342,6 +1344,7 @@
       "signin": "Aanmelden om te synchroniseren"
     },
     "field": {
+      "guide": "Adres",
       "mac": "MAC-adres",
       "server": "Serveradres",
       "username": "Gebruikersnaam",

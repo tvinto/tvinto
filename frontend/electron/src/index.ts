@@ -1,7 +1,7 @@
 import type { CapacitorElectronConfig } from '@capacitor-community/electron';
 import { getCapacitorElectronConfig, setupElectronDeepLinking } from '@capacitor-community/electron';
 import type { MenuItemConstructorOptions } from 'electron';
-import { app, MenuItem } from 'electron';
+import { app, ipcMain, MenuItem } from 'electron';
 
 import unhandled from 'electron-unhandled';
 
@@ -97,6 +97,12 @@ if (electronIsDev) {
   registerRecorder();
   desktopRecorder();
   registerExternalLinks();
+  // The country Windows is set to, for the guide suggested (EpgShareService):
+  // the page's languages say only which language the app is in, and an
+  // English Windows in Croatia gives en-US.
+  ipcMain.on('xtream:region', event => {
+    event.returnValue = app.getLocaleCountryCode();
+  });
   // tvinto with no account: the app answers it on 127.0.0.1 (src/localApi.ts).
   startLocalApi(() => myCapacitorApp.getMainWindow() ?? null);
   // Initialize our app, build windows, and load content.

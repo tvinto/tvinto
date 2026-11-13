@@ -415,7 +415,8 @@
     "useProviderNamed": "Ajouter le guide : {{name}}",
     "orShare": "Ou EPG Share : {{address}}",
     "failed": "Guide non ajouté",
-    "epgShare": "EPG Share · Croatie",
+    "country": "Pays",
+    "changeCountry": "Changer de pays",
     "yourProvider": "Ton fournisseur",
     "unknownTime": "à une heure inconnue",
     "todayAt": "aujourd'hui à {{time}}",
@@ -1335,6 +1336,7 @@
     "noKey": "Scanne à nouveau le code QR du téléviseur : il manque sa clé à cette adresse.",
     "failed": "Le téléviseur n'a pas répondu. Le code est-il toujours affiché ?",
     "title": {
+      "guide": "Ajouter un guide",
       "stalker": "Ton portail (MAC)",
       "server": "Ton service de synchronisation",
       "xtream": "Ton fournisseur (codes Xtream)",
@@ -1342,6 +1344,7 @@
       "signin": "Se connecter pour synchroniser"
     },
     "field": {
+      "guide": "Adresse",
       "mac": "Adresse MAC",
       "server": "Adresse du serveur",
       "username": "Nom d'utilisateur",

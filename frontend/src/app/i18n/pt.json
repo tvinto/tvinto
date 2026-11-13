@@ -415,7 +415,8 @@
     "useProviderNamed": "Adicionar guia: {{name}}",
     "orShare": "Ou EPG Share: {{address}}",
     "failed": "O guia não foi adicionado",
-    "epgShare": "EPG Share · Croácia",
+    "country": "País",
+    "changeCountry": "Alterar país",
     "yourProvider": "Seu provedor",
     "unknownTime": "em horário desconhecido",
     "todayAt": "hoje às {{time}}",
@@ -1335,6 +1336,7 @@
     "noKey": "Leia o código QR na TV de novo: falta a chave neste endereço.",
     "failed": "A TV não respondeu. O código ainda está na tela?",
     "title": {
+      "guide": "Adicionar guia",
       "stalker": "Seu portal (MAC)",
       "server": "Seu serviço de sincronização",
       "xtream": "Seu provedor (códigos Xtream)",
@@ -1342,6 +1344,7 @@
       "signin": "Entrar para sincronizar"
     },
     "field": {
+      "guide": "Endereço",
       "mac": "Endereço MAC",
       "server": "Endereço do servidor",
       "username": "Nome de usuário",

@@ -267,6 +267,20 @@ export const TOOLS: Tool[] = [
     argv: args => ['order', text(args, 'type'), ...ids(args)]
   },
   {
+    name: 'guide_suggest',
+    description:
+      "EPG Share's free guide for a country (an ISO code: HR, DE, GB...), or for this computer's when none is given, as the app suggests it. " +
+      `With add, adds it to the account. ${PREVIEW}`,
+    properties: { country: { type: 'string' }, add: { type: 'boolean' } },
+    readOnly: true,
+    argv: args => [
+      'guide',
+      'suggest',
+      ...(args['country'] === undefined ? [] : ['--country', text(args, 'country')]),
+      ...(args['add'] === true ? ['--add'] : [])
+    ]
+  },
+  {
     name: 'guide_switch',
     description: `Switches a guide on or off. ${PREVIEW}`,
     properties: { id: { type: 'string' }, on: { type: 'boolean' } },

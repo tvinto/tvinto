@@ -415,7 +415,8 @@
     "useProviderNamed": "Shto udhëzues: {{name}}",
     "orShare": "Ose EPG Share: {{address}}",
     "failed": "Udhëzuesi nuk u shtua",
-    "epgShare": "EPG Share · Kroaci",
+    "country": "Shteti",
+    "changeCountry": "Ndrysho shtetin",
     "yourProvider": "Ofruesi juaj",
     "unknownTime": "në një kohë të panjohur",
     "todayAt": "sot në {{time}}",
@@ -1335,6 +1336,7 @@
     "noKey": "Skanoni sërish kodin QR në televizor: kësaj adrese i mungon çelësi.",
     "failed": "Televizori nuk u përgjigj. A është kodi ende në ekran?",
     "title": {
+      "guide": "Shto udhëzues",
       "stalker": "Portali juaj (MAC)",
       "server": "Shërbimi juaj i sinkronizimit",
       "xtream": "Ofruesi juaj (kode Xtream)",
@@ -1342,6 +1344,7 @@
       "signin": "Hyni për sinkronizim"
     },
     "field": {
+      "guide": "Adresa",
       "mac": "Adresa MAC",
       "server": "Adresa e serverit",
       "username": "Emri i përdoruesit",

@@ -15,6 +15,15 @@ const { contextBridge, ipcRenderer, webFrame } = require('electron');
 contextBridge.exposeInMainWorld('xtreamDesktop', {
   play: (request: unknown) => ipcRenderer.invoke('xtream:play', request),
 
+  /** The country the computer is set to ('HR'), or '' when it says none or the main process is older. */
+  region: (() => {
+    try {
+      return String(ipcRenderer.sendSync('xtream:region') ?? '');
+    } catch {
+      return '';
+    }
+  })(),
+
   /**
    * Changing channel inside mpv: what the
    * player says while it plays, and what the page answers. Absent from a main

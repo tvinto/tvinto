@@ -46,6 +46,7 @@ import { categories, channelName, channels } from './provider';
 import { OpenedGuide, guideChannels, openedGuides } from './guideChannels';
 import { indexGuideChannels, resolveGuideChannel } from '../../shared/xtream/guideMatching';
 import { suggestGuideChannels } from '../../shared/xtream/guideSuggestions';
+import { epgShareCountries, epgShareFor, epgShareUrl, suggestedCountry } from '../../shared/xtream/epgShare';
 import { KnownChannel } from '../../shared/xtream/guide';
 import { SETTING_KEYS } from '../../shared/types';
 import { DESCRIPTION_LANGUAGES } from '../../shared/tmdb/describe';
@@ -91,6 +92,19 @@ export interface Deps {
   wait?(ms: number): Promise<void>;
   /** Runs wrangler for `tvinto server init`; only where a person runs tvinto. */
   run?: Runner;
+  /** This computer's locales, for the guide `tvinto guide suggest` offers: LC_ALL, LANG and Intl's when not given. */
+  locales?: string[];
+}
+
+/** The locales this computer names, most telling first. */
+function computerLocales(): string[] {
+  let intl = '';
+  try {
+    intl = Intl.DateTimeFormat().resolvedOptions().locale;
+  } catch {
+    // The variables alone.
+  }
+  return [process.env['LC_ALL'], process.env['LANG'], intl].filter((locale): locale is string => !!locale);
 }
 
 export const VERSION = '0.1.0';
@@ -119,6 +133,10 @@ const HELP = `tvinto ${VERSION} -- a Tvinto account from the command line
                         for each channel that has none.
   tvinto guide channels <guide id> [search]
                         A guide's channels, with the ids matching takes.
+  tvinto guide suggest [--country <code>] [--add]
+                        EPG Share's free guide for this computer's country, or
+                        another (HR, DE, GB...), as the app suggests it. --add
+                        adds it to the account.
 
 Changes answer with what they will do and a code; nothing changes until
   tvinto apply <code>   within five minutes. tvinto undo puts the last one back.
@@ -189,6 +207,9 @@ interface Flags {
   user: string | null;
   fresh: boolean;
   suggest: boolean;
+  /** `guide suggest`: a country instead of this computer's, and adding it. */
+  country: string | null;
+  add: boolean;
   history: boolean;
   server: string | null;
   help: boolean;
@@ -196,7 +217,7 @@ interface Flags {
 }
 
 function parse(argv: string[]): { command: string | null; args: string[]; flags: Flags; unknown: string[] } {
-  const flags: Flags = { json: false, local: false, for: null, password: false, user: null, fresh: false, suggest: false, history: false, server: null, help: false, version: false };
+  const flags: Flags = { json: false, local: false, for: null, password: false, user: null, fresh: false, suggest: false, country: null, add: false, history: false, server: null, help: false, version: false };
   const unknown: string[] = [];
   const args: string[] = [];
   let command: string | null = null;
@@ -208,6 +229,12 @@ function parse(argv: string[]): { command: string | null; args: string[]; flags:
       flags.fresh = true;
     } else if (arg === '--suggest') {
       flags.suggest = true;
+    } else if (arg === '--country') {
+      flags.country = argv[++i] ?? '';
+    } else if (arg.startsWith('--country=')) {
+      flags.country = arg.slice('--country='.length);
+    } else if (arg === '--add') {
+      flags.add = true;
     } else if (arg === '--for') {
       flags.for = argv[++i] ?? '';
     } else if (arg.startsWith('--for=')) {
@@ -702,6 +729,37 @@ export async function run(argv: string[], deps: Deps): Promise<number> {
       }
 
       case 'guide': {
+        if (args[0] === 'suggest' && args.length === 1) {
+          // As onboarding and the Guides page suggest it: this computer's
+          // country, or the one asked for. Needs no account until --add.
+          const country = flags.country !== null ? flags.country.trim().toUpperCase() : suggestedCountry(deps.locales ?? computerLocales(), null);
+          const suggestion = epgShareFor(country);
+          if (!suggestion) {
+            print(
+              [
+                country ? `EPG Share has no guide for ${country}.` : 'This computer names no country.',
+                `It has guides for: ${epgShareCountries().join(' ')}`,
+                'tvinto guide suggest --country <code> gives one of them.'
+              ],
+              { country, suggestion: null, countries: epgShareCountries() }
+            );
+            return flags.country !== null ? 1 : 0;
+          }
+          if (flags.add) {
+            const current = await acting();
+            preview(current, await guideAddChange(current, await current.service.pull(), suggestion.url, suggestion.label));
+            return 0;
+          }
+          print(
+            [
+              `${suggestion.label} (${suggestion.country}): ${suggestion.url}`,
+              ...(suggestion.files.length > 1 ? [`Also for ${suggestion.country}: ${suggestion.files.slice(1).map(epgShareUrl).join(' ')}`] : []),
+              `tvinto guide suggest --country ${suggestion.country} --add adds it.`
+            ],
+            { suggestion }
+          );
+          return 0;
+        }
         const current = await acting();
         if (args[0] === 'add') {
           // The address is typed by a person: an Xtream guide's holds the login.
@@ -735,7 +793,9 @@ export async function run(argv: string[], deps: Deps): Promise<number> {
           return 0;
         }
         if ((args[0] !== 'on' && args[0] !== 'off') || !args[1] || args.length > 2) {
-          throw new Error('tvinto guide <on|off|remove> <id>, tvinto guide channels <id> [search], or tvinto guide add [name]. tvinto guides lists the ids.');
+          throw new Error(
+            'tvinto guide <on|off|remove> <id>, tvinto guide channels <id> [search], tvinto guide add [name], or tvinto guide suggest [--country <code>] [--add]. tvinto guides lists the ids.'
+          );
         }
         preview(current, await guideChange(current, await current.service.pull(), args[1], args[0] === 'on'));
         return 0;

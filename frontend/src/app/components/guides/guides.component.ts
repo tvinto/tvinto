@@ -15,6 +15,7 @@ import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideArrowLeft,
   lucideDownload,
+  lucideGlobe,
   lucideLightbulb,
   lucideLoaderCircle,
   lucidePlus,
@@ -29,11 +30,16 @@ import { SettingGroupComponent, SettingRowComponent } from '../../ui/setting-row
 import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmLabel } from '@spartan-ng/helm/label';
 import { EmptyGuide, GuideLoadReport, GuideLoadSummary } from '@shared/xtream/guide';
-import { GuideSource, isGuideAddress } from '@shared/xtream/guideSources';
+import { GuideSource } from '@shared/xtream/guideSources';
+import { epgShareCountryOfUrl, epgShareFor } from '@shared/xtream/epgShare';
+import { epgShareName } from '../../utils/epg-share.utils';
+import { EpgShareService } from '../../services/epg-share.service';
+import { PhoneFormOfferComponent } from '../phone-form-offer/phone-form-offer.component';
 import { GuideService } from '../../services/guide.service';
 import {
   GuideSourcesService,
   PROVIDER_GUIDE_LABEL,
+  guideAddressProblem,
   guideName,
   ProviderGuide
 } from '../../services/guide-sources.service';
@@ -57,9 +63,6 @@ interface SourceRow {
   summary: GuideLoadSummary | null;
 }
 
-/** EPG Share's guide for Croatia (DS-TV-7), offered as a pill. */
-const EPG_SHARE_HR = 'https://epgshare01.online/epgshare01/epg_ripper_HR1.xml.gz';
-
 /**
  * The guides this account uses.
  *
@@ -75,11 +78,12 @@ const EPG_SHARE_HR = 'https://epgshare01.online/epgshare01/epg_ripper_HR1.xml.gz
 @Component({
   selector: 'app-guides',
   standalone: true,
-  imports: [SlowWaitComponent, TPipe, DecimalPipe, ReactiveFormsModule, NgIcon, HlmButton, HlmInput, HlmLabel, SettingGroupComponent, SettingRowComponent],
+  imports: [PhoneFormOfferComponent, SlowWaitComponent, TPipe, DecimalPipe, ReactiveFormsModule, NgIcon, HlmButton, HlmInput, HlmLabel, SettingGroupComponent, SettingRowComponent],
   providers: [
     provideIcons({
       lucideArrowLeft,
       lucideDownload,
+      lucideGlobe,
       lucideLightbulb,
       lucideLoaderCircle,
       lucidePlus,
@@ -96,6 +100,8 @@ export class GuidesComponent implements OnInit {
   private readonly xtream = inject(XtreamService);
   readonly guide = inject(GuideService);
   readonly sources = inject(GuideSourcesService);
+  /** EPG Share's guide for the device's country, offered as a pill. */
+  readonly share = inject(EpgShareService);
 
   /** Whether guides may be added, switched off and removed: not by a kid at its own device. */
   readonly canChangeSetup = inject(AccountService).canChangeSetup;
@@ -221,17 +227,17 @@ export class GuidesComponent implements OnInit {
     if (this.busy()) {
       return;
     }
-    if (this.form.controls.url.invalid) {
-      this.failed(t('guides.enterAddress'));
-      return;
-    }
     const url = this.form.controls.url.value.trim();
-    // Refused here rather than saved and "loaded" as a guide of nothing.
-    if (!isGuideAddress(url)) {
-      this.failed(t('guides.notAnAddress'));
+    const problem = guideAddressProblem(url);
+    if (problem) {
+      this.failed(problem);
       return;
     }
-    const label = this.form.controls.label.value.trim();
+    const typed = this.form.controls.label.value.trim();
+    // EPG Share's guide, under the name the pill filled in: stored under its
+    // English name, which every device shows in its own language.
+    const share = epgShareFor(epgShareCountryOfUrl(url));
+    const label = share && typed === epgShareName(share.country) ? share.label : typed;
 
     this.sources.add(url, label || undefined);
     this.form.reset({ url: '', label: '' });
@@ -371,9 +377,24 @@ export class GuidesComponent implements OnInit {
     ].join(' · ');
   }
 
-  /** EPG Share's guide for Croatia, filled into the form rather than given as an address to copy. */
-  useEpgShare(): void {
-    this.form.patchValue({ url: EPG_SHARE_HR, label: 'EPG Share' });
+  /**
+   * EPG Share's guide for the device's country (DS-TV-7), filled into the form
+   * rather than given as an address to copy. With no guide for the country,
+   * the pill asks for one first.
+   */
+  async useEpgShare(): Promise<void> {
+    if (!this.share.suggestion() && !(await this.share.chooseCountry())) {
+      return;
+    }
+    const suggestion = this.share.suggestion();
+    if (suggestion) {
+      this.form.patchValue({ url: suggestion.url, label: epgShareName(suggestion.country) });
+    }
+  }
+
+  /** What was typed on a phone (PhoneFormOfferComponent): into the form, added only with Add. */
+  fromPhone(fields: Record<string, string>): void {
+    this.form.patchValue({ url: fields['guide'] ?? '', label: fields['name'] ?? '' });
   }
 
   /** A failure, in the error dialog as everywhere (5 October). */

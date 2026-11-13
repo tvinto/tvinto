@@ -18,8 +18,8 @@ import { randomBytes } from '@noble/ciphers/utils.js';
  * message is refused rather than misread.
  */
 
-/** What is being typed: a provider, signing in to a sync service, or that service's address. */
-export type PhoneFormKind = 'xtream' | 'm3u' | 'stalker' | 'signin' | 'server';
+/** What is being typed: a provider, signing in to a sync service, that service's address, or a guide's. */
+export type PhoneFormKind = 'xtream' | 'm3u' | 'stalker' | 'signin' | 'server' | 'guide';
 
 export interface PhoneField {
   name: string;
@@ -61,7 +61,12 @@ export const PHONE_FIELDS: Record<PhoneFormKind, readonly { name: string; type: 
     { name: 'name', type: 'text' },
     { name: 'password', type: 'password' }
   ],
-  server: [{ name: 'server', type: 'url' }]
+  server: [{ name: 'server', type: 'url' }],
+  // A guide by address (XMLTV), and the name it is listed under.
+  guide: [
+    { name: 'guide', type: 'url' },
+    { name: 'name', type: 'text' }
+  ]
 };
 
 /** The largest form accepted, sealed: far more than three fields need, far less than a burden. */
