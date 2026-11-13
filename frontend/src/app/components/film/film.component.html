@@ -107,7 +107,7 @@
           @for (copy of inlineCopies(); track copy.stream.stream_id) {
             <button
               type="button"
-              class="flex items-center gap-3 rounded-lg bg-[var(--glass-quiet)] px-3 py-2 text-left hover:bg-[var(--glass)]"
+              class="glass-card flex items-center gap-3 rounded-lg px-3 py-2 text-left"
               [class.opacity-60]="copy.cinema"
               (click)="playChosen(copy)"
             >

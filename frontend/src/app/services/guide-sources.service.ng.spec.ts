@@ -193,7 +193,7 @@ describe('GuideSourcesService', () => {
           { provide: AccountService, useValue: { account, profileScope: scope, storageName: () => account()?.username, localProfile: { active: () => false } } },
           { provide: AccountKeysService, useValue: { open: jest.fn(), seal: jest.fn().mockResolvedValue('sb1$sealed') } },
           { provide: LocalUserDataService, useValue: local },
-          { provide: GuideService, useValue: { missing: async () => [], load } },
+          { provide: GuideService, useValue: { missing: async () => [], load, willLoad: jest.fn(), wontLoad: jest.fn() } },
           {
             provide: ProviderAccessService,
             useValue: {
@@ -251,6 +251,8 @@ describe('GuideSourcesService', () => {
     // and no guide at all -- the guides were only offered.
     const scope = signal<'full' | 'setup'>('full');
     let load: jest.Mock;
+    let willLoad: jest.Mock;
+    let wontLoad: jest.Mock;
     let absent: string[];
 
     const buildNew = (): GuideSourcesService => {
@@ -258,13 +260,15 @@ describe('GuideSourcesService', () => {
         absent = absent.filter(one => one !== id);
         return {};
       });
+      willLoad = jest.fn();
+      wontLoad = jest.fn();
       TestBed.resetTestingModule();
       TestBed.configureTestingModule({
         providers: [
           { provide: AccountService, useValue: { account, profileScope: scope, storageName: () => account()?.username, localProfile: { active: () => false } } },
           { provide: AccountKeysService, useValue: { open: jest.fn(), seal: jest.fn() } },
           { provide: LocalUserDataService, useValue: { queueGuideSource: jest.fn(), queueChannelMapping: jest.fn() } },
-          { provide: GuideService, useValue: { supported: true, isLoading: () => false, missing: async (ids: string[]) => ids.filter(id => absent.includes(id)), load } },
+          { provide: GuideService, useValue: { supported: true, isLoading: () => false, missing: async (ids: string[]) => ids.filter(id => absent.includes(id)), load, willLoad, wontLoad } },
           { provide: ProviderAccessService, useValue: { direct: async () => null } }
         ]
       });
@@ -284,6 +288,27 @@ describe('GuideSourcesService', () => {
 
       expect(load).toHaveBeenCalledWith('src-a', FEED);
       expect(service.missingHere()).toEqual([]);
+    });
+
+    it('are queued for the activity notice, and let go once done', async () => {
+      await buildNew().loadFirstTimeHere();
+
+      expect(willLoad).toHaveBeenCalledWith(['src-a']);
+      expect(wontLoad).toHaveBeenCalledWith(['src-a']);
+    });
+
+    it('say one is coming from the end of the first pull until they are done', async () => {
+      const service = buildNew();
+      let applied!: () => void;
+      const ready = new Promise<void>(resolve => (applied = resolve));
+
+      const loading = service.loadFirstTimeHereAfter(ready);
+      expect(service.firstLoadsComing()).toBe(true);
+      applied();
+      await loading;
+
+      expect(load).toHaveBeenCalledWith('src-a', FEED);
+      expect(service.firstLoadsComing()).toBe(false);
     });
 
     it('are not downloaded again when already here', async () => {

@@ -734,12 +734,25 @@
     "failedBody": "Popular lists, artwork and film details can't be fetched right now. Everything you can play is unaffected.",
     "tryAgain": "Try again"
   },
-  "fy": {
-    "settling": {
-      "sync": "Bringing in your history and favourites",
-      "library": "Loading your film and show library",
-      "guide": "Loading the TV guide"
+  "activity": {
+    "label": "In progress",
+    "sync": "Bringing in your history and favourites",
+    "library": {
+      "live": "Channel list",
+      "vod": "Film library",
+      "series": "Show library"
     },
+    "downloading": "Downloading",
+    "categories": "{{filed}} of {{total}} categories",
+    "categoriesSoFar": "{{filed}} categories",
+    "guide": "TV guide · {{name}}",
+    "guideUnnamed": "TV guide",
+    "guideRead": "{{channels}} channels · {{size}} MB read",
+    "waiting": "Waiting its turn"
+  },
+  "fy": {
+    "guideComing": "Downloading the TV guide",
+    "guideComingDetail": "What's on now will appear here when it's done.",
     "newInShows": "New in your shows",
     "announced": "Announced",
     "newEpisodeOut": "S{{s}} E{{e}} · out today",

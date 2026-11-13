@@ -792,6 +792,22 @@
     "failedBody": "Listy popularnych, obrazy i szczegóły filmów nie są teraz dostępne. Wszystko, co możesz odtworzyć, działa normalnie.",
     "tryAgain": "Spróbuj ponownie"
   },
+  "activity": {
+    "label": "W toku",
+    "sync": "Pobieramy Twoją historię i ulubione",
+    "library": {
+      "live": "Lista kanałów",
+      "vod": "Biblioteka filmów",
+      "series": "Biblioteka seriali"
+    },
+    "downloading": "Pobieranie",
+    "categories": "{{filed}} z {{total}} kategorii",
+    "categoriesSoFar": "{{filed}} kategorii",
+    "guide": "Program TV · {{name}}",
+    "guideUnnamed": "Program TV",
+    "guideRead": "{{channels}} kanałów · odczytano {{size}} MB",
+    "waiting": "Czeka na swoją kolej"
+  },
   "fy": {
     "newInShows": "Nowości w Twoich serialach",
     "announced": "Zapowiedziane",
@@ -831,11 +847,8 @@
     "nextAfter": "Potem po {{after}}",
     "more": "+ jeszcze {{count}}",
     "show": "Serial TV",
-    "settling": {
-      "sync": "Pobieramy Twoją historię i ulubione",
-      "library": "Wczytujemy Twoją bibliotekę filmów i seriali",
-      "guide": "Wczytujemy przewodnik TV"
-    }
+    "guideComing": "Pobieramy program TV",
+    "guideComingDetail": "To, co leci teraz, pojawi się tutaj po zakończeniu."
   },
   "actions": {
     "playLive": "Odtwórz na żywo",

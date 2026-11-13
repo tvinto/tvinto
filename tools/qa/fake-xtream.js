@@ -11,7 +11,7 @@
  * seasons and one of none), and answers every stream address with 404:
  * nothing can play.
  *
- *   node tools/qa/fake-xtream.js [--port 8767] [--play <local .ts file>] [--art <image address>] [--demo]
+ *   node tools/qa/fake-xtream.js [--port 8767] [--play <local .ts file>] [--art <image address>] [--demo] [--slow <seconds>]
  *
  * --demo answers with demo-catalogue.js instead: a believable, invented
  * line-up with drawn posters and logos, for screenshots people will see.
@@ -24,6 +24,13 @@
 const http = require('http');
 
 const PORT = Number(process.argv[process.argv.indexOf('--port') + 1]) || 8767;
+/**
+ * --slow <seconds>: a provider on a poor line, for seeing what the app shows
+ * while it waits. The guide is sent in twenty pieces spread over that long,
+ * and a whole library (a listing asked for with no category) is held back
+ * for that long before it is answered.
+ */
+const SLOW_MS = process.argv.includes('--slow') ? Number(process.argv[process.argv.indexOf('--slow') + 1]) * 1000 : 0;
 /** --play <file>: a local video every stream address answers with, instead of 404. */
 const PLAY = process.argv.includes('--play') ? process.argv[process.argv.indexOf('--play') + 1] : null;
 
@@ -320,6 +327,20 @@ http
     }
     if (url.pathname.endsWith('/xmltv.php')) {
       res.writeHead(200, { 'Content-Type': 'application/xml; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+      if (SLOW_MS) {
+        const body = Buffer.from(xmltv());
+        const pieces = 20;
+        const size = Math.ceil(body.length / pieces);
+        let piece = 0;
+        const next = () => {
+          if (res.destroyed) return;
+          res.write(body.subarray(piece * size, (piece + 1) * size));
+          piece++;
+          if (piece < pieces) setTimeout(next, SLOW_MS / pieces);
+          else res.end();
+        };
+        return next();
+      }
       return res.end(xmltv());
     }
     if (!url.pathname.endsWith('/player_api.php')) {
@@ -361,8 +382,14 @@ http
       return json(res, { user_info: { auth: 0 } });
     }
     const category = q.get('category_id');
+    const action = q.get('action');
+    if (SLOW_MS && !category && ['get_live_streams', 'get_vod_streams', 'get_series'].includes(action)) {
+      return setTimeout(() => answer(), SLOW_MS);
+    }
+    return answer();
+    function answer() {
     const inCategory = list => (category ? list.filter(entry => entry.category_id === category) : list);
-    switch (q.get('action')) {
+    switch (action) {
       case null:
         return json(res, {
           user_info: { username: USER, password: USER, message: '', auth: 1, status: 'Active', exp_date: String(Math.floor(Date.now() / 1000) + 365 * 86400), is_trial: '0', active_cons: '0', created_at: added, max_connections: '1', allowed_output_formats: ['m3u8', 'ts'] },
@@ -379,6 +406,7 @@ http
       case 'get_short_epg':
       case 'get_simple_data_table': return json(res, { epg_listings: [] });
       default: return json(res, []);
+    }
     }
   })
   .listen(PORT, () => console.log(`fake Xtream on ${PORT}: user and password "${USER}"`));

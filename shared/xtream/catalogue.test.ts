@@ -535,6 +535,20 @@ describe('index', () => {
     expect((await store.readStreams('vod', '20')).map(s => s.name)).toEqual(['Dune: Part Two']);
   });
 
+  it('says how many categories are filed, of how many, once the library is in', async () => {
+    const { transport, catalogue } = build();
+    transport.answer('get_vod_streams', undefined, LIBRARY);
+    const heard: [number, number | null][] = [];
+
+    await catalogue.index('vod', undefined, (filed, total) => heard.push([filed, total]));
+
+    expect(heard).toEqual([
+      [0, 2],
+      [1, 2],
+      [2, 2]
+    ]);
+  });
+
   it('makes search find what was never browsed', async () => {
     const { transport, catalogue } = build();
     transport.answer('get_vod_streams', undefined, LIBRARY);
@@ -604,17 +618,26 @@ describe('index', () => {
       yield new TextEncoder().encode(listing);
     })();
     const order: string[] = [];
+    const filed: (number | null)[][] = [];
 
-    const count = await catalogue.indexWith('series', async file =>
-      readLibraryHere(bytes, 'series', async (categoryId, streams) => {
-        // Not done until every category is written.
-        expect(await catalogue.indexIsFresh('series')).toBe(false);
-        order.push(categoryId);
-        await file(categoryId, streams);
-      })
+    const count = await catalogue.indexWith(
+      'series',
+      async file =>
+        readLibraryHere(bytes, 'series', async (categoryId, streams) => {
+          // Not done until every category is written.
+          expect(await catalogue.indexIsFresh('series')).toBe(false);
+          order.push(categoryId);
+          await file(categoryId, streams);
+        }),
+      (done, total) => filed.push([done, total])
     );
 
     expect(count).toBe(3);
+    // Counted as it goes; how many there are is not known while reading.
+    expect(filed).toEqual([
+      [1, null],
+      [2, null]
+    ]);
     expect(order).toEqual(['30', '31']);
     expect((await store.readStreams('series', '30')).map(s => s.name)).toEqual(['Taskmaster']);
     expect(await catalogue.indexIsFresh('series')).toBe(true);

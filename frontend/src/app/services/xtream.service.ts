@@ -128,6 +128,13 @@ export class XtreamService {
   /** The library being indexed for search right now, for the screen to say so. */
   readonly indexing = signal<StreamType | null>(null);
 
+  /**
+   * How far that index has got: categories written, of how many (null until
+   * that is known). Null while the library is still downloading, which is one
+   * request whose length nobody says.
+   */
+  readonly indexProgress = signal<{ filed: number; total: number | null } | null>(null);
+
   constructor(private http: HttpClient) {}
 
   /**
@@ -845,6 +852,17 @@ export class XtreamService {
 
   private async runIndex(direct: DirectProvider, type: StreamType, force = false, onlyTag?: string): Promise<number> {
     this.indexing.set(type);
+    this.indexProgress.set(null);
+    // Shown twice a second at most, as a guide's is: a redraw per category
+    // is a lot of them on a television.
+    let shownAt = 0;
+    const onFiled = (filed: number, total: number | null) => {
+      const now = Date.now();
+      if (now - shownAt >= 500 || filed === total) {
+        shownAt = now;
+        this.indexProgress.set({ filed, total });
+      }
+    };
     try {
       // Each provider in turn: they may well share one line. One whose index
       // is still fresh is left alone -- a playlist added today must not cost
@@ -871,14 +889,16 @@ export class XtreamService {
             } finally {
               await plugin.discard({ id: downloaded.id }).catch(() => undefined);
             }
-          });
+          }, onFiled);
         } else {
-          count += await slot.catalogue.index(type);
+          count += await slot.catalogue.index(type, undefined, onFiled);
         }
+        this.indexProgress.set(null);
       }
       return count;
     } finally {
       this.indexing.set(null);
+      this.indexProgress.set(null);
     }
   }
 

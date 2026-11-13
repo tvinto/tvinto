@@ -297,6 +297,7 @@
     same rule as the categories, and the reason the arrows never cross a gap.
   -->
   <div class="flex min-h-0 flex-1" data-shell-body (keydown)="onShellKey($event)">
+
     <!--
       The edge, on a screen that has no panel of its own.
 
@@ -375,9 +376,16 @@
 
     <!-- Scrolls itself, for the pages that do not (a show, Guides): otherwise
          they ran on under the phone's tab bar, drawn over it. -->
-    <main class="min-h-0 min-w-0 flex-1 overflow-y-auto">
-      <router-outlet />
-    </main>
+    <div class="flex min-h-0 min-w-0 flex-1 flex-col">
+      <!-- What is loading, at the top right of every page, in a strip of its
+           own: it moves the page down while it is there rather than lying over
+           a control (13 November: over For You's side column it covered
+           "Browse the guide"). Below the bar, above the tab bar, never focusable. -->
+      <app-activity />
+      <main class="min-h-0 min-w-0 flex-1 overflow-y-auto">
+        <router-outlet />
+      </main>
+    </div>
   </div>
 
   <!-- P-1 – P-7: the sections as tabs at the bottom, where a thumb is, with a
