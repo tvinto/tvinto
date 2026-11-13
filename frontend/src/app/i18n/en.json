@@ -1580,6 +1580,10 @@
     "close": "Close",
     "audio": "Audio",
     "subtitles": "Subtitles",
-    "off": "Off"
+    "off": "Off",
+    "where": "Where films play on this computer",
+    "whereSub": "Inside the app with its own controls, or in mpv’s window as before",
+    "inApp": "In the app",
+    "inWindow": "mpv’s window"
   }
 }

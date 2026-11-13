@@ -532,8 +532,10 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
     mpv.command(player, load);
   }
 
-  // As mpv.exe counts them: 0 when anything played to an ordinary end, 2 when
-  // every file failed, 3 when some did.
+  // 0 when anything played, 2 when nothing did. Not mpv.exe's 3 for "some
+  // files failed": the app plays one address at a time, and a live channel
+  // reopened after a drop counted as one -- Escape after a channel came back
+  // was reported as a failure to play.
   int endedWell = 0;
   int endedBadly = 0;
   bool anyFile = false;
@@ -562,7 +564,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
     }
   }
 
-  int code = endedBadly == 0 ? 0 : endedWell == 0 ? 2 : 3;
+  int code = endedWell > 0 || endedBadly == 0 ? 0 : 2;
   if (char *asked = mpv.get_property_string(player, "user-data/tvinto-exit")) {
     code = atoi(asked);
     mpv.free(asked);

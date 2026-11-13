@@ -1607,6 +1607,10 @@
     "close": "Fechar",
     "audio": "Áudio",
     "subtitles": "Legendas",
-    "off": "Desligadas"
+    "off": "Desligadas",
+    "where": "Onde os filmes são vistos neste computador",
+    "whereSub": "Dentro da aplicação com os seus controlos, ou na janela do mpv como antes",
+    "inApp": "Na aplicação",
+    "inWindow": "Janela do mpv"
   }
 }

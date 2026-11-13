@@ -1607,6 +1607,10 @@
     "close": "Kapat",
     "audio": "Ses",
     "subtitles": "Altyazılar",
-    "off": "Kapalı"
+    "off": "Kapalı",
+    "where": "Filmler bu bilgisayarda nerede oynatılır",
+    "whereSub": "Uygulamanın içinde kendi kontrolleriyle ya da eskisi gibi mpv penceresinde",
+    "inApp": "Uygulamada",
+    "inWindow": "mpv penceresi"
   }
 }

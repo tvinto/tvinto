@@ -1608,6 +1608,10 @@
     "close": "Zatvori",
     "audio": "Zvuk",
     "subtitles": "Titlovi",
-    "off": "Isključeno"
+    "off": "Isključeno",
+    "where": "Gdje se filmovi gledaju na ovom računalu",
+    "whereSub": "U aplikaciji s njezinim kontrolama ili u prozoru mpv-a kao prije",
+    "inApp": "U aplikaciji",
+    "inWindow": "Prozor mpv-a"
   }
 }

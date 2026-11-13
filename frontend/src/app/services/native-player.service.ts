@@ -452,6 +452,8 @@ export class NativePlayerService {
         subtitles: request.subtitles,
         skips: request.skips?.length && chosen.skipIntros !== 'off' ? request.skips : undefined,
         skipIntros: chosen.skipIntros,
+        // Inside the app (tvinto-player) or mpv's own window (shared/player.ts).
+        engine: chosen.desktopPlayer,
         skipWords: { intro: t('player.skipIntroDesktop'), recap: t('player.skipRecapDesktop') },
         // A live channel can be paused in mpv (electron/src/livePause.ts).
         live: request.item?.type === 'live',

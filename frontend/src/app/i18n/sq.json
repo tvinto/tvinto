@@ -1607,6 +1607,10 @@
     "close": "Mbyll",
     "audio": "Audio",
     "subtitles": "Titra",
-    "off": "Joaktive"
+    "off": "Joaktive",
+    "where": "Ku luhen filmat në këtë kompjuter",
+    "whereSub": "Brenda aplikacionit me kontrollet e tij, ose në dritaren e mpv si më parë",
+    "inApp": "Në aplikacion",
+    "inWindow": "Dritarja e mpv"
   }
 }

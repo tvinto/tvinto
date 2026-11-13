@@ -85,6 +85,12 @@ describe('readPlayerPreferences', () => {
     expect(readPlayerPreferences(stored({ skipIntros: 'auto' })).skipIntros).toBe('auto');
     expect(readPlayerPreferences(stored({ skipIntros: 'sometimes' as 'off' })).skipIntros).toBe('button');
   });
+
+  it("plays inside the desktop app unless mpv's own window was chosen", () => {
+    expect(readPlayerPreferences(stored({})).desktopPlayer).toBe('app');
+    expect(readPlayerPreferences(stored({ desktopPlayer: 'window' })).desktopPlayer).toBe('window');
+    expect(readPlayerPreferences(stored({ desktopPlayer: 'vlc' as 'app' })).desktopPlayer).toBe('app');
+  });
 });
 
 describe('round trip', () => {
@@ -98,7 +104,8 @@ describe('round trip', () => {
       subtitleLanguage: 'en',
       subtitlesEnabled: true,
       matchFrameRate: false,
-      skipIntros: 'off'
+      skipIntros: 'off',
+      desktopPlayer: 'window'
     };
 
     expect(readPlayerPreferences(writePlayerPreferences(chosen))).toEqual(chosen);

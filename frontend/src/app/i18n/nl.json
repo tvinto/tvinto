@@ -1607,6 +1607,10 @@
     "close": "Sluiten",
     "audio": "Audio",
     "subtitles": "Ondertiteling",
-    "off": "Uit"
+    "off": "Uit",
+    "where": "Waar films op deze computer spelen",
+    "whereSub": "In de app met de eigen bediening, of zoals eerder in het venster van mpv",
+    "inApp": "In de app",
+    "inWindow": "Venster van mpv"
   }
 }

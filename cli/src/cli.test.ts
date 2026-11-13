@@ -571,9 +571,13 @@ describe('changing more of the account', () => {
     await tvinto(`apply ${codeIn((await tvinto('player subtitle-size 150')).out)}`);
     await tvinto(`apply ${codeIn((await tvinto('player subtitle-language hr')).out)}`);
     await tvinto(`apply ${codeIn((await tvinto('player skip-intros auto')).out)}`);
+    await tvinto(`apply ${codeIn((await tvinto('player desktop window')).out)}`);
     const player = JSON.parse((await settingNow(token, 'player'))!);
-    expect(player).toEqual(expect.objectContaining({ subtitleScale: 150, subtitleLanguage: 'hr', matchFrameRate: true, skipIntros: 'auto' }));
+    expect(player).toEqual(
+      expect.objectContaining({ subtitleScale: 150, subtitleLanguage: 'hr', matchFrameRate: true, skipIntros: 'auto', desktopPlayer: 'window' })
+    );
     expect((await tvinto('player skip-intros sometimes')).out).toContain('One of: button, auto, off');
+    expect((await tvinto('player desktop vlc')).out).toContain('One of: app, window');
 
     expect((await tvinto('player subtitle-size 300')).out).toContain('one of 75, 100, 125, 150, 200');
     expect((await tvinto('player subtitle-colour red')).out).toContain('#rrggbb');

@@ -1607,6 +1607,10 @@
     "close": "Chiudi",
     "audio": "Audio",
     "subtitles": "Sottotitoli",
-    "off": "No"
+    "off": "No",
+    "where": "Dove si guardano i film su questo computer",
+    "whereSub": "Nell’app con i suoi controlli, o nella finestra di mpv come prima",
+    "inApp": "Nell’app",
+    "inWindow": "Finestra di mpv"
   }
 }

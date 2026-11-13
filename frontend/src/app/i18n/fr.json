@@ -1607,6 +1607,10 @@
     "close": "Fermer",
     "audio": "Audio",
     "subtitles": "Sous-titres",
-    "off": "Désactivés"
+    "off": "Désactivés",
+    "where": "Où les films sont lus sur cet ordinateur",
+    "whereSub": "Dans l’application avec ses propres commandes, ou dans la fenêtre de mpv comme avant",
+    "inApp": "Dans l’application",
+    "inWindow": "Fenêtre de mpv"
   }
 }

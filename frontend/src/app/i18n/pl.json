@@ -1681,6 +1681,10 @@
     "close": "Zamknij",
     "audio": "Dźwięk",
     "subtitles": "Napisy",
-    "off": "Wyłączone"
+    "off": "Wyłączone",
+    "where": "Gdzie filmy grają na tym komputerze",
+    "whereSub": "W aplikacji z jej własnymi przyciskami albo jak dotąd w oknie mpv",
+    "inApp": "W aplikacji",
+    "inWindow": "Okno mpv"
   }
 }

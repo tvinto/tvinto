@@ -5,7 +5,7 @@ import { ChildProcess, execFile, spawn } from 'child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { connect, Socket } from 'net';
 import { dirname, join } from 'path';
-import { app, BrowserWindow, ipcMain, screen } from 'electron';
+import { app, BrowserWindow, ipcMain, powerSaveBlocker, screen } from 'electron';
 import { desktopRecorder } from './recorderIpc';
 import { CacheState, LivePause, LiveWords } from './livePause';
 import { LiveRecovery } from './liveRecovery';
@@ -116,6 +116,13 @@ export interface PlayRequest {
 
   /** The pause's words, in the app's language. */
   liveWords?: LiveWords;
+
+  /**
+   * Where to play (shared/player.ts DesktopPlayer): 'window' is mpv's own
+   * window, as before tvinto-player; anything else, inside the app when it
+   * can. Absent from an older page.
+   */
+  engine?: string;
 }
 
 /** What the page's own player controls ask for (videoState.ts, preload's `video`). */
@@ -716,24 +723,34 @@ class PositionWatcher {
   start(): void {
     // mpv creates the pipe when it opens its window, so the first attempts fail
     // and are simply retried.
+    // One connection at a time. A second attempt while the first was still
+    // connecting made two, and every event of mpv's was handled twice: a
+    // dropped channel used up its three reopens in fifty milliseconds.
+    let connecting: Socket | null = null;
     const attempt = () => {
-      if (this.socket) {
+      if (this.socket || connecting) {
         return;
       }
 
       const socket = connect(PIPE_NAME);
+      connecting = socket;
 
       socket.on('connect', () => {
+        connecting = null;
         this.socket = socket;
         this.pause?.connected();
       });
       socket.on('error', () => {
         socket.destroy();
-        this.socket = null;
       });
       socket.on('data', chunk => this.read(chunk.toString()));
       socket.on('close', () => {
-        this.socket = null;
+        if (connecting === socket) {
+          connecting = null;
+        }
+        if (this.socket === socket) {
+          this.socket = null;
+        }
       });
     };
 
@@ -1466,7 +1483,7 @@ export function registerNativePlayer(): void {
     const window = BrowserWindow.fromWebContents(event.sender);
     // Inside the app's window when tvinto-player can (src/videoFrames.ts);
     // mpv's own window over the app otherwise.
-    const helper = window ? await findHelper(mpv) : null;
+    const helper = window && request.engine !== 'window' ? await findHelper(mpv) : null;
     const inside = helper ? null : overlayGeometry(window);
     if (helper && window) {
       // The page's player (videoState.ts): set before the live pause and
@@ -1491,10 +1508,12 @@ export function registerNativePlayer(): void {
             [
               `--tvinto-parent=${process.pid}`,
               `--tvinto-size=${Math.round(content.width * scale)}x${Math.round(content.height * scale)}`,
-              ...argumentsFor(request, helper, null),
-              // The page draws every word and control: none of mpv's.
+              // The page draws every word and control: none of mpv's. Before
+              // the rest, which ends with `--` and the address: anything after
+              // it is a file to play, and these two once were.
               '--osd-level=0',
-              '--osc=no'
+              '--osc=no',
+              ...argumentsFor(request, helper, null)
             ],
             { windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'] }
           );
@@ -1515,6 +1534,9 @@ export function registerNativePlayer(): void {
       }
 
       running = child;
+      // The screen stays on while anything plays, in either window: a film
+      // watched without touching the mouse is not a machine left alone.
+      const awake = powerSaveBlocker.start('prevent-display-sleep');
       playbackLog(
         `app: opens ${isLive(request) ? 'a live channel' : 'a film or an episode'} ${redactUrl(request.url)} in ${helper ? 'tvinto-player' : 'mpv'}`
       );
@@ -1587,6 +1609,9 @@ export function registerNativePlayer(): void {
         }
         running = null;
         keys = null;
+        if (powerSaveBlocker.isStarted(awake)) {
+          powerSaveBlocker.stop(awake);
+        }
         if (helper) {
           frames = null;
           watcher.inPage?.close();
