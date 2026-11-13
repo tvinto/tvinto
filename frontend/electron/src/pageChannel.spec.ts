@@ -1,57 +1,56 @@
 import { EventEmitter } from 'events';
 import type { WebContents } from 'electron';
 
-type FakeContents = EventEmitter & { isDestroyed: () => boolean; send: jest.Mock; postMessage: jest.Mock };
-
-const posted: unknown[] = [];
+type Handler = (event: { ports: unknown[]; sender: unknown }) => void;
+const handlers = new Map<string, Handler>();
 
 jest.mock(
   'electron',
   () => ({
-    MessageChannelMain: class {
-      port1 = { start: jest.fn(), close: jest.fn(), postMessage: (message: unknown) => posted.push(message) };
-      port2 = {};
-    }
+    ipcMain: { on: (channel: string, handler: Handler) => handlers.set(channel, handler) }
   }),
   { virtual: true }
 );
 
-import { openPageChannel, toPage } from './pageChannel';
+import { acceptPageChannels, toPage } from './pageChannel';
 
-const contents = () => {
-  const emitter = Object.assign(new EventEmitter(), { isDestroyed: () => false, send: jest.fn(), postMessage: jest.fn() }) as FakeContents;
-  return emitter;
-};
+type FakeContents = EventEmitter & { isDestroyed: () => boolean; send: jest.Mock };
+
+const contents = (): FakeContents =>
+  Object.assign(new EventEmitter(), { isDestroyed: () => false, send: jest.fn() }) as FakeContents;
+
+const port = () => ({ start: jest.fn(), close: jest.fn(), postMessage: jest.fn() });
+
+const asContents = (page: FakeContents) => page as unknown as WebContents;
 
 describe('pageChannel', () => {
-  beforeEach(() => (posted.length = 0));
+  beforeAll(() => acceptPageChannels());
 
-  it('uses plain IPC until the page has been handed a port', () => {
+  it('uses plain IPC until the page has handed over a port', () => {
     const page = contents();
-    openPageChannel(page as unknown as WebContents);
-    toPage(page as unknown as WebContents, 'xtream:deep-link', 'tvinto://film/1');
+    toPage(asContents(page), 'xtream:deep-link', 'tvinto://film/1');
     expect(page.send).toHaveBeenCalledWith('xtream:deep-link', 'tvinto://film/1');
-    expect(posted).toEqual([]);
   });
 
-  it('hands a port at every load and says everything over it after', () => {
+  it('says everything over the port a page hands over, and the newest one after a reload', () => {
     const page = contents();
-    openPageChannel(page as unknown as WebContents);
-    page.emit('did-finish-load');
-    expect(page.postMessage).toHaveBeenCalledWith('xtream:page-channel', null, [expect.anything()]);
-
-    toPage(page as unknown as WebContents, 'xtream:player-event', { type: 'progress' });
-    expect(posted).toEqual([{ channel: 'xtream:player-event', args: [{ type: 'progress' }] }]);
+    const first = port();
+    handlers.get('xtream:page-channel')!({ ports: [first], sender: page });
+    toPage(asContents(page), 'xtream:player-event', { type: 'progress' });
+    expect(first.postMessage).toHaveBeenCalledWith({ channel: 'xtream:player-event', args: [{ type: 'progress' }] });
     expect(page.send).not.toHaveBeenCalled();
 
-    page.emit('did-finish-load');
-    expect(page.postMessage).toHaveBeenCalledTimes(2);
+    const second = port();
+    handlers.get('xtream:page-channel')!({ ports: [second], sender: page });
+    expect(first.close).toHaveBeenCalled();
+    toPage(asContents(page), 'xtream:video-state', { open: true });
+    expect(second.postMessage).toHaveBeenCalledWith({ channel: 'xtream:video-state', args: [{ open: true }] });
   });
 
   it('says nothing to a page that is gone', () => {
     const page = contents();
     page.isDestroyed = () => true;
-    toPage(page as unknown as WebContents, 'xtream:update-ready', '1.0.0');
+    toPage(asContents(page), 'xtream:update-ready', '1.0.0');
     expect(page.send).not.toHaveBeenCalled();
   });
 });

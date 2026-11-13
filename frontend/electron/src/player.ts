@@ -11,6 +11,7 @@ import { CacheState, LivePause, LiveWords } from './livePause';
 import { LiveRecovery } from './liveRecovery';
 import { playbackLog, redactUrl, setPlaybackLogFolder } from './playbackLog';
 import { VideoFrames } from './videoFrames';
+import { VideoState } from './videoState';
 
 /**
  * Playback on the desktop, by mpv rather than by Chromium.
@@ -116,6 +117,14 @@ export interface PlayRequest {
   /** The pause's words, in the app's language. */
   liveWords?: LiveWords;
 }
+
+/** What the page's own player controls ask for (videoState.ts, preload's `video`). */
+type VideoCommand =
+  | { kind: 'key'; key: string }
+  | { kind: 'seek'; seconds: number; mode: 'relative' | 'absolute' }
+  | { kind: 'audio'; id: number }
+  | { kind: 'subtitle'; id: number | null }
+  | { kind: 'pause'; paused: boolean };
 
 /** What the page tells a player that switches inside itself. */
 type PlayerCommand =
@@ -633,8 +642,20 @@ class PositionWatcher {
 
   /** Sends a command, if the pipe is open. */
   send(command: unknown[]): void {
+    if (this.inPage && command[0] === 'show-text') {
+      // The page writes it (videoState.ts); mpv's OSD is off.
+      this.inPage.text(String(command[1] ?? ''), Number(command[2] ?? 0));
+      return;
+    }
     this.command(command);
   }
+
+  /**
+   * The page's player, when tvinto-player draws into the app's window:
+   * what mpv would have written on the picture goes to it instead, with the
+   * position, the pause and the tracks for its controls.
+   */
+  inPage: VideoState | null = null;
 
   /**
    * Quits with an exit code that says why. mpv.exe exits with it; libmpv
@@ -647,6 +668,10 @@ class PositionWatcher {
 
   /** Sends a command given by name with named arguments (`osd-overlay`). */
   sendNamed(command: Record<string, unknown>): void {
+    if (this.inPage && command['name'] === 'osd-overlay') {
+      // The live pause badge reaches the page by itself (LivePause's badge).
+      return;
+    }
     this.command(command);
   }
 
@@ -731,6 +756,11 @@ class PositionWatcher {
       if (this.onChapters && !this.chaptersRead) {
         this.ask('chapter-list');
       }
+      if (this.inPage) {
+        this.ask('track-list');
+        this.ask('pause');
+        this.ask('paused-for-cache');
+      }
       if (this.pause) {
         this.ask('demuxer-cache-state');
         this.ask('osd-width');
@@ -762,7 +792,9 @@ class PositionWatcher {
     'chapter-list': 10,
     'demuxer-cache-state': 11,
     'osd-width': 12,
-    'osd-height': 13
+    'osd-height': 13,
+    pause: 14,
+    'paused-for-cache': 15
   };
 
   /**
@@ -881,6 +913,9 @@ class PositionWatcher {
       this.pictureAt = null;
     } else if (event.event === 'playback-restart' && this.opening) {
       this.opening = false;
+      // What mpv's next line would have replaced: "Changing to…",
+      // "Reconnecting…". The picture is back, so the page's goes.
+      this.inPage?.text('', 0);
       this.pictureAt = Date.now();
       playbackLog('mpv: the picture is there');
     } else if (event.event === 'end-file') {
@@ -931,6 +966,10 @@ class PositionWatcher {
           this.cacheState = message.data as CacheState;
         } else if (message.request_id === 12 && typeof message.data === 'number') {
           this.osdWidth = message.data;
+        } else if (message.request_id === 14 && typeof message.data === 'boolean') {
+          this.inPage?.paused(message.data);
+        } else if (message.request_id === 15 && typeof message.data === 'boolean') {
+          this.inPage?.buffering(message.data);
         } else if (message.request_id === 13 && typeof message.data === 'number') {
           this.osdSize = this.osdWidth > 0 && message.data > 0 ? { width: this.osdWidth, height: message.data } : this.osdSize;
         } else if (message.request_id === 10 && Array.isArray(message.data)) {
@@ -943,10 +982,12 @@ class PositionWatcher {
           this.positionMs = Math.max(0, Math.round(message.data * 1000));
           this.positionSeconds = Math.max(0, Math.floor(message.data));
           this.positionExact = { seconds: message.data, at: Date.now() };
+          this.inPage?.position(message.data);
           this.pause?.positionRead(this.positionExact.at);
           this.onPosition?.();
         } else if (message.request_id === 2 && typeof message.data === 'number') {
           this.durationSeconds = Math.max(0, Math.floor(message.data));
+          this.inPage?.duration(message.data);
         } else if (message.request_id === 3 && typeof message.data === 'string') {
           this.audioLanguage = message.data;
         } else if (message.request_id === 4 && typeof message.data === 'string') {
@@ -958,6 +999,7 @@ class PositionWatcher {
           this.subVisible = message.data;
           this.settleSubtitles();
         } else if (message.request_id === 9 && Array.isArray(message.data)) {
+          this.inPage?.tracks(message.data);
           this.applyWanted(message.data as MpvTrack[]);
         } else if (message.request_id === 7 && typeof message.data === 'string') {
           this.audioTitle = message.data;
@@ -1018,11 +1060,17 @@ class DesktopSkips {
       if (this.offered !== now) {
         this.offered = now;
         const text = (now.kind === 'recap' ? this.words.recap : this.words.intro) || 'Skip intro · Enter';
+        if (this.watcher.inPage) {
+          // A button of the page's, which Enter presses too.
+          this.watcher.inPage.skip(text);
+          return;
+        }
         // show-text expands ${properties}: the words are the app's own, but kept literal all the same.
         this.watcher.send(['show-text', text.split('$').join('$$'), Math.max(1000, now.endMs - this.watcher.positionMs)]);
       }
     } else if (this.offered) {
       this.offered = null;
+      this.watcher.inPage?.skip(null);
       this.watcher.send(['show-text', '', 1]);
     }
   }
@@ -1034,6 +1082,7 @@ class DesktopSkips {
     }
     this.done = now;
     this.offered = null;
+    this.watcher.inPage?.skip(null);
     this.watcher.send(['show-text', '', 1]);
     this.watcher.send(['seek', now.endMs / 1000, 'absolute']);
   }
@@ -1181,6 +1230,7 @@ class DesktopChannels {
     }
     this.started = true;
     this.switching = false;
+    this.watcher.inPage?.text('', 0);
     this.emit({ type: 'channelStarted', itemId: this.itemId });
   }
 
@@ -1307,7 +1357,8 @@ function livePause(watcher: PositionWatcher, request: PlayRequest): LivePause {
       sendNamed: command => watcher.sendNamed(command),
       position: () => watcher.positionExact,
       cacheState: () => watcher.cacheState,
-      osdSize: () => watcher.osdSize
+      osdSize: () => watcher.osdSize,
+      badge: watcher.inPage ? shown => watcher.inPage?.badge(shown) : undefined
     },
     request.url,
     request.liveWords ?? {},
@@ -1348,6 +1399,42 @@ export function registerNativePlayer(): void {
     }
   });
 
+  // The page's player controls (stage 3): a key mpv binds, a seek, a track.
+  ipcMain.on('xtream:video-command', (event, command: VideoCommand) => {
+    if (!fromAppPage(event) || !keys || !command || typeof command !== 'object') {
+      return;
+    }
+    const watcher = keys;
+    switch (command.kind) {
+      case 'key':
+        if (typeof command.key === 'string' && /^[A-Za-z0-9_+-]{1,16}$|^.$/.test(command.key)) {
+          watcher.send(['keypress', command.key]);
+        }
+        return;
+      case 'seek':
+        if (Number.isFinite(command.seconds)) {
+          watcher.send(['seek', command.seconds, command.mode === 'absolute' ? 'absolute' : 'relative']);
+        }
+        return;
+      case 'audio':
+        if (Number.isInteger(command.id)) {
+          watcher.send(['set_property', 'aid', command.id]);
+        }
+        return;
+      case 'subtitle':
+        if (command.id === null) {
+          watcher.send(['set_property', 'sid', 'no']);
+        } else if (Number.isInteger(command.id)) {
+          watcher.send(['set_property', 'sid', command.id]);
+          watcher.send(['set_property', 'sub-visibility', true]);
+        }
+        return;
+      case 'pause':
+        watcher.send(['set_property', 'pause', command.paused === true]);
+        return;
+    }
+  });
+
   ipcMain.handle('xtream:play', async (event, request: PlayRequest): Promise<PlayResult> => {
     if (running) {
       // One at a time. The subscription allows a single connection anyway, and
@@ -1381,6 +1468,16 @@ export function registerNativePlayer(): void {
     // mpv's own window over the app otherwise.
     const helper = window ? await findHelper(mpv) : null;
     const inside = helper ? null : overlayGeometry(window);
+    if (helper && window) {
+      // The page's player (videoState.ts): set before the live pause and
+      // Skip intro are made, which hand it their words.
+      const contents = window.webContents;
+      watcher.inPage = new VideoState(state => toPage(contents, 'xtream:video-state', state), {
+        title: request.title,
+        live: isLive(request),
+        channels: request.channelKeys === true && request.inPlayerSwitching === true
+      });
+    }
 
     return new Promise<PlayResult>(resolve => {
       let child: ChildProcess;
@@ -1394,7 +1491,10 @@ export function registerNativePlayer(): void {
             [
               `--tvinto-parent=${process.pid}`,
               `--tvinto-size=${Math.round(content.width * scale)}x${Math.round(content.height * scale)}`,
-              ...argumentsFor(request, helper, null)
+              ...argumentsFor(request, helper, null),
+              // The page draws every word and control: none of mpv's.
+              '--osd-level=0',
+              '--osc=no'
             ],
             { windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'] }
           );
@@ -1489,6 +1589,7 @@ export function registerNativePlayer(): void {
         keys = null;
         if (helper) {
           frames = null;
+          watcher.inPage?.close();
           if (window && !window.isDestroyed()) {
             toPage(window.webContents, 'xtream:video-open', false);
           }

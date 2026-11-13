@@ -1,3 +1,4 @@
+import { DesktopPlayerComponent } from './components/desktop-player/desktop-player.component';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs/operators';
@@ -28,12 +29,13 @@ import { NativePlayerService } from './services/native-player.service';
 
 @Component({
     selector: 'app-root',
-    imports: [RouterOutlet, ToastsComponent, PinDialogComponent, TrailerDialogComponent, DescriptionReaderComponent, ReminderAlertComponent, ErrorDialogComponent, ConfirmDialogComponent, ChoicePanelComponent, StorageBusyComponent],
+    imports: [DesktopPlayerComponent, RouterOutlet, ToastsComponent, PinDialogComponent, TrailerDialogComponent, DescriptionReaderComponent, ReminderAlertComponent, ErrorDialogComponent, ConfirmDialogComponent, ChoicePanelComponent, StorageBusyComponent],
     template: `
     <div class="app-container">
       <router-outlet></router-outlet>
     </div>
     <app-toasts />
+    <app-desktop-player />
     <app-pin-dialog />
     <app-trailer-dialog />
     <app-description-reader />

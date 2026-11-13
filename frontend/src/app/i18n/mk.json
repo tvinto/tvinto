@@ -1591,5 +1591,22 @@
         "other": "{0} канали"
       }
     }
+  },
+  "desktopPlayer": {
+    "paused": "ПАУЗИРАНО",
+    "play": "Пушти",
+    "pause": "Паузирај",
+    "live": "ВО ЖИВО",
+    "next": "СЛЕДНО",
+    "ends": "завршува во {{time}}",
+    "backToLive": "Назад во живо",
+    "audioSubtitles": "Звук и титлови",
+    "startOver": "Од почеток",
+    "fullScreen": "Цел екран",
+    "exitFullScreen": "Излези од цел екран",
+    "close": "Затвори",
+    "audio": "Звук",
+    "subtitles": "Титлови",
+    "off": "Исклучено"
   }
 }

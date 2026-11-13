@@ -1592,5 +1592,22 @@
         "other": "{0} kanala"
       }
     }
+  },
+  "desktopPlayer": {
+    "paused": "PAUZIRANO",
+    "play": "Pokreni",
+    "pause": "Pauziraj",
+    "live": "UŽIVO",
+    "next": "SLIJEDI",
+    "ends": "završava u {{time}}",
+    "backToLive": "Natrag uživo",
+    "audioSubtitles": "Zvuk i titlovi",
+    "startOver": "Od početka",
+    "fullScreen": "Cijeli zaslon",
+    "exitFullScreen": "Izađi iz cijelog zaslona",
+    "close": "Zatvori",
+    "audio": "Zvuk",
+    "subtitles": "Titlovi",
+    "off": "Isključeno"
   }
 }

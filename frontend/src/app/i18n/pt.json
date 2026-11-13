@@ -1591,5 +1591,22 @@
         "other": "{0} canais"
       }
     }
+  },
+  "desktopPlayer": {
+    "paused": "EM PAUSA",
+    "play": "Reproduzir",
+    "pause": "Pausa",
+    "live": "AO VIVO",
+    "next": "A SEGUIR",
+    "ends": "termina às {{time}}",
+    "backToLive": "Voltar ao vivo",
+    "audioSubtitles": "Áudio e legendas",
+    "startOver": "Desde o início",
+    "fullScreen": "Ecrã inteiro",
+    "exitFullScreen": "Sair do ecrã inteiro",
+    "close": "Fechar",
+    "audio": "Áudio",
+    "subtitles": "Legendas",
+    "off": "Desligadas"
   }
 }

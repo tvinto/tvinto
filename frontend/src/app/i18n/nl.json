@@ -1591,5 +1591,22 @@
         "other": "{0} zenders"
       }
     }
+  },
+  "desktopPlayer": {
+    "paused": "GEPAUZEERD",
+    "play": "Afspelen",
+    "pause": "Pauze",
+    "live": "LIVE",
+    "next": "HIERNA",
+    "ends": "eindigt om {{time}}",
+    "backToLive": "Terug naar live",
+    "audioSubtitles": "Audio en ondertiteling",
+    "startOver": "Opnieuw beginnen",
+    "fullScreen": "Volledig scherm",
+    "exitFullScreen": "Volledig scherm sluiten",
+    "close": "Sluiten",
+    "audio": "Audio",
+    "subtitles": "Ondertiteling",
+    "off": "Uit"
   }
 }

@@ -1591,5 +1591,22 @@
         "other": "{0} Sender"
       }
     }
+  },
+  "desktopPlayer": {
+    "paused": "PAUSIERT",
+    "play": "Abspielen",
+    "pause": "Pause",
+    "live": "LIVE",
+    "next": "DANACH",
+    "ends": "endet {{time}}",
+    "backToLive": "Zurück zu live",
+    "audioSubtitles": "Audio & Untertitel",
+    "startOver": "Von vorn",
+    "fullScreen": "Vollbild",
+    "exitFullScreen": "Vollbild beenden",
+    "close": "Schließen",
+    "audio": "Audio",
+    "subtitles": "Untertitel",
+    "off": "Aus"
   }
 }

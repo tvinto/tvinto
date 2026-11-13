@@ -1665,5 +1665,22 @@
         "other": "{0} kanału"
       }
     }
+  },
+  "desktopPlayer": {
+    "paused": "WSTRZYMANO",
+    "play": "Odtwórz",
+    "pause": "Wstrzymaj",
+    "live": "NA ŻYWO",
+    "next": "NASTĘPNIE",
+    "ends": "koniec o {{time}}",
+    "backToLive": "Wróć na żywo",
+    "audioSubtitles": "Dźwięk i napisy",
+    "startOver": "Od początku",
+    "fullScreen": "Pełny ekran",
+    "exitFullScreen": "Zamknij pełny ekran",
+    "close": "Zamknij",
+    "audio": "Dźwięk",
+    "subtitles": "Napisy",
+    "off": "Wyłączone"
   }
 }

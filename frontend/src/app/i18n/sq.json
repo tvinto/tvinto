@@ -1591,5 +1591,22 @@
         "other": "{0} kanale"
       }
     }
+  },
+  "desktopPlayer": {
+    "paused": "NË PAUZË",
+    "play": "Luaj",
+    "pause": "Pauzë",
+    "live": "DREJTPËRDREJT",
+    "next": "NË VIJIM",
+    "ends": "mbaron në {{time}}",
+    "backToLive": "Kthehu te drejtpërdrejt",
+    "audioSubtitles": "Audio dhe titra",
+    "startOver": "Nga fillimi",
+    "fullScreen": "Ekran i plotë",
+    "exitFullScreen": "Dil nga ekrani i plotë",
+    "close": "Mbyll",
+    "audio": "Audio",
+    "subtitles": "Titra",
+    "off": "Joaktive"
   }
 }

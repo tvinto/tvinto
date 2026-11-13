@@ -65,13 +65,22 @@ const BANNER_MS = 4000;
  */
 export const desktopBridge = (
   player: DesktopPlayerBridge,
-  first: { itemId: string; number: string; name: string; banner?: ChannelBanner }
+  first: { itemId: string; number: string; name: string; banner?: ChannelBanner },
+  /**
+   * The page's own banner (PX-TV-6), when the page draws the player
+   * (tvinto-player): true when it showed it, and mpv is then told nothing.
+   */
+  inPage?: (channel: { number: string; name: string; banner: ChannelBanner | null }) => boolean
 ): SwitchBridge => {
   let current = { ...first, banner: first.banner ?? null };
   let lastSwitch: SwitchStreamRequest | null = null;
 
-  const showBanner = () =>
-    player.command({ kind: 'text', text: osdBanner(current, current.banner, Date.now()), ms: BANNER_MS });
+  const showBanner = async () => {
+    if (inPage?.(current)) {
+      return;
+    }
+    await player.command({ kind: 'text', text: osdBanner(current, current.banner, Date.now()), ms: BANNER_MS });
+  };
 
   return {
     async listen(handlers) {

@@ -19,12 +19,15 @@ const onMain = (channel: string, listener: FromMain): (() => void) => {
   fromMain.get(channel)!.add(listener);
   return () => fromMain.get(channel)?.delete(listener);
 };
-ipcRenderer.on('xtream:page-channel', (event: { ports: MessagePort[] }) => {
-  const port = event.ports[0];
-  port.onmessage = (message: MessageEvent<{ channel: string; args: unknown[] }>) =>
+// The port the main process talks over (src/pageChannel.ts), made here and
+// handed over: one it handed to a page reloaded mid-film never arrived.
+{
+  const channel = new MessageChannel();
+  channel.port1.onmessage = (message: MessageEvent<{ channel: string; args: unknown[] }>) =>
     fromMain.get(message.data.channel)?.forEach(one => one(...(message.data.args as never[])));
-  port.start();
-});
+  channel.port1.start();
+  ipcRenderer.postMessage('xtream:page-channel', null, [channel.port2]);
+}
 
 /** Takes the picture away (the video surface, below). Replaced once it exists. */
 let videoClosed: () => void = () => undefined;
@@ -61,6 +64,15 @@ contextBridge.exposeInMainWorld('xtreamDesktop', {
       return onMain('xtream:player-event', (payload: unknown) => listener(payload));
     },
     command: (command: unknown) => ipcRenderer.invoke('xtream:player-command', command)
+  },
+
+  /**
+   * The player the page draws while tvinto-player plays (src/videoState.ts):
+   * its state a few times a second, and the controls' commands back.
+   */
+  video: {
+    onState: (listener: (state: unknown) => void) => onMain('xtream:video-state', (state: unknown) => listener(state)),
+    command: (command: unknown) => ipcRenderer.send('xtream:video-command', command)
   },
 
   /**

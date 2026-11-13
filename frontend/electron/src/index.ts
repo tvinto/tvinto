@@ -8,6 +8,7 @@ import unhandled from 'electron-unhandled';
 import { setupDeepLinks } from './deepLinks';
 import { registerExternalLinks } from './externalLinks';
 import { startLocalApi } from './localApi';
+import { acceptPageChannels } from './pageChannel';
 import { registerNativePlayer } from './player';
 import { desktopRecorder, registerRecorder } from './recorderIpc';
 import { registerSubtitleFetch } from './subtitles';
@@ -91,6 +92,8 @@ if (electronIsDev) {
   // Playback by mpv rather than by Chromium, which has no HEVC decoder unless
   // Windows supplies one. Registered before the window exists, so the first
   // thing played cannot arrive before there is anything listening.
+  // What the main process tells the page goes over a port the page hands it.
+  acceptPageChannels();
   registerNativePlayer();
   registerSubtitleFetch();
   // Recording, and bookings made while the app was closed set going again.

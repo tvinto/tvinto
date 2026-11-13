@@ -154,6 +154,11 @@ export interface MpvLink {
   cacheState(): CacheState | null;
   /** mpv's OSD size in pixels, as last read. */
   osdSize(): { width: number; height: number } | null;
+  /**
+   * Where the badge goes when the page draws it (tvinto-player, whose OSD is
+   * off): the two lines, or null to take it down. Without it, mpv's OSD.
+   */
+  badge?(shown: { line: string; hint: string } | null): void;
 }
 
 export interface CacheState {
@@ -452,6 +457,10 @@ export class LivePause {
       ? `${this.words.paused ?? 'PAUSED'} · ${behind}`
       : (this.words.behind ?? '{0} behind live').replace('{0}', behind);
     const hint = `${this.words.backToLive ?? 'Back to live'} · End`;
+    if (this.mpv.badge) {
+      this.mpv.badge({ line, hint });
+      return;
+    }
     const size = this.mpv.osdSize();
     const height = 720;
     const width = size && size.height > 0 ? Math.round((height * size.width) / size.height) : 1280;
@@ -467,6 +476,10 @@ export class LivePause {
   }
 
   private hideBadge(): void {
+    if (this.mpv.badge) {
+      this.mpv.badge(null);
+      return;
+    }
     this.mpv.sendNamed({ name: 'osd-overlay', id: BADGE_OVERLAY, format: 'none', data: '' });
   }
 }
