@@ -95,8 +95,9 @@ export interface TmdbGenre {
 }
 
 /**
- * Which of TMDB's lists (TV-32): 'trending' for the week's, 'top' for the
- * best rated, 'genre-<id>' for a genre's most popular, 'genre-<id>-top' for
+ * Which of TMDB's lists (TV-32): 'trending' for the week's, 'popular' for
+ * the most popular now, 'top' for the best rated, 'new' for the year's
+ * releases, 'genre-<id>' for a genre's most popular, 'genre-<id>-top' for
  * its best rated.
  */
 export type TmdbList = string;
@@ -110,8 +111,26 @@ export function listGenre(list: TmdbList): { genre: number; top: boolean } | nul
   return found ? { genre: Number(found[1]), top: !!found[2] } : null;
 }
 
-/** Where a list is asked for. */
-export function listRequest(kind: TmdbKind, list: TmdbList): { path: string; params: Record<string, string | number> } {
+/** How far back "New releases" reaches: a library has a film some months after it is out, not the week it is. */
+const NEW_DAYS = 365;
+
+/** A day as TMDB's date filters take it: '2026-11-14'. */
+const day = (date: Date) => date.toISOString().slice(0, 10);
+
+/** Where a list is asked for; `today` dates the new releases. */
+export function listRequest(kind: TmdbKind, list: TmdbList, today = new Date()): { path: string; params: Record<string, string | number> } {
+  if (list === 'popular') {
+    return { path: `/${kind}/popular`, params: {} };
+  }
+  // The year's films out at home (digital or on disc), the most popular
+  // first: what a library can have. Sorted by date, the newest were titles
+  // nobody had heard of.
+  if (list === 'new') {
+    const from = day(new Date(today.getTime() - NEW_DAYS * 86_400_000));
+    return kind === 'movie'
+      ? { path: '/discover/movie', params: { sort_by: 'popularity.desc', with_release_type: '4|5', 'release_date.gte': from, 'release_date.lte': day(today) } }
+      : { path: '/discover/tv', params: { sort_by: 'popularity.desc', 'first_air_date.gte': from, 'first_air_date.lte': day(today) } };
+  }
   // Best rated by enough people -- TMDB's own top-rated list leads with
   // this year's releases on a few hundred votes, not The Godfather.
   if (list === 'top') {

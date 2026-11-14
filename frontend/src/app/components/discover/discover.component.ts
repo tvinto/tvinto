@@ -1,12 +1,12 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { WatchProgress } from '@shared/types';
-import { TmdbGenre, TmdbKind } from '@shared/tmdb/client';
-import { HlmButton } from '@spartan-ng/helm/button';
+import { TmdbKind } from '@shared/tmdb/client';
 import { PopularService } from '../../services/popular.service';
 import { DiscoverService } from '../../services/discover.service';
+import { TmdbService } from '../../services/tmdb.service';
 import { XtreamService } from '../../services/xtream.service';
 import { ShowService } from '../../services/show.service';
 import { AgeLockService } from '../../services/age-lock.service';
@@ -16,7 +16,6 @@ import { CardGesturesDirective } from '../../directives/card-gestures.directive'
 import { ChannelMonogramPipe } from '../../pipes/format.pipes';
 import { TPipe } from '../../pipes/t.pipe';
 import { t } from '../../utils/i18n';
-import { lastInput, whenQuiet } from '../../utils/quiet.utils';
 import { AgeCoverComponent } from '../age-cover/age-cover.component';
 import { ItemActionsComponent } from '../item-actions/item-actions.component';
 import { CategoryNames, PopularCard, categoryNames, openFilm, openShow, openVersion, popularCard, versionActions } from '../for-you/popular-cards';
@@ -25,7 +24,7 @@ import { CategoryNames, PopularCard, categoryNames, openFilm, openShow, openVers
 interface DiscoverRow {
   list: string;
   title: string;
-  /** What the row is, said beside its title: "in your library", "you watch these most". */
+  /** What the row is, said beside its title: "you watch these most"; '' for most. */
   note: string;
   cards: PopularCard[];
 }
@@ -33,25 +32,34 @@ interface DiscoverRow {
 /** How many titles a row shows; the rest are on its full list. */
 const ROW_LENGTH = 10;
 
+/** Whether the rows are TMDB's, or there is no TMDB to ask and the page keeps the provider's. */
+export type DiscoverState = 'rows' | 'none';
+
 /**
- * Top rated and genres at the top of Movies and TV Shows (TV-32, P-20):
- * "Browse by" -- Top rated, then the genres the library has enough of, a
- * chip each opening that list in full -- then a row of the top rated, and a
- * row for each of the two genres this person watches most. Everything is
- * TMDB's lists matched against the catalogue the device holds; without a
- * TMDB key the block is absent.
+ * The rows of Movies and TV Shows after Continue watching and My list (the
+ * owner, 14 November): Popular, Trending this week, Top rated, New releases,
+ * then a row for each of the two genres this person watches most. Every row
+ * is one of TMDB's lists matched against the catalogue the device holds --
+ * one card per title, whatever copies the provider has of it. Without a TMDB
+ * key there are none, and `state` says so, so the page keeps the provider's
+ * own category rows.
  */
 @Component({
   selector: 'app-discover',
   standalone: true,
-  imports: [RouterLink, HlmButton, CardGesturesDirective, ChannelMonogramPipe, TPipe, AgeCoverComponent, ItemActionsComponent],
+  imports: [RouterLink, CardGesturesDirective, ChannelMonogramPipe, TPipe, AgeCoverComponent, ItemActionsComponent],
   templateUrl: './discover.component.html',
+  // Its rows are the page's own, spaced as the others are.
+  host: { class: 'contents' },
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DiscoverComponent {
   readonly kind = input.required<TmdbKind>();
+  /** 'rows' once a row is on screen; 'none' when there is no key, or TMDB gave nothing and nothing was kept. */
+  readonly state = output<DiscoverState>();
 
   private readonly router = inject(Router);
+  private readonly tmdb = inject(TmdbService);
   private readonly popular = inject(PopularService);
   private readonly discover = inject(DiscoverService);
   private readonly xtream = inject(XtreamService);
@@ -59,10 +67,11 @@ export class DiscoverComponent {
   readonly ages = inject(AgeLockService);
   private readonly parental = inject(ParentalLockService);
 
-  readonly genres = signal<TmdbGenre[]>([]);
   readonly rows = signal<DiscoverRow[]>([]);
 
   private names: CategoryNames | null = null;
+  /** The lists in the order their rows stand, whichever is matched first. */
+  private order: string[] = [];
   private gone = false;
 
   constructor() {
@@ -83,68 +92,84 @@ export class DiscoverComponent {
 
   private async load(kind: TmdbKind): Promise<void> {
     this.rows.set([]);
-    const genres = await this.discover.genres(kind);
-    if (this.gone || !genres.length) {
+    if (!(await this.tmdb.client())) {
+      this.state.emit('none');
       return;
     }
-    this.genres.set(await this.discover.offered(kind));
     this.names ??= await categoryNames(this.xtream);
+    const lists: [string, string][] = [
+      ['popular', t('discover.popular')],
+      ['trending', t('discover.trending')],
+      ['top', t('discover.topRated')],
+      ['new', t('discover.newReleases')]
+    ];
+    this.order = lists.map(([list]) => list);
+    // Every row as last matched, at once, before any is worked out again.
+    for (const [list, title] of lists) {
+      await this.showLast(kind, list, title, '');
+    }
+    for (const [list, title] of lists) {
+      if (this.gone || this.kind() !== kind) {
+        return;
+      }
+      await this.showToday(kind, list, title, '');
+    }
 
-    await this.show(kind, 'top', t(kind === 'tv' ? 'discover.topShows' : 'discover.topFilms'), t('discover.inLibrary'));
-
+    const genres = await this.discover.genres(kind);
     const history = await firstValueFrom(
       this.xtream.getRecentlyWatched(kind === 'tv' ? 'series' : 'vod', 60).pipe(catchError(() => of([] as WatchProgress[])))
     );
-    const watched = await this.discover.watched(kind, history);
+    const watched = (await this.discover.watched(kind, history))
+      .map(id => genres.find(genre => genre.id === id))
+      .filter(genre => genre !== undefined);
+    this.order = [...lists.map(([list]) => list), ...watched.map(genre => `genre-${genre.id}`)];
     // Rows for genres no longer watched most go, now that it is known which are.
-    this.rows.update(rows => rows.filter(row => row.list === 'top' || watched.some(id => row.list === `genre-${id}`)));
-    for (const id of watched) {
-      const genre = genres.find(one => one.id === id);
-      if (genre) {
-        await this.show(kind, `genre-${id}`, genre.name, t('discover.watchMost'));
-      }
-      if (this.gone) {
+    this.rows.update(rows => rows.filter(row => this.order.includes(row.list)));
+    for (const genre of watched) {
+      if (this.gone || this.kind() !== kind) {
         return;
       }
+      await this.showLast(kind, `genre-${genre.id}`, genre.name, t('discover.watchMost'));
+      await this.showToday(kind, `genre-${genre.id}`, genre.name, t('discover.watchMost'));
     }
-
-    // Which genres the library has enough of: counted in a quiet moment, once a week.
-    if (await whenQuiet({ afterStartMs: 30_000, idleMs: 10_000, checkEveryMs: 5_000, now: () => performance.now(), lastInput, stopped: () => this.gone, wait: ms => new Promise(resolve => setTimeout(resolve, ms)) })) {
-      const stop = () => this.gone || performance.now() - lastInput() < 5_000;
-      if ((await this.discover.countGenres(kind, stop)) && !this.gone) {
-        this.genres.set(await this.discover.offered(kind));
-      }
+    if (!this.gone && this.kind() === kind && !this.rows().length) {
+      this.state.emit('none');
     }
   }
 
   /**
-   * One row: as last matched first, at once, then as matched today, which is
-   * also at once after the first visit of the day (PopularService keeps it).
-   * Each row worked out again on every visit, with nothing on screen until it
-   * was, is what a user found (26 October).
+   * A row as last matched, at once; then (`showToday`) as matched today,
+   * which is also at once after the first visit of the day (PopularService
+   * keeps it). Each row worked out again on every visit, with nothing on
+   * screen until it was, is what a user found (26 October).
    */
-  private async show(kind: TmdbKind, list: string, title: string, note: string): Promise<void> {
+  private async showLast(kind: TmdbKind, list: string, title: string, note: string): Promise<void> {
     const last = await this.popular.lastPopular(kind, ROW_LENGTH, list);
-    if (this.gone) {
-      return;
-    }
-    if (last?.length) {
+    if (!this.gone && this.kind() === kind && last?.length) {
       this.place({ list, title, note, cards: last.map(entry => popularCard(entry, this.names!)) });
     }
+  }
+
+  private async showToday(kind: TmdbKind, list: string, title: string, note: string): Promise<void> {
     const found = await this.popular.popular(kind, ROW_LENGTH, list);
-    if (this.gone) {
+    if (this.gone || this.kind() !== kind) {
       return;
     }
     if (found.length) {
       this.place({ list, title, note, cards: found.map(entry => popularCard(entry, this.names!)) });
-    } else if (!last?.length) {
-      this.rows.update(rows => rows.filter(row => row.list !== list));
     }
   }
 
-  /** In its place when the row is on screen already, else after the others. */
+  /** In its place among the others, whichever was matched first; the page hears that there are rows. */
   private place(row: DiscoverRow): void {
-    this.rows.update(rows => (rows.some(one => one.list === row.list) ? rows.map(one => (one.list === row.list ? row : one)) : [...rows, row]));
+    const at = (one: DiscoverRow) => this.order.indexOf(one.list);
+    this.rows.update(rows => [...rows.filter(one => one.list !== row.list), row].sort((a, b) => at(a) - at(b)));
+    this.state.emit('rows');
+  }
+
+  /** What the spotlight looks the card up by: the copy Play would choose, which is what a film's or show's own page reads. */
+  spotId(card: PopularCard): string {
+    return String(card.versions[0]?.stream_id ?? '');
   }
 
   link(list: string): string[] {

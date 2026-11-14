@@ -673,6 +673,13 @@
     "notOpened": "Ovaj film se nije mogao otvoriti"
   },
   "discover": {
+    "trending": "U trendu ovaj tjedan",
+    "newReleases": "Novo izdano",
+    "allCategories": "Sve kategorije",
+    "popularFilms": "Popularni filmovi",
+    "popularShows": "Popularne serije",
+    "newFilms": "Novi filmovi",
+    "newShows": "Nove serije",
     "browseBy": "Pregledaj po",
     "topRated": "Najbolje ocijenjeno",
     "topFilms": "Najbolje ocijenjeni filmovi",
@@ -857,8 +864,6 @@
     "liveChannel": "Kanal uživo",
     "actionsFor": "Radnje za {{name}}",
     "noGuideLower": "nema vodiča",
-    "browseFilms": "Pregledaj kategorije filmova",
-    "browseShows": "Pregledaj kategorije serija",
     "timeline": "vremenski prikaz",
     "reindexing": "Ponovno indeksiranje…",
     "onAirCount": "Upravo {{count}}",

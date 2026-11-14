@@ -61,13 +61,13 @@ export class PopularComponent implements AfterViewInit, OnDestroy {
   readonly PLACEHOLDERS = Array.from({ length: PER_ROUND }, (_, index) => index);
 
   readonly kind = signal<TmdbKind>('movie');
-  /** Which of TMDB's lists: the week's trending, from For You; the top rated or a genre's, from Movies and TV Shows. */
+  /** Which of TMDB's lists: the week's trending, from For You; the others (`TmdbList`) from Movies and TV Shows. */
   readonly list = signal('trending');
   readonly genre = computed(() => listGenre(this.list()));
   private readonly genreNames = signal<TmdbGenre[]>([]);
   private readonly discover = inject(DiscoverService);
 
-  /** "Popular films this week", "Top rated shows", "Comedy". */
+  /** "Popular films this week", "Top rated shows", "New films", "Comedy". */
   readonly title = computed(() => {
     const list = this.list();
     const tv = this.kind() === 'tv';
@@ -76,6 +76,12 @@ export class PopularComponent implements AfterViewInit, OnDestroy {
     }
     if (list === 'top') {
       return t(tv ? 'discover.topShows' : 'discover.topFilms');
+    }
+    if (list === 'popular') {
+      return t(tv ? 'discover.popularShows' : 'discover.popularFilms');
+    }
+    if (list === 'new') {
+      return t(tv ? 'discover.newShows' : 'discover.newFilms');
     }
     return this.genreNames().find(genre => genre.id === this.genre()?.genre)?.name ?? '';
   });

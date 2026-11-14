@@ -9,24 +9,11 @@
     [spotlightKeep]="true"
     [attr.data-front-spot]="type() === 'live' ? null : ''"
   >
-    <!-- NX-TV-7: the top of the screen is the title focus rests on -- the
-         page's first until focus reaches one -- with room kept for it, so the
-         first row is never under it (a user's TV, 31 October). Not on Live
-         TV: a channel has no picture or words of its own to show there. -->
-    @if (type() !== "live") {
-      <app-spotlight [target]="spot.target()" [fallback]="frontSpot()" />
-      <!-- Only with something to show: a library with no artwork and nothing
-           focused yet kept half the screen empty above its title. -->
-      @if (spot.target() || frontSpot()) {
-        <div data-nx-spot-room aria-hidden="true"></div>
-      }
-    }
-    <!-- D-1, D-4, D-8 and P-1: what you were watching, what you marked, and
-         two ways on. Cards carry no hover-only chips -- the card is the
-         target, and right-click (or holding it, or Menu) opens the actions
-         panel, which is where removing and unstarring live. -->
-    <div class="mx-auto flex max-w-[1600px] flex-col gap-6 px-4 py-6 sm:px-6" data-front>
-      <!-- Title and search -->
+    <!-- The head (14 November): the name and Search, and on Movies and TV
+         Shows one row of pills -- every category first, then TMDB's Top rated
+         and genres. Small, so the rows carry the page; on a television the
+         pills are where focus starts. -->
+    <header class="mx-auto flex max-w-[1600px] flex-col gap-4 px-4 pt-6 sm:px-6" data-front-head>
       <div class="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 class="page-title">{{ title() }}</h1>
@@ -45,6 +32,45 @@
         </button>
       </div>
 
+      @if (type() !== "live") {
+        <nav class="flex gap-2 overflow-x-auto pb-1" data-tv-rail data-front-pills [attr.aria-label]="'discover.browseBy' | t">
+          <!-- What "Browse films" was: the provider's categories, opening on the one last left. -->
+          <button
+            hlmBtn
+            size="sm"
+            type="button"
+            class="shrink-0"
+            data-tv-browse-tile
+            data-front-pill
+            data-focus-key="front-all-categories"
+            (click)="browseCategories()"
+            [disabled]="!store.categories().length"
+          >
+            <ng-icon name="lucideLayoutGrid" aria-hidden="true" />
+            {{ 'discover.allCategories' | t }}
+          </button>
+          <app-discover-pills [kind]="type() === 'series' ? 'tv' : 'movie'" />
+        </nav>
+      }
+    </header>
+
+    <!-- NX-TV-7: under the head, the title focus rests on -- the page's first
+         until focus reaches one -- with room kept for it, so the first row is
+         never under it (a user's TV, 31 October). Not on Live TV: a channel
+         has no picture or words of its own to show there. -->
+    @if (type() !== "live") {
+      <app-spotlight [target]="spot.target()" [fallback]="frontSpot()" />
+      <!-- Only with something to show: a library with no artwork and nothing
+           focused yet kept half the screen empty above its title. -->
+      @if (spot.target() || frontSpot()) {
+        <div data-nx-spot-room aria-hidden="true"></div>
+      }
+    }
+    <!-- Continue watching, My list, TMDB's rows (the provider's categories
+         without TMDB), Recently added. Cards carry no hover-only chips -- the
+         card is the target, and right-click (or holding it, or Menu) opens the
+         actions panel, which is where removing and unstarring live. -->
+    <div class="mx-auto flex max-w-[1600px] flex-col gap-6 px-4 pt-6 pb-6 sm:px-6" data-front>
       @if (store.error()) {
         <div class="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
           {{ store.error() }}
@@ -203,7 +229,7 @@
         <h2 class="nx-row-title" data-front-heading>
           {{ (type() === 'series' ? 'section.favouriteShows' : 'cat.favourites') | t }}
           @if (favorites().length) {
-            <span class="ml-1 text-muted-foreground">{{ favorites().length }}</span>
+            <span class="ml-1 text-muted-foreground">{{ favouriteTitles().length }}</span>
           }
         </h2>
 
@@ -255,10 +281,10 @@
                 </button>
               </li>
             }
-            @if (favorites().length > FRONT_FAVOURITES) {
+            @if (favouriteTitles().length > FRONT_FAVOURITES) {
               <li>
                 <button type="button" class="w-full rounded-lg border border-border-2 p-3 text-sm text-muted-foreground" (click)="openFavorites()">
-                  {{ 'fy.more' | t: { count: favorites().length - FRONT_FAVOURITES } }}
+                  {{ 'fy.more' | t: { count: favouriteTitles().length - FRONT_FAVOURITES } }}
                 </button>
               </li>
             }
@@ -351,7 +377,7 @@
               }
             }
 
-            @if (favorites().length > FRONT_FAVOURITES) {
+            @if (favouriteTitles().length > FRONT_FAVOURITES) {
               <button
                 type="button"
                 class="flex shrink-0 items-center justify-center rounded-lg border border-border-2 px-6 text-sm text-muted-foreground transition-colors hover:bg-card"
@@ -359,18 +385,26 @@
                 data-front-more
                 (click)="openFavorites()"
               >
-                {{ 'fy.more' | t: { count: favorites().length - FRONT_FAVOURITES } }}
+                {{ 'fy.more' | t: { count: favouriteTitles().length - FRONT_FAVOURITES } }}
               </button>
             }
           </div>
         }
       </section>
 
-      <!-- NX-TV-7: the categories as rows of posters -- the one left last, then
-           the next in this library's order, each only if this device holds it --
-           each ending in its whole list; then what the library added lately. -->
+      <!-- TMDB's rows (14 November): Popular, Trending, Top rated, New
+           releases and the genres watched most, only what the library has. -->
       @if (type() !== "live") {
-        @for (row of categoryRows(); track row.id) {
+        <app-discover [kind]="type() === 'series' ? 'tv' : 'movie'" (state)="discoverState.set($event)" />
+      }
+
+      <!-- NX-TV-7, now only without TMDB, so the page is never empty: the
+           categories as rows of posters -- the ones opened most, the one left
+           last, then the next in this library's order, each only if this
+           device holds it -- each ending in its whole list. Then, with or
+           without, what the library added lately. -->
+      @if (type() !== "live") {
+        @for (row of discoverState() === "none" ? categoryRows() : []; track row.id) {
           <section class="flex flex-col gap-2" data-front-category-row>
             <h2 class="nx-row-title" data-front-heading>
               {{ row.name }}
@@ -466,32 +500,29 @@
         }
       }
 
-      <!-- Browse by, Top rated and the genres watched most (TV-32, P-20). -->
-      @if (type() !== "live") {
-        <app-discover [kind]="type() === 'series' ? 'tv' : 'movie'" />
-      }
-
       <!-- Round 14 (DS-TV-6): the ways on as pills -- into the categories, Arrange,
            and across to the other thing you might be watching -- rather than
            wide boxes with a coloured spine and an arrow. -->
+      <!-- On Movies and TV Shows the way into the categories is the head's
+           first pill; what is left here is the other library's film or show. -->
       <section class="flex flex-wrap items-center gap-3" data-front-links>
-        <button
-          hlmBtn
-          variant="primary"
-          type="button"
-          class="max-w-full"
-          data-tv-browse-tile
-          (click)="browseCategories()"
-          [disabled]="!store.categories().length"
-        >
-          <ng-icon [name]="type() === 'live' ? 'lucideLayoutPanelLeft' : 'lucideLayoutGrid'" aria-hidden="true" />
-          <!-- Always what it does, not where it goes: "Back to HR| CROATIA" was
-               not recognisable as the way into the guide (2 November).
-               It still opens on the category last left. -->
-          <span class="truncate">
-            {{ (type() === 'live' ? 'fy.browseGuide' : type() === 'vod' ? 'section.browseFilms' : 'section.browseShows') | t }}
-          </span>
-        </button>
+        @if (type() === "live") {
+          <button
+            hlmBtn
+            variant="primary"
+            type="button"
+            class="max-w-full"
+            data-tv-browse-tile
+            (click)="browseCategories()"
+            [disabled]="!store.categories().length"
+          >
+            <ng-icon name="lucideLayoutPanelLeft" aria-hidden="true" />
+            <!-- Always what it does, not where it goes: "Back to HR| CROATIA" was
+                 not recognisable as the way into the guide (2 November).
+                 It still opens on the category last left. -->
+            <span class="truncate">{{ 'fy.browseGuide' | t }}</span>
+          </button>
+        }
 
         @if (type() === "live" && recordings.available()) {
           <button hlmBtn type="button" (click)="openRecordings()" data-recordings-link>

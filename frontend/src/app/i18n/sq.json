@@ -677,6 +677,13 @@
     "notOpened": "Ky film nuk u hap"
   },
   "discover": {
+    "trending": "Në trend këtë javë",
+    "newReleases": "Të rejat",
+    "allCategories": "Të gjitha kategoritë",
+    "popularFilms": "Filma të njohur",
+    "popularShows": "Seriale të njohura",
+    "newFilms": "Filma të rinj",
+    "newShows": "Seriale të reja",
     "browseBy": "Shfleto sipas",
     "topRated": "Më të vlerësuarat",
     "topFilms": "Filmat më të vlerësuar",
@@ -861,8 +868,6 @@
     "liveChannel": "Kanal live",
     "actionsFor": "Veprime për {{name}}",
     "noGuideLower": "pa udhëzues",
-    "browseFilms": "Shfleto kategoritë e filmave",
-    "browseShows": "Shfleto kategoritë e serialeve",
     "timeline": "pamja e vijës kohore",
     "reindexing": "Po riindeksohet…",
     "onAirCount": "Në transmetim {{count}}",

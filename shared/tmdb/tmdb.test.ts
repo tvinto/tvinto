@@ -1,4 +1,4 @@
-import { TmdbError, TmdbFetch, ageRating, listGenre, tmdbClient, tmdbPoster } from './client';
+import { TmdbError, TmdbFetch, ageRating, listGenre, listRequest, tmdbClient, tmdbPoster } from './client';
 import { groupCopies, isVersionOf, plainTitle, versionsOf } from './popular';
 import { newsForRow, newsOrder, showNews } from './episodes';
 import { orderTrailers, trailersFrom, videoLanguages } from './trailers';
@@ -263,6 +263,18 @@ describe("a film's own page", () => {
     expect(await client.genreIds('movie', 238)).toEqual([18, 80]);
     expect(listGenre('genre-35-top')).toEqual({ genre: 35, top: true });
     expect(listGenre('top')).toBeNull();
+  });
+
+  it("asks for the most popular, and the year's releases out at home", () => {
+    const today = new Date('2026-11-14T12:00:00Z');
+    expect(listRequest('movie', 'popular', today)).toEqual({ path: '/movie/popular', params: {} });
+    expect(listRequest('tv', 'popular', today)).toEqual({ path: '/tv/popular', params: {} });
+    expect(listRequest('movie', 'new', today)).toEqual({
+      path: '/discover/movie',
+      params: { sort_by: 'popularity.desc', with_release_type: '4|5', 'release_date.gte': '2025-11-14', 'release_date.lte': '2026-11-14' }
+    });
+    expect(listRequest('tv', 'new', today).params).toMatchObject({ 'first_air_date.gte': '2025-11-14', 'first_air_date.lte': '2026-11-14' });
+    expect(listRequest('movie', 'trending', today).path).toBe('/trending/movie/week');
   });
 
   it("asks for a title's ratings alone, for the age lock", async () => {

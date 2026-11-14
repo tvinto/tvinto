@@ -659,6 +659,13 @@
     "notOpened": "This film could not be opened"
   },
   "discover": {
+    "trending": "Trending this week",
+    "newReleases": "New releases",
+    "allCategories": "All categories",
+    "popularFilms": "Popular films",
+    "popularShows": "Popular shows",
+    "newFilms": "New films",
+    "newShows": "New shows",
     "browseBy": "Browse by",
     "topRated": "Top rated",
     "topFilms": "Top rated films",
@@ -843,8 +850,6 @@
     "liveChannel": "Live channel",
     "actionsFor": "Actions for {{name}}",
     "noGuideLower": "no guide",
-    "browseFilms": "Browse film categories",
-    "browseShows": "Browse show categories",
     "timeline": "timeline view",
     "reindexing": "Reindexing…",
     "onAirCount": "On air {{count}}",

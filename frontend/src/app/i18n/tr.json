@@ -677,6 +677,13 @@
     "notOpened": "Bu film açılamadı"
   },
   "discover": {
+    "trending": "Bu hafta trend",
+    "newReleases": "Yeni çıkanlar",
+    "allCategories": "Tüm kategoriler",
+    "popularFilms": "Popüler filmler",
+    "popularShows": "Popüler diziler",
+    "newFilms": "Yeni filmler",
+    "newShows": "Yeni diziler",
     "browseBy": "Şuna göre göz at",
     "topRated": "En yüksek puanlılar",
     "topFilms": "En yüksek puanlı filmler",
@@ -861,8 +868,6 @@
     "liveChannel": "Canlı kanal",
     "actionsFor": "{{name}} için işlemler",
     "noGuideLower": "rehber yok",
-    "browseFilms": "Film kategorilerine göz at",
-    "browseShows": "Dizi kategorilerine göz at",
     "timeline": "zaman çizelgesi görünümü",
     "reindexing": "Yeniden dizinleniyor…",
     "onAirCount": "Yayında {{count}}",
