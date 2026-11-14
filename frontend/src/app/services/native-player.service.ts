@@ -432,9 +432,13 @@ export class NativePlayerService {
         stopListening = await this.listenForSwitching(run, channels);
         void run.bannerFor(run.current.itemId).then(banner => channels.updateBanner({ itemId: run.current.itemId, banner }), () => undefined);
       }
+      this.desktopVideo.presentation.set(request.presentation ?? null);
+      const kept = this.desktopVideo.kept();
       const result = await bridge.play({
         url: request.url,
-        title: request.title,
+        title: request.presentation ? [request.presentation.heading, request.presentation.title].filter(Boolean).join(' · ') : request.title,
+        volume: kept.volume,
+        muted: kept.muted,
         startAtSeconds: Math.max(0, Math.floor(request.startAtSeconds)),
         subtitleScale: chosen.subtitleScale,
         subtitleColour: chosen.subtitleColour,

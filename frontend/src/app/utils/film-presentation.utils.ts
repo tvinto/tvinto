@@ -1,4 +1,5 @@
 import { Skip } from '@shared/tmdb/introdb';
+import { plainTitle } from '@shared/tmdb/popular';
 import { posterTitle } from './series-display.utils';
 
 /**
@@ -167,10 +168,15 @@ const seasonOf = (episode: Numbered): number | null => {
   return Number.isFinite(season) && episode.season !== null && episode.season !== undefined && episode.season !== '' ? season : null;
 };
 
-/** A film, from the name the provider lists it under. */
+/**
+ * A film, from the name the provider lists it under, as its page names it
+ * (FilmService): "EN - X-Men: First Class 4K (2011) X-Men 05" is "X-Men:
+ * First Class", from 2011.
+ */
 export function filmPresentation(name: string, poster?: string | null): FilmPresentation {
   const { title, year } = posterTitle(name);
-  return { kind: 'film', title: title || name, meta: year || undefined, poster: poster || null };
+  const plain = plainTitle(title).replace(/\s{2,}/g, ' ');
+  return { kind: 'film', title: plain || title || name, meta: year || undefined, poster: poster || null };
 }
 
 /** An episode: its show, and its number and title. */
