@@ -775,7 +775,16 @@
     "guide": "Guia de TV · {{name}}",
     "guideUnnamed": "Guia de TV",
     "guideRead": "{{channels}} canais · {{size}} MB lidos",
-    "waiting": "À espera da sua vez"
+    "waiting": "À espera da sua vez",
+    "short": {
+      "guide": "Guia de TV · {{channels}} canais",
+      "sync": "Sincronizando"
+    },
+    "open": "Ver o que está carregando",
+    "many": {
+      "one": "Carregando {{count}} item",
+      "other": "Carregando {{count}} itens"
+    }
   },
   "fy": {
     "newInShows": "Novidades nas suas séries",

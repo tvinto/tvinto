@@ -771,7 +771,17 @@
     "guide": "TV vodič · {{name}}",
     "guideUnnamed": "TV vodič",
     "guideRead": "{{channels}} kanala · pročitano {{size}} MB",
-    "waiting": "Čeka na red"
+    "waiting": "Čeka na red",
+    "short": {
+      "guide": "TV vodič · {{channels}} kanala",
+      "sync": "Sinkronizacija"
+    },
+    "open": "Prikaži što se učitava",
+    "many": {
+      "one": "Učitava se {{count}} stavka",
+      "few": "Učitavaju se {{count}} stavke",
+      "other": "Učitava se {{count}} stavki"
+    }
   },
   "fy": {
     "guideComing": "Preuzimamo TV vodič",

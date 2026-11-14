@@ -815,7 +815,18 @@
     "guide": "Program TV · {{name}}",
     "guideUnnamed": "Program TV",
     "guideRead": "{{channels}} kanałów · odczytano {{size}} MB",
-    "waiting": "Czeka na swoją kolej"
+    "waiting": "Czeka na swoją kolej",
+    "short": {
+      "guide": "Program TV · {{channels}} kanałów",
+      "sync": "Synchronizacja"
+    },
+    "open": "Pokaż, co się wczytuje",
+    "many": {
+      "one": "Wczytuje się {{count}} rzecz",
+      "few": "Wczytują się {{count}} rzeczy",
+      "many": "Wczytuje się {{count}} rzeczy",
+      "other": "Wczytuje się {{count}} rzeczy"
+    }
   },
   "fy": {
     "newInShows": "Nowości w Twoich serialach",

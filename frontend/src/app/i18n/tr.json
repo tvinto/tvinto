@@ -775,7 +775,16 @@
     "guide": "TV rehberi · {{name}}",
     "guideUnnamed": "TV rehberi",
     "guideRead": "{{channels}} kanal · {{size}} MB okundu",
-    "waiting": "Sırasını bekliyor"
+    "waiting": "Sırasını bekliyor",
+    "short": {
+      "guide": "TV rehberi · {{channels}} kanal",
+      "sync": "Eşitleniyor"
+    },
+    "open": "Neyin yüklendiğini göster",
+    "many": {
+      "one": "{{count}} şey yükleniyor",
+      "other": "{{count}} şey yükleniyor"
+    }
   },
   "fy": {
     "newInShows": "Dizilerinizde yeni",

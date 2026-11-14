@@ -775,7 +775,16 @@
     "guide": "TV-Programm · {{name}}",
     "guideUnnamed": "TV-Programm",
     "guideRead": "{{channels}} Sender · {{size}} MB gelesen",
-    "waiting": "Wartet, bis es dran ist"
+    "waiting": "Wartet, bis es dran ist",
+    "short": {
+      "guide": "TV-Programm · {{channels}} Sender",
+      "sync": "Synchronisiert"
+    },
+    "open": "Zeigen, was lädt",
+    "many": {
+      "one": "{{count}} Sache lädt",
+      "other": "{{count}} Sachen laden"
+    }
   },
   "fy": {
     "newInShows": "Neu in deinen Serien",

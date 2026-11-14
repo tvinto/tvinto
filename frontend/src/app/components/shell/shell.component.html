@@ -78,6 +78,12 @@
           (keydown.escape)="onTopSearchEscape($event)"
         />
       </div>
+      <!-- What is loading: a pill in the bar's own room, gone when nothing
+           is, its panel only when clicked (14 November; a strip of its own
+           before, which pushed every page down). Only the ring on a phone. -->
+      @if (!tv.isTelevision()) {
+        <app-activity />
+      }
       <!--
         No badge on it. A guide this account uses and this device has not got
         is worth saying on the Guides page, where the sentence and the button
@@ -376,12 +382,12 @@
 
     <!-- Scrolls itself, for the pages that do not (a show, Guides): otherwise
          they ran on under the phone's tab bar, drawn over it. -->
-    <div class="flex min-h-0 min-w-0 flex-1 flex-col">
-      <!-- What is loading, at the top right of every page, in a strip of its
-           own: it moves the page down while it is there rather than lying over
-           a control (13 November: over For You's side column it covered
-           "Browse the guide"). Below the bar, above the tab bar, never focusable. -->
-      <app-activity />
+    <div class="relative flex min-h-0 min-w-0 flex-1 flex-col">
+      <!-- A television has no bar, so the loading pill sits in the page's top
+           right corner instead: only the pill, never focusable. -->
+      @if (tv.isTelevision()) {
+        <app-activity class="activity-corner" />
+      }
       <main class="min-h-0 min-w-0 flex-1 overflow-y-auto">
         <router-outlet />
       </main>
