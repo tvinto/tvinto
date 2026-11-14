@@ -10,9 +10,8 @@
   libmpv the first time, at a fixed version, and checks their hashes
   (`npm run fetch:mpv`). It also builds `tvinto-player.exe`, the player that
   draws into the app's window, with Zig, which it downloads into
-  `%LOCALAPPDATA%\tvinto-build` the same way (`npm run build:player`). The
-  mpv build is shinchiro's, which keeps only about a month of releases: move
-  the pin in `scripts/fetch-mpv.js` forward when the download answers 404.
+  `%LOCALAPPDATA%\tvinto-build` the same way (`npm run build:player`). Where
+  mpv comes from is under [mpv](#mpv) below.
 
 ## First time
 
@@ -85,6 +84,37 @@ npm run publish:cli                           # build, test, npm publish --dry-r
 
 `electron:make` builds it too (`npm run build:cli`) and packages it into the
 installer's `resources/cli`, where the app runs it with its own executable.
+
+### mpv
+
+The desktop app plays video with mpv: `mpv.exe`, and `libmpv-2.dll` for
+`tvinto-player.exe`. `npm run fetch:mpv` takes them from shinchiro's Windows
+builds (github.com/shinchiro/mpv-winbuild-cmake), the ones mpv.io points to.
+shinchiro keeps only about thirty days of builds, so the script downloads a
+copy from this repository's release `deps-mpv-<build>` and falls back to
+shinchiro's only when that copy is missing, saying so.
+
+The release holds the two archives exactly as shinchiro published them, under
+the same names. `scripts/fetch-mpv.js` checks each one's SHA-256, and the file
+it takes out of each, before using it:
+
+| Release `deps-mpv-20261111` | SHA-256 |
+|---|---|
+| `mpv-x86_64-20261111-git-bcde6b93cc.7z` (34.2 MB, gives `mpv.exe`) | `f259b5fd4b5c395617c948a4fadcdf55bba1c5282fb7c13e88626b3f71072baf` |
+| `mpv-dev-x86_64-20261111-git-bcde6b93cc.7z` (31.8 MB, gives `libmpv-2.dll`) | `273c079b11ea5575822f972756f4c9a71149a5c10130353abeb8586738938452` |
+
+They are built from mpv commit
+[`bcde6b93cc`](https://github.com/mpv-player/mpv/tree/bcde6b93cca4d128d84e1a60d1a6db2cd81c889e)
+(38 commits after
+[v0.42.0](https://github.com/mpv-player/mpv/tree/v0.42.0)), with the FFmpeg
+and other libraries shinchiro's build scripts name. mpv is GPL (version 2 or
+later; some of the libraries in these builds may raise it to version 3), so anyone given the installer is entitled
+to their source: the mpv commit above and shinchiro's scripts at that build.
+
+To move to a newer build: change `RELEASE` and the four hashes in
+`scripts/fetch-mpv.js`, download both archives from shinchiro's release of that
+date, check their hashes, and attach them unchanged to a new release
+`deps-mpv-<date>` here, then update the table above.
 
 After changing `worker/`, rebuild the copy used by the Deploy button with
 `node worker/scripts/build-server.mjs`. CI checks that it's up to date. If you

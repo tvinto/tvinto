@@ -42,12 +42,28 @@ const { join, resolve } = require('path');
  * repeated -- and because the hashes below would then be wrong every day.
  *
  * shinchiro keeps only about thirty days of releases. The previous pin,
- * 20260903, was deleted by 13 November and this script answered 404, so a pin
- * here goes stale within a month: move it forward (both hashes) before an
- * `electron:make`, or keep a copy of the archive somewhere of the project's own.
+ * 20260903, was deleted by 13 November and this script answered 404. So the
+ * archives are fetched from a release of the project's own, `deps-mpv-<pin>`,
+ * holding the same two archives unchanged (same names, same hashes), and
+ * shinchiro's address is only the fallback for a pin whose copy has not been
+ * uploaded yet. docs/building.md says what goes on that release.
+ *
+ * TVINTO_MPV_MIRROR replaces the project's address, for testing this script
+ * against a folder served on localhost.
  */
 const RELEASE = '20261111';
-const BASE = `https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/${RELEASE}`;
+const SOURCES = [
+  {
+    name: `the project's release deps-mpv-${RELEASE}`,
+    base:
+      process.env.TVINTO_MPV_MIRROR ??
+      `https://github.com/tvinto/tvinto/releases/download/deps-mpv-${RELEASE}`
+  },
+  {
+    name: `shinchiro's release ${RELEASE}`,
+    base: `https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/${RELEASE}`
+  }
+];
 
 const APP = resolve(__dirname, '..');
 
@@ -90,6 +106,36 @@ const die = message => {
   process.exit(1);
 };
 
+/**
+ * The archive from the project's release, or from shinchiro's when the
+ * project's has no such file. Only a missing file moves on to the next
+ * address: anything else is a fault to look at, not to route around, and
+ * whichever answers, the hash check below is the same.
+ */
+const download = async name => {
+  for (const [index, source] of SOURCES.entries()) {
+    console.log(`
+  Fetching ${name}
+  from ${source.name}`);
+    const response = await fetch(`${source.base}/${name}`);
+    if (response.ok) {
+      return response;
+    }
+    if (response.status !== 404) {
+      die(`${source.name} answered ${response.status}.`);
+    }
+    if (index + 1 < SOURCES.length) {
+      console.warn(`
+  Not there (404). The archives for mpv ${RELEASE} have not been uploaded to
+  the project's release yet -- see "mpv" in docs/building.md. Falling back to
+  shinchiro's, which keeps a build for only about thirty days.`);
+    }
+  }
+  die(`${name} is on none of them (404). shinchiro has probably deleted build
+  ${RELEASE}: upload it to the project's release deps-mpv-${RELEASE} from a copy,
+  or move RELEASE and its hashes forward.`);
+};
+
 const fetchPiece = async ({ archive: name, archiveSha256, file, fileSha256 }) => {
   const target = join(APP, 'resources', 'mpv', file);
   if (existsSync(target) && sha256(target) === fileSha256) {
@@ -98,13 +144,7 @@ const fetchPiece = async ({ archive: name, archiveSha256, file, fileSha256 }) =>
     return;
   }
 
-  console.log(`
-  Fetching ${name}`);
-
-  const response = await fetch(`${BASE}/${name}`);
-  if (!response.ok) {
-    die(`The download answered ${response.status}.`);
-  }
+  const response = await download(name);
 
   const scratch = mkdtempSync(join(tmpdir(), 'xtream-mpv-'));
   const archive = join(scratch, name);
@@ -124,7 +164,7 @@ const fetchPiece = async ({ archive: name, archiveSha256, file, fileSha256 }) =>
 
     // Windows' own tar is libarchive, which reads 7z. Named explicitly because
     // in a Git Bash shell `tar` is GNU tar, which does not.
-    const bsdtar = join(process.env.SystemRoot ?? 'C:\Windows', 'System32', 'tar.exe');
+    const bsdtar = join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe');
 
     const unpacked = spawnSync(bsdtar, ['-xf', archive, '-C', scratch, file], {
       stdio: 'inherit'
