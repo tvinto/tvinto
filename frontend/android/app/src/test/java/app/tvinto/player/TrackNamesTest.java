@@ -8,6 +8,11 @@ import org.junit.Test;
 
 public class TrackNamesTest {
 
+    @org.junit.After
+    public void backToEnglish() {
+        Texts.use(null);
+    }
+
     // As X-Men's subtitle tracks are named, on the provider, 24 September.
     @Test
     public void dropsTheReleaseGroupsAdvertising() {
@@ -54,10 +59,56 @@ public class TrackNamesTest {
 
     @Test
     public void readsVlcsNames() {
-        assertEquals("English · Surround", TrackNames.fromVlc("Surround - [English]", 1));
-        assertEquals("English", TrackNames.fromVlc("Track 1 - [English]", 1));
-        assertEquals("Hrvatski", TrackNames.fromVlc("Hrvatski - [Croatian]", 2));
-        assertEquals("Track 3", TrackNames.fromVlc("", 3));
+        assertEquals("English · Surround", TrackNames.fromVlc("Surround - [English]"));
+        assertEquals("English", TrackNames.fromVlc("Track 1 - [English]"));
+        assertEquals("Hrvatski", TrackNames.fromVlc("Hrvatski - [Croatian]"));
+        assertEquals("", TrackNames.fromVlc(""));
+    }
+
+    @Test
+    public void readsVlcsCodesAndItsNoLanguage() {
+        assertEquals("Spanish", TrackNames.fromVlc("Track 2 - [spa]"));
+        assertEquals("Composer's Isolated Score", TrackNames.fromVlc("Composer's Isolated Score - [zxx]"));
+        assertEquals("", TrackNames.fromVlc("Track 3 - [und]"));
+    }
+
+    // As the desktop does (desktop-video.service.ts, 14 November).
+    @Test
+    public void namesNoLanguageForTheSpecialCodes() {
+        for (String code : new String[] { "zxx", "und", "mul", "mis", "ZXX", "", null }) {
+            assertEquals("", TrackNames.languageName(code));
+        }
+        assertEquals("Composer's Isolated Score", TrackNames.withLanguage(TrackNames.languageName("zxx"), "Composer's Isolated Score"));
+    }
+
+    @Test
+    public void namesTheLanguageInTheAppsLanguage() {
+        assertEquals("Spanish", TrackNames.languageName("spa"));
+        assertEquals("Spanish", TrackNames.languageName("es"));
+        Texts.use("hr");
+        assertEquals("Španjolski", TrackNames.languageName("es"));
+    }
+
+    @Test
+    public void keepsATitleThatSaysWhichOne() {
+        assertEquals("Spanish · Latin American", TrackNames.withLanguage("Spanish", "Latin American"));
+        assertEquals("Spanish · Castilian", TrackNames.withLanguage("Spanish", "Castilian"));
+        assertEquals("Chinese · Simplified", TrackNames.withLanguage("Chinese", "Simplified"));
+        assertEquals("English · Commentary", TrackNames.withLanguage("English", "Commentary"));
+    }
+
+    @Test
+    public void numbersRepeatsAndTracksThatSayNothing() {
+        assertEquals(
+            java.util.Arrays.asList("Spanish", "Spanish · Latin American", "Spanish 2", "English", "Subtitles 5", "Spanish 3"),
+            TrackNames.toldApart(java.util.Arrays.asList("Spanish", "Spanish · Latin American", "Spanish", "English", "", "Spanish"), "track.subtitlesNumber"));
+        assertEquals(java.util.Arrays.asList("Audio 1", "Audio 2"), TrackNames.toldApart(java.util.Arrays.asList("", null), "track.audioNumber"));
+    }
+
+    @Test
+    public void numbersInTheAppsLanguage() {
+        Texts.use("hr");
+        assertEquals(java.util.Arrays.asList("Titlovi 1"), TrackNames.toldApart(java.util.Arrays.asList(""), "track.subtitlesNumber"));
     }
 
     // Supernatural's two subtitle tracks are both "Full": the language decides.

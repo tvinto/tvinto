@@ -1606,8 +1606,7 @@
     },
     "track": {
       "off": "Исклучено",
-      "number": "Запис {0}",
-      "subtitles": "Титлови",
+      "audioNumber": "Звук {0}",
       "subtitlesNumber": "Титлови {0}",
       "inUse": "во употреба"
     },

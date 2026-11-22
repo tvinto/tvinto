@@ -1606,8 +1606,7 @@
     },
     "track": {
       "off": "Fikur",
-      "number": "Gjurma {0}",
-      "subtitles": "Titrat",
+      "audioNumber": "Audio {0}",
       "subtitlesNumber": "Titrat {0}",
       "inUse": "në përdorim"
     },

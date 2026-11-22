@@ -1680,8 +1680,7 @@
     },
     "track": {
       "off": "Wył.",
-      "number": "Ścieżka {0}",
-      "subtitles": "Napisy",
+      "audioNumber": "Dźwięk {0}",
       "subtitlesNumber": "Napisy {0}",
       "inUse": "w użyciu"
     },

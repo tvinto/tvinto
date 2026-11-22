@@ -1680,8 +1680,7 @@
     },
     "track": {
       "off": "Выкл.",
-      "number": "Дорожка {0}",
-      "subtitles": "Субтитры",
+      "audioNumber": "Звук {0}",
       "subtitlesNumber": "Субтитры {0}",
       "inUse": "используется"
     },

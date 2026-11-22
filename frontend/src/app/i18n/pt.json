@@ -1606,8 +1606,7 @@
     },
     "track": {
       "off": "Desligado",
-      "number": "Faixa {0}",
-      "subtitles": "Legendas",
+      "audioNumber": "Áudio {0}",
       "subtitlesNumber": "Legendas {0}",
       "inUse": "em uso"
     },

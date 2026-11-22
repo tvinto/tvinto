@@ -111,8 +111,7 @@ final class Texts {
         word("sleep.keepWatching", "Keep watching", "Nastavi gledati");
         word("sleep.stopNow", "Stop now", "Zaustavi odmah");
         word("track.off", "Off", "Isključeno");
-        word("track.number", "Track {0}", "Zapis {0}");
-        word("track.subtitles", "Subtitles", "Titlovi");
+        word("track.audioNumber", "Audio {0}", "Zvuk {0}");
         word("track.subtitlesNumber", "Subtitles {0}", "Titlovi {0}");
         word("track.inUse", "in use", "u upotrebi");
         word("seek.minSteps", "{0} min steps", "koraci od {0} min");
@@ -164,6 +163,11 @@ final class Texts {
         croatian = "hr".equals(language);
         Texts.language = language == null || language.isEmpty() ? "en" : language;
         given = words == null ? new HashMap<>() : new HashMap<>(words);
+    }
+
+    /** The app's language, "en" when it said none: what track languages are named in (TrackNames). */
+    static String language() {
+        return language;
     }
 
     static boolean isCroatian() {

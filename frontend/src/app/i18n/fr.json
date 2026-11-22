@@ -1606,8 +1606,7 @@
     },
     "track": {
       "off": "Désactivé",
-      "number": "Piste {0}",
-      "subtitles": "Sous-titres",
+      "audioNumber": "Audio {0}",
       "subtitlesNumber": "Sous-titres {0}",
       "inUse": "utilisée"
     },

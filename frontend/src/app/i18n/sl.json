@@ -1680,8 +1680,7 @@
     },
     "track": {
       "off": "Izklopljeno",
-      "number": "Sled {0}",
-      "subtitles": "Podnapisi",
+      "audioNumber": "Zvok {0}",
       "subtitlesNumber": "Podnapisi {0}",
       "inUse": "v uporabi"
     },

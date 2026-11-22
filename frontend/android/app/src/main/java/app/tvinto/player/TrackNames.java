@@ -49,14 +49,46 @@ final class TrackNames {
     }
 
     /**
+     * Language codes that name no language a person would choose by: "no
+     * linguistic content" (a music-only track), undetermined, several, and
+     * uncoded. Spelt out they are noise beside a track's own name, so they
+     * read as no language at all -- as on the desktop (desktop-video.service.ts).
+     */
+    private static final java.util.Set<String> NO_LANGUAGE = new java.util.HashSet<>(java.util.Arrays.asList("zxx", "und", "mul", "mis"));
+
+    /** Whether a language code says no language: empty, or one of NO_LANGUAGE. */
+    static boolean saysNoLanguage(String code) {
+        return code == null || code.trim().isEmpty() || NO_LANGUAGE.contains(code.trim().toLowerCase(java.util.Locale.ROOT));
+    }
+
+    /**
+     * The language a track is in, in the app's language (Texts): "Spanish",
+     * "Španjolski". '' when the code says none. The desktop names it the same
+     * way, so the two players read alike.
+     */
+    static String languageName(String code) {
+        if (saysNoLanguage(code)) {
+            return "";
+        }
+        String lang = code.trim();
+        java.util.Locale in = java.util.Locale.forLanguageTag(Texts.language());
+        String named = java.util.Locale.forLanguageTag(lang).getDisplayLanguage(in);
+        if (named.isEmpty() || named.equalsIgnoreCase(lang)) {
+            return lang;
+        }
+        return named.substring(0, 1).toUpperCase(in) + named.substring(1);
+    }
+
+    /**
      * A track's language first, then its own name when that says something
-     * more: "English · Surround", "English · Full".
+     * more: "English · Surround", "Spanish · Latin American".
      *
      * The own name alone was what the rail showed, and a provider's episodes
      * name their tracks by what they are rather than what language they are
      * in -- "Stereo" and "Surround", "Full" twice -- where TiviMate showed
      * English and English (26 September). A name that already is a
-     * language, or says the language, is left as it is.
+     * language, or says the language, is left as it is. `language` is a name
+     * ("English"), not a code: languageName makes one.
      */
     static String withLanguage(String language, String ownName) {
         String name = clean(ownName);
@@ -71,6 +103,27 @@ final class TrackNames {
             return name;
         }
         return lang + " · " + name;
+    }
+
+    /**
+     * Every track's label, with the ones that would read the same told apart by
+     * number, as the desktop does: two Spanish tracks the file says nothing
+     * more about are "Spanish" and "Spanish 2". One that says nothing about
+     * itself at all ('') is the list's own word and its place in it, from
+     * `unnamedKey` ("track.audioNumber"): "Audio 3", "Subtitles 11".
+     */
+    static java.util.List<String> toldApart(java.util.List<String> labels, String unnamedKey) {
+        java.util.List<String> out = new java.util.ArrayList<>(labels.size());
+        java.util.Map<String, Integer> seen = new java.util.HashMap<>();
+        for (int at = 0; at < labels.size(); at++) {
+            String label = labels.get(at) == null ? "" : labels.get(at).trim();
+            if (label.isEmpty()) {
+                label = Texts.t(unnamedKey, at + 1);
+            }
+            int count = seen.merge(label, 1, Integer::sum);
+            out.add(count == 1 ? label : label + " " + count);
+        }
+        return out;
     }
 
     private static java.util.Set<String> languageNames;
@@ -110,24 +163,34 @@ final class TrackNames {
 
     /**
      * VLC names tracks "Track 1 - [English]" or "Hrvatski - [Croatian]". The
-     * useful part is the name before the brackets, or the bracketed language
-     * when the name is only a number.
+     * useful part is the name before the brackets, with the bracketed
+     * language in front when the name says more. '' when VLC says nothing
+     * but a number: toldApart names those.
      */
-    static String fromVlc(String name, int number) {
+    static String fromVlc(String name) {
         if (name == null || name.trim().isEmpty()) {
-            return Texts.t("track.number", number);
+            return "";
         }
         String plain = name.trim();
-        String bracketed = null;
+        String bracketed = "";
         Matcher inBrackets = Pattern.compile("\\[([^\\]]+)\\]").matcher(plain);
         if (inBrackets.find()) {
-            bracketed = inBrackets.group(1).trim();
+            bracketed = vlcLanguage(inBrackets.group(1).trim());
         }
         String before = plain.replaceAll("\\s*-?\\s*\\[[^\\]]*\\]", "").trim();
         if (before.isEmpty() || VLC_NUMBERED.matcher(before).matches()) {
-            return bracketed != null && !bracketed.isEmpty() ? clean(bracketed) : Texts.t("track.number", number);
+            return clean(bracketed);
         }
         return withLanguage(bracketed, before);
+    }
+
+    /** VLC's bracketed language: a name it knew ("English"), or the file's code when it did not ("zxx", "spa"). */
+    private static String vlcLanguage(String bracketed) {
+        if (saysNoLanguage(bracketed) || bracketed.equalsIgnoreCase("No linguistic content")
+            || bracketed.equalsIgnoreCase("Undetermined") || bracketed.equalsIgnoreCase("Multiple languages")) {
+            return "";
+        }
+        return bracketed.matches("[A-Za-z]{2,3}") ? languageName(bracketed) : bracketed;
     }
 
     /**

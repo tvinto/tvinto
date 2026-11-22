@@ -1208,6 +1208,9 @@ public class PlayerActivity extends Activity implements SleepTimerPanel.Owner {
             return out;
         }
         int kind = type == C.TRACK_TYPE_AUDIO ? FilmPlayback.Track.AUDIO : FilmPlayback.Track.SUBTITLES;
+        java.util.List<String> labels = new java.util.ArrayList<>();
+        java.util.List<Boolean> selected = new java.util.ArrayList<>();
+        java.util.List<androidx.media3.common.TrackSelectionOverride> overrides = new java.util.ArrayList<>();
         boolean anySelected = false;
         for (Tracks.Group group : player.getCurrentTracks().getGroups()) {
             if (group.getType() != type) {
@@ -1217,15 +1220,16 @@ public class PlayerActivity extends Activity implements SleepTimerPanel.Owner {
                 if (!group.isTrackSupported(i)) {
                     continue;
                 }
-                boolean selected = group.isTrackSelected(i);
-                anySelected |= selected;
-                out.add(new FilmPlayback.Track(
-                    kind,
-                    trackLabel(group.getTrackFormat(i), type, out.size() + 1),
-                    selected,
-                    new androidx.media3.common.TrackSelectionOverride(group.getMediaTrackGroup(), i)
-                ));
+                boolean on = group.isTrackSelected(i);
+                anySelected |= on;
+                labels.add(trackLabel(group.getTrackFormat(i), type));
+                selected.add(on);
+                overrides.add(new androidx.media3.common.TrackSelectionOverride(group.getMediaTrackGroup(), i));
             }
+        }
+        java.util.List<String> named = TrackNames.toldApart(labels, type == C.TRACK_TYPE_TEXT ? "track.subtitlesNumber" : "track.audioNumber");
+        for (int at = 0; at < named.size(); at++) {
+            out.add(new FilmPlayback.Track(kind, named.get(at), selected.get(at), overrides.get(at)));
         }
         if (type == C.TRACK_TYPE_TEXT && !out.isEmpty()) {
             out.add(0, new FilmPlayback.Track(kind, Texts.t("track.off"), !anySelected, null));
@@ -1234,44 +1238,32 @@ public class PlayerActivity extends Activity implements SleepTimerPanel.Owner {
     }
 
     /**
-     * What to call a track: its language in that language -- "Hrvatski",
-     * "English" -- then its own name when that adds something ("English ·
-     * Surround"), with the channel layout for audio and the kind of subtitle
-     * when the stream says and the file does not.
+     * What to call a track: its language in the app's language, then its
+     * own name when that adds something ("Spanish · Latin American"), with
+     * the channel layout for audio and the kind of subtitle when the stream
+     * says and the file does not. '' when nothing says anything: tracksOf
+     * numbers those ("Subtitles 11"), as it numbers repeats ("Spanish 2").
      */
-    static String trackLabel(androidx.media3.common.Format format, int type, int number) {
+    static String trackLabel(androidx.media3.common.Format format, int type) {
         String own = format.label == null ? "" : format.label;
-        String languageName = "";
-        String language = format.language == null ? "" : format.language.trim();
-        if (!language.isEmpty() && !"und".equals(language)) {
-            java.util.Locale locale = java.util.Locale.forLanguageTag(language);
-            String named = locale.getDisplayLanguage(locale);
-            languageName = named.isEmpty() ? language : named.substring(0, 1).toUpperCase(locale) + named.substring(1);
-        }
-        String label = TrackNames.withLanguage(languageName, own);
+        String label = TrackNames.withLanguage(TrackNames.languageName(format.language), own);
         if (TrackNames.clean(own).isEmpty()) {
-            if (label.isEmpty()) {
-                // Subtitles that say nothing about themselves are still
-                // subtitles: "Track 1" under Subtitles said less than that
-                // (a user's Top Gear, 31 October).
-                label = type == C.TRACK_TYPE_TEXT
-                    ? (number == 1 ? Texts.t("track.subtitles") : Texts.t("track.subtitlesNumber", number))
-                    : Texts.t("track.number", number);
-            }
+            String extra = "";
             if (type == C.TRACK_TYPE_AUDIO) {
                 if (format.channelCount == 6) {
-                    label += " 5.1";
+                    extra = "5.1";
                 } else if (format.channelCount == 8) {
-                    label += " 7.1";
+                    extra = "7.1";
                 }
             } else {
                 if ((format.roleFlags & C.ROLE_FLAG_DESCRIBES_MUSIC_AND_SOUND) != 0) {
-                    label += " (SDH)";
+                    extra = "(SDH)";
                 }
                 if ((format.selectionFlags & C.SELECTION_FLAG_FORCED) != 0) {
-                    label += " (forced)";
+                    extra = (extra + " (forced)").trim();
                 }
             }
+            label = (label + " " + extra).trim();
         }
         return label;
     }

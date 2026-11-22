@@ -18,7 +18,7 @@ public class TextsTest {
         // An older app sends no language: the player is as it was.
         Texts.use(null);
         assertEquals("Next episode", Texts.t("film.nextEpisode"));
-        assertEquals("Track 3", Texts.t("track.number", 3));
+        assertEquals("Audio 3", Texts.t("track.audioNumber", 3));
     }
 
     @Test
