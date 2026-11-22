@@ -12,6 +12,7 @@ import { LiveRecovery } from './liveRecovery';
 import { playbackLog, redactUrl, setPlaybackLogFolder } from './playbackLog';
 import { VideoFrames } from './videoFrames';
 import { VideoState } from './videoState';
+import { PipeOpening, playerPipeName } from './playerPipe';
 
 /**
  * Playback on the desktop, by mpv rather than by Chromium.
@@ -44,9 +45,6 @@ import { VideoState } from './videoState';
  * answers by using the in-page one instead.
  */
 export const MPV_MISSING = 'mpv-missing';
-
-/** How mpv is asked for things and answers. Windows names pipes like this. */
-const PIPE_NAME = '\\\\.\\pipe\\xtream-mpv';
 
 /** How often a film's position is told to the page while it plays. */
 const PROGRESS_EVERY_MS = 30_000;
@@ -485,12 +483,14 @@ function overlayGeometry(window: BrowserWindow | null): { geometry: string; scre
 function argumentsFor(
   request: PlayRequest,
   mpv: string,
-  inside: { geometry: string; screen: number } | null
+  inside: { geometry: string; screen: number } | null,
+  pipe: string
 ): string[] {
   const args = [
     // A provider's title is shown, never expanded: mpv reads `${...}` in it.
     `--title=${(request.title || 'Tvinto').replace(/\$/g, '$$$$')}`,
-    `--input-ipc-server=${PIPE_NAME}`,
+    // This player's own pipe, never one shared with other copies (playerPipe.ts).
+    `--input-ipc-server=${pipe}`,
     '--no-terminal',
     // Ask mpv to report where it is, so the pipe reader has something to read.
     '--force-window=immediate'
@@ -661,6 +661,9 @@ class PositionWatcher {
    */
   private applied = false;
 
+  /** This player's pipe (playerPipe.ts), the only one this watcher connects to. */
+  readonly pipe = playerPipeName();
+
   constructor(private readonly wanted: PlayRequest) {}
 
   /** mpv's own events -- client messages from key bindings, a file starting or failing. */
@@ -753,20 +756,23 @@ class PositionWatcher {
     // connecting made two, and every event of mpv's was handled twice: a
     // dropped channel used up its three reopens in fifty milliseconds.
     let connecting: Socket | null = null;
+    const opening = new PipeOpening(this.pipe, playbackLog);
     const attempt = () => {
       if (this.socket || connecting) {
         return;
       }
 
-      const socket = connect(PIPE_NAME);
+      const socket = connect(this.pipe);
       connecting = socket;
 
       socket.on('connect', () => {
         connecting = null;
         this.socket = socket;
+        opening.opened();
         this.pause?.connected();
       });
-      socket.on('error', () => {
+      socket.on('error', error => {
+        opening.failed((error as NodeJS.ErrnoException).code ?? error.message);
         socket.destroy();
       });
       socket.on('data', chunk => this.read(chunk.toString()));
@@ -1555,7 +1561,7 @@ export function registerNativePlayer(): void {
               // it is a file to play, and these two once were.
               '--osd-level=0',
               '--osc=no',
-              ...argumentsFor(request, helper, null)
+              ...argumentsFor(request, helper, null, watcher.pipe)
             ],
             { windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'] }
           );
@@ -1568,7 +1574,7 @@ export function registerNativePlayer(): void {
           // falls back to software where the GPU cannot. tvinto-player sets
           // the same itself (native/tvinto-player.cpp).
           // Before the rest, which ends with `--` and the address.
-          child = spawn(mpv, ['--hwdec=auto-safe', ...argumentsFor(request, mpv, inside)], {
+          child = spawn(mpv, ['--hwdec=auto-safe', ...argumentsFor(request, mpv, inside, watcher.pipe)], {
             windowsHide: false
           });
         }
