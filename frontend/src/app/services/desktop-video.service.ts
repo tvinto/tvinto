@@ -72,8 +72,11 @@ export function trackLabel(track: MpvTrack, language: string): string {
   if (!named) {
     return title;
   }
-  const lower = title.toLowerCase();
-  return lower.includes(named.toLowerCase()) || lower.includes(track.lang.trim().toLowerCase()) ? title : `${named} · ${title}`;
+  // The code counts only as a word of its own ("ENG SDH"): "en" is inside
+  // "Commentary", and an English commentary track lost its language.
+  const code = track.lang.trim().toLowerCase().replace(/[^a-z-]/g, '');
+  const saysCode = code !== '' && new RegExp(`(^|[^a-z])${code}([^a-z]|$)`, 'i').test(title);
+  return title.toLowerCase().includes(named.toLowerCase()) || saysCode ? title : `${named} · ${title}`;
 }
 
 /**

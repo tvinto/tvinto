@@ -16,6 +16,11 @@ describe('what the desktop player calls a track', () => {
     expect(trackLabel(track(1, 'eng'), 'en')).toBe('English');
   });
 
+  it('keeps the language when its code is only part of a word in the title', () => {
+    expect(trackLabel(track(8, 'en', 'Commentary'), 'en')).toBe('English · Commentary');
+    expect(trackLabel(track(9, 'eng', 'ENG SDH'), 'en')).toBe('ENG SDH');
+  });
+
   it('numbers the ones that would otherwise read the same', () => {
     const labels = trackLabels([track(1, 'spa', 'Castilian'), track(2, 'spa', 'Latin American'), track(3, 'chi', 'Simplified'), track(4, 'chi'), track(5, 'spa'), track(6, 'spa'), track(7, 'und')], 'en', 'Subtitles');
 
