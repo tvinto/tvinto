@@ -30,6 +30,9 @@ export interface VideoStateMessage {
   osd: string | null;
   badge: { line: string; hint: string } | null;
   skip: string | null;
+  /** mpv's own answer, 0 to 100, and whether it is muted. */
+  volume: number;
+  muted: boolean;
 }
 
 /** One row of mpv's track-list, as far as this needs. */
@@ -65,7 +68,9 @@ export class VideoState {
       subtitles: [],
       osd: null,
       badge: null,
-      skip: null
+      skip: null,
+      volume: 100,
+      muted: false
     };
     this.ticker = setInterval(() => this.send(), everyMs);
     this.send();
@@ -113,6 +118,21 @@ export class VideoState {
   paused(paused: boolean): void {
     if (paused !== this.state.paused) {
       this.state.paused = paused;
+      this.send();
+    }
+  }
+
+  volume(volume: number): void {
+    const rounded = Math.round(Math.max(0, volume));
+    if (rounded !== this.state.volume) {
+      this.state.volume = rounded;
+      this.send();
+    }
+  }
+
+  muted(muted: boolean): void {
+    if (muted !== this.state.muted) {
+      this.state.muted = muted;
       this.send();
     }
   }

@@ -59,6 +59,12 @@ describe('what the player says about a film', () => {
     expect(said.poster).toBe('http://images.example/dune.jpg');
   });
 
+  it('names a film as its page does: no prefix, no copy words, nothing after the year', () => {
+    expect(filmPresentation('EN - X-Men: First Class 4K (2011) X-Men 05').title).toBe('X-Men: First Class');
+    expect(filmPresentation('EN - Spare Copy 1080p (2020)').title).toBe('Spare Copy');
+    expect(filmPresentation('[4K] Dune (2021)').title).toBe('Dune');
+  });
+
   it('keeps a name with no year whole, and says nothing about a year', () => {
     const said = filmPresentation('The Last House 4K');
 

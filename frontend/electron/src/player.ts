@@ -131,6 +131,14 @@ export interface PlayRequest {
    * can. Absent from an older page.
    */
   engine?: string;
+  /** 0 to 100, kept by the page between films. Absent from an older page. */
+  volume?: number;
+  muted?: boolean;
+}
+
+/** mpv's volume, 0 to 100: louder than the source distorts, and mpv's own ceiling is 130. */
+function clampVolume(volume: number): number {
+  return Math.round(Math.max(0, Math.min(100, volume)));
 }
 
 /** What the page's own player controls ask for (videoState.ts, preload's `video`). */
@@ -139,7 +147,9 @@ type VideoCommand =
   | { kind: 'seek'; seconds: number; mode: 'relative' | 'absolute' }
   | { kind: 'audio'; id: number }
   | { kind: 'subtitle'; id: number | null }
-  | { kind: 'pause'; paused: boolean };
+  | { kind: 'pause'; paused: boolean }
+  | { kind: 'volume'; volume: number }
+  | { kind: 'mute'; muted: boolean };
 
 /** What the page tells a player that switches inside itself. */
 type PlayerCommand =
@@ -486,6 +496,14 @@ function argumentsFor(
     '--force-window=immediate'
   ];
 
+  // The page keeps the volume between films (the player's volume control).
+  if (typeof request.volume === 'number' && Number.isFinite(request.volume)) {
+    args.push(`--volume=${clampVolume(request.volume)}`);
+  }
+  if (request.muted === true) {
+    args.push('--mute=yes');
+  }
+
   if (!app.isPackaged && process.env['XTREAM_HEADLESS'] === '1') {
     // Checked from a script while the owner uses the machine: not a sound,
     // and a window that never takes the keyboard from what they are doing.
@@ -785,6 +803,8 @@ class PositionWatcher {
         this.ask('track-list');
         this.ask('pause');
         this.ask('paused-for-cache');
+        this.ask('volume');
+        this.ask('mute');
       }
       if (this.pause) {
         this.ask('demuxer-cache-state');
@@ -819,7 +839,9 @@ class PositionWatcher {
     'osd-width': 12,
     'osd-height': 13,
     pause: 14,
-    'paused-for-cache': 15
+    'paused-for-cache': 15,
+    volume: 16,
+    mute: 17
   };
 
   /**
@@ -995,6 +1017,10 @@ class PositionWatcher {
           this.inPage?.paused(message.data);
         } else if (message.request_id === 15 && typeof message.data === 'boolean') {
           this.inPage?.buffering(message.data);
+        } else if (message.request_id === 16 && typeof message.data === 'number') {
+          this.inPage?.volume(message.data);
+        } else if (message.request_id === 17 && typeof message.data === 'boolean') {
+          this.inPage?.muted(message.data);
         } else if (message.request_id === 13 && typeof message.data === 'number') {
           this.osdSize = this.osdWidth > 0 && message.data > 0 ? { width: this.osdWidth, height: message.data } : this.osdSize;
         } else if (message.request_id === 10 && Array.isArray(message.data)) {
@@ -1456,6 +1482,14 @@ export function registerNativePlayer(): void {
         return;
       case 'pause':
         watcher.send(['set_property', 'pause', command.paused === true]);
+        return;
+      case 'volume':
+        if (Number.isFinite(command.volume)) {
+          watcher.send(['set_property', 'volume', clampVolume(command.volume)]);
+        }
+        return;
+      case 'mute':
+        watcher.send(['set_property', 'mute', command.muted === true]);
         return;
     }
   });

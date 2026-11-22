@@ -12,6 +12,7 @@ import electronServe from 'electron-serve';
 import windowStateKeeper from 'electron-window-state';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { keepFullScreenWhole } from './fullScreen';
 
 // Developer mode only for a copy that is not installed. electron-is-dev also
 // honours ELECTRON_IS_DEV=1, which would turn DevTools and a looser policy on
@@ -120,6 +121,10 @@ export class ElectronCapacitorApp {
       y: this.mainWindowState.y,
       width: this.mainWindowState.width,
       height: this.mainWindowState.height,
+      // No "File View" bar over the app (14 November). The menu itself stays
+      // set, so its keys -- reload, the developer tools -- still work; Alt
+      // does not bring the bar back.
+      autoHideMenuBar: false,
       webPreferences: {
         nodeIntegration: true,
         contextIsolation: true,
@@ -164,6 +169,8 @@ export class ElectronCapacitorApp {
       }
     });
     this.mainWindowState.manage(this.MainWindow);
+    this.MainWindow.setMenuBarVisibility(false);
+    keepFullScreenWhole(this.MainWindow);
 
     if (this.CapacitorFileConfig.backgroundColor) {
       this.MainWindow.setBackgroundColor(this.CapacitorFileConfig.electron.backgroundColor);
@@ -245,6 +252,12 @@ export class ElectronCapacitorApp {
       this.MainWindow.setOpacity(0);
       this.MainWindow.setPosition(-20000, -20000);
       this.MainWindow.webContents.setBackgroundThrottling(false);
+      // And never in the way when a check puts it over the screen -- full
+      // screen covers the monitor whatever the window's position: the
+      // pointer passes through it and it never takes the keyboard. Scripts
+      // drive it over the DevTools protocol, which needs neither.
+      this.MainWindow.setIgnoreMouseEvents(true);
+      this.MainWindow.setFocusable(false);
     }
 
     // When the web app is loaded we hide the splashscreen if needed and show the mainwindow.
