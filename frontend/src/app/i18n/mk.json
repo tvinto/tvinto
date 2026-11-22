@@ -563,6 +563,8 @@
     "newRecent": "Нова епизода · S{{s}} E{{e}} · {{name}}",
     "readyToPlay": "подготвено за гледање",
     "notOnProvider": "сè уште не е кај вашиот провајдер",
+    "fromCopy": "Од копијата {{copy}}",
+    "episodesFromCopy": "{{episodes}} од копијата {{copy}}",
     "newOn": "Нова епизода {{day}}",
     "seasonStarts": "Сезоната {{season}} почнува на {{date}}",
     "endedIn": "Завршена во {{year}}",

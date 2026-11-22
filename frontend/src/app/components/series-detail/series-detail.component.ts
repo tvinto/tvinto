@@ -29,7 +29,7 @@ import { PlatformService } from '../../services/platform.service';
 import { IntroSkipsService } from '../../services/intro-skips.service';
 import { Skip } from '@shared/tmdb/introdb';
 import { AheadEpisode, EpisodesAhead, FilmPresentation, ListedEpisode, ShowSeasons, bySeason, episodePresentation, episodesAfter } from '../../utils/film-presentation.utils';
-import { firstValueFrom } from 'rxjs';
+import { catchError, firstValueFrom, forkJoin, of } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
@@ -82,6 +82,10 @@ import { CardGesturesDirective } from '../../directives/card-gestures.directive'
 import { CutOffDirective } from '../../directives/cut-off.directive';
 import { ItemAction, ItemActionsComponent } from '../item-actions/item-actions.component';
 import { ChosenDescription } from '@shared/tmdb/describe';
+import { MergedSeason, hasEpisode, mergeCopySeasons, missingFromCopies, otherCopiesIn } from '@shared/xtream/copySeasons';
+
+/** How long a show waits for its other copies before opening where it was left without them. */
+const COPIES_WAIT_MS = 5000;
 
 /** Episodes handed to the player at once; it is given more as it goes on to each. */
 const EPISODES_AHEAD = 5;
@@ -171,7 +175,7 @@ export class SeriesDetailComponent implements OnInit {
 
   /** What the "continue" button will play: the part-watched episode, or the next. */
   readonly nextUp = computed<NextUp | null>(() =>
-    nextUp(flattenEpisodes(this.store.seriesInfo()?.episodes), this.progressByEpisode())
+    nextUp(this.allEpisodes(), this.progressByEpisode())
   );
 
   /**
@@ -285,16 +289,23 @@ export class SeriesDetailComponent implements OnInit {
       void this.shows
         .forSeries(id, name, info)
         .then(page => {
-          if (this.store.seriesInfo() !== info || this.seriesId() !== id || !page) {
+          if (this.store.seriesInfo() !== info || this.seriesId() !== id) {
+            return;
+          }
+          this.showPageSettled.set(true);
+          if (!page) {
             return;
           }
           this.tmdbShow.set(page);
           void this.shows.moreLikeThis(page).then(links => this.store.seriesInfo() === info && this.moreLikeThis.set(links));
           void this.copiesOnceLibraryArrives(id, name, info);
         })
-        .catch(() => undefined);
+        .catch(() => this.seriesId() === id && this.showPageSettled.set(true));
     });
   });
+
+  /** Whether TMDB's side of the page has come back, with the show's copies or without. */
+  private readonly showPageSettled = signal(false);
 
   /**
    * On a device that has never held its show library, the page found only the
@@ -315,8 +326,212 @@ export class SeriesDetailComponent implements OnInit {
   /** The copy of the show this page is, as the copy button names it. */
   readonly currentCopy = computed(() => this.tmdbShow()?.copies.find(copy => String(copy.stream.stream_id) === String(this.seriesId())) ?? null);
 
-  /** The line about the next episode (TV-29). */
-  readonly newsLine = computed(() => newsLine(this.tmdbShow()?.news ?? null));
+  /**
+   * The line about the next episode (TV-29). "Ready to play" when any copy of
+   * the show has it -- it is then in the list, playing from that copy -- and
+   * "not on your provider yet" only when none does.
+   */
+  readonly newsLine = computed(() => {
+    const news = this.tmdbShow()?.news ?? null;
+    const elsewhere = (news?.kind === 'today' || news?.kind === 'recent') && !news.ready && hasEpisode(this.seasons(), news.season, news.episode);
+    return newsLine(elsewhere && news ? { ...news, ready: true } : news);
+  });
+
+  // --- The show's seasons from every copy (22 November) ---------------------------
+
+  /** Other copies' answers, by series id: the ones kept on the device, then the provider's. */
+  private readonly copyAnswers = signal<ReadonlyMap<string, SeriesInfo>>(new Map());
+
+  /** Whether the kept answers of the other copies have been read, for this show. */
+  private readonly keptCopiesRead = signal(false);
+
+  /** The show's other copies, in the order Play tries them (shared/tmdb/copies.ts). */
+  private readonly otherCopies = computed(() =>
+    (this.tmdbShow()?.copies ?? []).filter(copy => String(copy.stream.stream_id) !== String(this.seriesId()))
+  );
+
+  /** The show's seasons from every copy: this copy's own, then what it lacks from the others. */
+  readonly seasons = computed<MergedSeason<Episode>[]>(() => {
+    const info = this.infoHere();
+    if (!info) {
+      return [];
+    }
+    const answers = this.copyAnswers();
+    return mergeCopySeasons<Episode>([
+      { copyId: String(this.seriesId()), episodes: info.episodes },
+      ...this.otherCopies().map(copy => ({ copyId: String(copy.stream.stream_id), episodes: answers.get(String(copy.stream.stream_id))?.episodes }))
+    ]);
+  });
+
+  /** The list the page shows, once anything in it comes from another copy. */
+  private readonly listMerged = effect(() => {
+    const seasons = this.seasons();
+    const own = String(this.seriesId());
+    if (!seasons.some(season => season.episodes.some(one => one.copyId !== own))) {
+      return;
+    }
+    untracked(() => this.store.setEpisodes(Object.fromEntries(seasons.map(season => [season.key, season.episodes.map(one => one.episode)]))));
+  });
+
+  /** Which copy each episode from another copy plays from, by episode id. */
+  private readonly episodeCopies = computed(() => {
+    const own = String(this.seriesId());
+    const copies = new Map<string, string>();
+    for (const season of this.seasons()) {
+      for (const { episode, copyId } of season.episodes) {
+        if (copyId !== own) {
+          copies.set(String(episode.id), copyId);
+        }
+      }
+    }
+    return copies;
+  });
+
+  /** The other copy an episode plays from, or null for one of this copy's own. */
+  private copyOf(episode: Episode): Stream | null {
+    const copyId = this.episodeCopies().get(String(episode.id));
+    return copyId ? (this.otherCopies().find(copy => String(copy.stream.stream_id) === copyId)?.stream ?? null) : null;
+  }
+
+  /** The provider's name for the copy an episode from another copy is in: its titles start with it. */
+  private copyNameOf(episode: Episode): string | null {
+    return this.copyOf(episode)?.name ?? null;
+  }
+
+  /** Every episode the page lists, in order, whichever copy it plays from. */
+  private readonly allEpisodes = computed(() => flattenEpisodes(this.store.episodes()));
+
+  /** "From the English · HD copy" over a season this copy lacks; "E5, E6 from ..." for its gaps. */
+  readonly fromCopyLine = computed(() => {
+    const season = this.seasons().find(one => one.key === this.store.selectedSeason());
+    return otherCopiesIn(season, String(this.seriesId()))
+      .map(({ copyId, season: fromIt, episodes }) => {
+        const found = this.otherCopies().find(copy => String(copy.stream.stream_id) === copyId);
+        const named = found ? copyLabel(found) : '';
+        return fromIt
+          ? t('show.fromCopy', { copy: named })
+          : t('show.episodesFromCopy', { copy: named, episodes: episodes.map(number => `E${number}`).join(', ') });
+      })
+      .join(' · ');
+  });
+
+  /** This copy's own positions: the latest says what was last watched from this page. */
+  private readonly ownProgress = signal<Record<string, WatchProgress>>({});
+
+  /** Whether the episode last watched here is in none of the lists the page has: then another copy has it. */
+  private readonly lostEpisode = computed(() => {
+    let latest: [string, WatchProgress] | null = null;
+    for (const entry of Object.entries(this.ownProgress())) {
+      if (!latest || entry[1].updatedAt > latest[1].updatedAt) {
+        latest = entry;
+      }
+    }
+    return !!latest && !!this.infoHere() && !this.allEpisodes().some(episode => String(episode.id) === latest[0]);
+  });
+
+  /**
+   * Whether there is a reason to ask the other copies: TMDB says a season or
+   * the newest episode exists that no answer has, or the episode last watched
+   * here is in none of them. Without a reason no copy is asked: each is one
+   * request, and can take 30 s.
+   */
+  private readonly copiesWanted = computed(() => {
+    if (this.lostEpisode()) {
+      return true;
+    }
+    const show = this.tmdbShow();
+    if (!show) {
+      return false;
+    }
+    const news = show.news;
+    const latest = news?.kind === 'today' || news?.kind === 'recent' ? { season: news.season, episode: news.episode } : null;
+    // A season announced to start is not missing yet.
+    const aired = news?.kind === 'season' ? Math.min(show.seasons, news.season - 1) : show.seasons;
+    const missing = missingFromCopies(this.seasons(), { seasons: aired, latest });
+    return missing.seasons.length > 0 || !!missing.episode;
+  });
+
+  /** Reads what the device kept of the other copies: free, so done as soon as they are known. */
+  private readonly readKeptCopies = effect(() => {
+    const ids = this.otherCopies().map(copy => String(copy.stream.stream_id));
+    const id = this.seriesId();
+    untracked(() => {
+      void Promise.all(ids.map(one => this.xtreamService.keptSeriesInfo(one).catch(() => null))).then(found => {
+        if (this.seriesId() !== id) {
+          return;
+        }
+        this.copyAnswers.update(held => {
+          const next = new Map(held);
+          ids.forEach((one, index) => found[index] && !next.has(one) && next.set(one, found[index]));
+          return next;
+        });
+        this.keptCopiesRead.set(ids.length > 0);
+      });
+    });
+  });
+
+  /** Asks the other copies, when there is a reason, once the page's own answer is in. */
+  private readonly askForReason = effect(() => {
+    if (!this.keptCopiesRead() || this.store.asking() || !this.copiesWanted() || this.askedForReason === this.seriesId()) {
+      return;
+    }
+    this.askedForReason = this.seriesId();
+    untracked(() => {
+      for (const copy of this.otherCopies().slice(0, MOST_SHOWS_LOOKED_AT)) {
+        this.askCopy(String(copy.stream.stream_id), () => this.copiesWanted());
+      }
+    });
+  });
+
+  /** The show whose other copies were asked for a reason, so they are asked once per visit. */
+  private askedForReason: string | null = null;
+
+  /** Copies asked the provider about on this visit. */
+  private readonly freshlyAsked = new Set<string>();
+
+  /** The copies' requests, one after another. */
+  private asking: Promise<void> = Promise.resolve();
+
+  /**
+   * Asks the provider for another copy's episodes, behind the page and after
+   * any request already asked, while `wanted` still says there is a reason.
+   * The answer is kept like any other (SeriesInfoCache).
+   */
+  private askCopy(copyId: string, wanted: () => boolean = () => true): void {
+    if (this.freshlyAsked.has(copyId)) {
+      return;
+    }
+    this.freshlyAsked.add(copyId);
+    const visit = this.seriesId();
+    this.asking = this.asking.then(async () => {
+      if (this.seriesId() !== visit || !wanted()) {
+        this.freshlyAsked.delete(copyId);
+        return;
+      }
+      await new Promise<void>(resolve => {
+        try {
+          this.xtreamService
+            .getSeriesInfo(copyId)
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe({
+              next: info => this.seriesId() === visit && this.copyAnswers.update(held => new Map(held).set(copyId, info)),
+              error: () => resolve(),
+              complete: () => resolve()
+            });
+        } catch {
+          resolve();
+        }
+      });
+      // A moment between one request to the provider and the next.
+      await new Promise(resolve => setTimeout(resolve, COPY_SWITCH_PAUSE_MS));
+    });
+  }
+
+  /**
+   * Whether the page has stopped waiting for the other copies before choosing
+   * where it opens: the episode last watched may be in one of them.
+   */
+  private readonly copiesWaitOver = signal(false);
 
   /** The copies of the show, to choose which one episodes play in (TV-28's page, for a show). */
   openCopies(): void {
@@ -443,7 +658,7 @@ export class SeriesDetailComponent implements OnInit {
   /** "2016 · Drama · 3 seasons · 34 episodes", leaving out what is unknown. */
   readonly metaLine = computed(() => {
     const seasons = this.store.availableSeasons().length;
-    const episodes = flattenEpisodes(this.store.seriesInfo()?.episodes).length;
+    const episodes = this.allEpisodes().length;
     const facts = this.facts();
     // TMDB's, in the account's language, over the provider's own: the
     // owner's Supernatural read "Drame · Mystère" on an English page (31 October).
@@ -536,7 +751,7 @@ export class SeriesDetailComponent implements OnInit {
     // nothing at all.
     effect(() => {
       const info = this.infoHere();
-      const ready = this.autoResume() && this.progressLoaded() && !!info;
+      const ready = this.autoResume() && this.progressLoaded() && !!info && this.copiesSettled();
       if (!ready) {
         return;
       }
@@ -574,7 +789,7 @@ export class SeriesDetailComponent implements OnInit {
    * person has already moved: by then they have chosen where to be.
    */
   private readonly openWhereLeft = effect(() => {
-    const ready = this.progressLoaded() && !!this.infoHere() && !this.store.loading();
+    const ready = this.progressLoaded() && !!this.infoHere() && !this.store.loading() && this.copiesSettled();
     if (!ready || this.openedAt === this.seriesId()) {
       return;
     }
@@ -591,6 +806,22 @@ export class SeriesDetailComponent implements OnInit {
       setTimeout(() => this.focusEpisode(next ? 'show-start' : null));
     });
   });
+
+  /**
+   * Whether what was last watched is in the list, or the page has stopped
+   * waiting for the other copies that may have it: an episode played from
+   * another copy is resumed from that copy (22 November).
+   */
+  private readonly copiesSettled = computed(
+    () =>
+      this.copiesWaitOver() ||
+      (this.showPageSettled() &&
+        this.progressCovers() === this.otherCopies().map(copy => String(copy.stream.stream_id)).join(',') &&
+        !this.lostEpisode())
+  );
+
+  /** The other copies whose positions are in `progressByEpisode`, as ids joined by commas. */
+  private readonly progressCovers = signal<string | null>(null);
 
   /** The show last opened where it was left, so a return from the player does not do it again. */
   private openedAt: string | null = null;
@@ -611,7 +842,7 @@ export class SeriesDetailComponent implements OnInit {
 
   /** The season an episode is listed under. */
   private seasonOf(episode: Episode): string | null {
-    const episodes = this.store.seriesInfo()?.episodes ?? {};
+    const episodes = this.store.episodes();
     for (const [season, list] of Object.entries(episodes)) {
       if ((list as Episode[]).some(one => String(one.id) === String(episode.id))) {
         return season;
@@ -635,10 +866,17 @@ export class SeriesDetailComponent implements OnInit {
     this.route.params.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
       const id = String(params['id'] ?? '');
       this.seriesId.set(id);
+      this.copyAnswers.set(new Map());
+      this.keptCopiesRead.set(false);
+      this.freshlyAsked.clear();
+      this.copiesWaitOver.set(false);
+      this.showPageSettled.set(false);
+      this.progressCovers.set(null);
 
       if (!id) {
         return;
       }
+      setTimeout(() => this.seriesId() === id && this.copiesWaitOver.set(true), COPIES_WAIT_MS);
 
       this.store.loadSeriesInfo(id);
       this.loadProgress();
@@ -648,16 +886,42 @@ export class SeriesDetailComponent implements OnInit {
     });
   }
 
+  /**
+   * The positions of every episode of the show, from this copy's history and
+   * its other copies': an episode watched in one copy shows as watched here
+   * when this page lists it from there. This copy's own win.
+   */
   private loadProgress(): void {
-    this.xtreamService.getSeriesProgress(this.seriesId()).subscribe(progress => {
-      this.progressByEpisode.set(progress);
-      // The effect above decides whether this completes an auto-resume.
-      this.progressLoaded.set(true);
-    });
+    const id = this.seriesId();
+    const others = this.otherCopies().map(copy => String(copy.stream.stream_id));
+    forkJoin([id, ...others].map(one => this.xtreamService.getSeriesProgress(one).pipe(catchError(() => of({} as Record<string, WatchProgress>))))).subscribe(
+      ([own, ...theirs]) => {
+        if (this.seriesId() !== id) {
+          return;
+        }
+        this.ownProgress.set(own);
+        this.progressByEpisode.set(Object.assign({}, ...theirs, own));
+        // The effect above decides whether this completes an auto-resume.
+        this.progressLoaded.set(true);
+        this.progressCovers.set(others.join(','));
+      }
+    );
   }
+
+  /** Positions again once the other copies are known. */
+  private readonly progressOfCopies = effect(() => {
+    if (this.otherCopies().length) {
+      untracked(() => this.loadProgress());
+    }
+  });
 
   selectSeason(season: string) {
     this.store.selectSeason(season);
+    // A season only another copy has: that copy's newest answer, behind the page.
+    const from = this.seasons().find(one => one.key === season)?.copyId;
+    if (from && from !== String(this.seriesId())) {
+      this.askCopy(from);
+    }
   }
 
   /** Plays whatever `nextUp` decided, at wherever it decided. */
@@ -749,7 +1013,7 @@ export class SeriesDetailComponent implements OnInit {
     }
 
     if (!result.errorCode) {
-      this.copies.played({ stream_id: this.seriesId(), name: this.knownName() });
+      this.copies.played(this.copyOf(episode) ?? { stream_id: this.seriesId(), name: this.knownName() });
     } else if (await this.triedAnotherCopy(episode, result, startAt)) {
       this.playingEpisode.set(null);
       return;
@@ -762,7 +1026,7 @@ export class SeriesDetailComponent implements OnInit {
 
     // After going on to later episodes inside the player, the one on screen at
     // the end is the one whose position came back.
-    const last = flattenEpisodes(this.store.seriesInfo()?.episodes).find(one => String(one.id) === result.itemId);
+    const last = this.allEpisodes().find(one => String(one.id) === result.itemId);
     if (last) {
       this.playingEpisode.set(last);
     }
@@ -790,7 +1054,8 @@ export class SeriesDetailComponent implements OnInit {
    * than three are looked at.
    */
   private async triedAnotherCopy(episode: Episode, result: NativePlayResult, startAt: number): Promise<boolean> {
-    const show = this.currentCopy()?.stream ?? ({ stream_id: this.seriesId(), name: this.knownName() } as Stream);
+    // An episode from another copy failed in that copy, not in this one.
+    const show = this.copyOf(episode) ?? this.currentCopy()?.stream ?? ({ stream_id: this.seriesId(), name: this.knownName() } as Stream);
     const season = Number(episode.season ?? this.store.selectedSeason());
     const number = Number(episode.episode_num);
     if (!(season >= 0) || !(number > 0)) {
@@ -875,7 +1140,7 @@ export class SeriesDetailComponent implements OnInit {
    * player (PX-TV-3) can go to any of them.
    */
   private checkpointFrom(episode: Episode): PlaybackCheckpoint {
-    const all = flattenEpisodes(this.store.seriesInfo()?.episodes);
+    const all = this.allEpisodes();
     const reachable = all.some(one => String(one.id) === String(episode.id)) ? all : [episode];
     return {
       entries: () => Object.fromEntries(reachable.map(one => [String(one.id), this.progressEntry(one)])),
@@ -903,7 +1168,7 @@ export class SeriesDetailComponent implements OnInit {
    * season only (episodesAfter, tested).
    */
   private episodeRun(): EpisodeRun {
-    const episodes = flattenEpisodes(this.store.seriesInfo()?.episodes);
+    const episodes = this.allEpisodes();
     const show = this.displayName();
     return {
       ahead: async (itemId: string): Promise<EpisodesAhead> => {
@@ -1029,7 +1294,7 @@ export class SeriesDetailComponent implements OnInit {
    * gave nothing else.
    */
   titleOf(episode: Episode): string {
-    const name = this.knownName();
+    const name = this.copyNameOf(episode) ?? this.knownName();
     const short = shortEpisodeTitle(name, episode.title);
     // The provider's own name for a show carries more than its episodes do
     // ("... (US) (FHD HEVC)"), so try the plain title when the full one missed.

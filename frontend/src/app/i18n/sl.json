@@ -587,6 +587,8 @@
     "newRecent": "Nova epizoda · S{{s}} E{{e}} · {{name}}",
     "readyToPlay": "pripravljeno za predvajanje",
     "notOnProvider": "še ni pri vašem ponudniku",
+    "fromCopy": "Iz kopije {{copy}}",
+    "episodesFromCopy": "{{episodes}} iz kopije {{copy}}",
     "newOn": "Nova epizoda {{day}}",
     "seasonStarts": "Sezona {{season}} se začne {{date}}",
     "endedIn": "Končana leta {{year}}",

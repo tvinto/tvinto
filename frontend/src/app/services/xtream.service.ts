@@ -1098,6 +1098,20 @@ export class XtreamService {
   }
 
   // Get series info (seasons and episodes)
+  /**
+   * The show's last answer kept on this device, without asking the provider:
+   * what a show page reads of its other copies before it has a reason to ask
+   * them (the seasons across copies, 22 November). Null when none is kept.
+   */
+  async keptSeriesInfo(seriesId: string | number): Promise<SeriesInfo | null> {
+    const direct = this.provider.supported && this.isAuthenticated() ? await this.provider.direct().catch(() => null) : null;
+    if (!direct) {
+      return null;
+    }
+    const kept = await this.seriesCache.get(`${direct.providerUsername}:${seriesId}`).catch(() => null);
+    return kept && Object.keys(kept.episodes ?? {}).length ? kept : null;
+  }
+
   getSeriesInfo(seriesId: string | number): Observable<SeriesInfo> {
     if (!this.isAuthenticated()) {
       throw new Error('Not authenticated');

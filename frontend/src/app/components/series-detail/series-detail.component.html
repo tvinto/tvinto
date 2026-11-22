@@ -173,6 +173,13 @@
           <!-- Buttons, one column: Up and Down walk it, OK plays from where
                that episode was left. Each leads with its own picture, how far
                it got along the foot; watched ones keep a tick. -->
+          <div class="flex min-w-0 flex-1 flex-col gap-2">
+          <!-- A season, or episodes, this copy lacks play from another copy
+               of the show; said here, so a change of picture or language is
+               no surprise. -->
+          @if (fromCopyLine()) {
+            <p class="w-fit max-w-full rounded-sm border-l-4 border-series bg-card-2 px-2 py-0.5 text-xs font-semibold" data-show-from-copy>{{ fromCopyLine() }}</p>
+          }
           <ul class="flex min-w-0 flex-1 flex-col gap-1.5" data-tv-ring-room data-show-episode-list>
             @for (row of episodeRows(); track row.episode.id) {
               @let episode = row.episode;
@@ -253,6 +260,7 @@
               </li>
             }
           </ul>
+          </div>
         } @else {
           <p class="flex-1 p-12 text-center text-sm text-muted-foreground">{{ 'show.none' | t }}</p>
         }
