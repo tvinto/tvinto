@@ -60,10 +60,11 @@ interface Row {
  * For You's row was kept (ROW_KEY) but nothing else was: Movies and TV Shows
  * worked out their Top rated and genre rows again on every visit, and showed
  * nothing until they had (26 October). Each matched page is now
- * kept for the day, the most recently used few on the device.
+ * kept for the day, the most recently used few on the device: enough for
+ * the six rows of each library's front page and For You's (14 November).
  */
 const PAGES_KEY = 'xtream_popular_pages';
-const PAGES_ON_DEVICE = 16;
+const PAGES_ON_DEVICE = 40;
 
 interface KeptPage {
   key: string;

@@ -677,6 +677,13 @@
     "notOpened": "No se pudo abrir esta película"
   },
   "discover": {
+    "trending": "Tendencias de la semana",
+    "newReleases": "Novedades",
+    "allCategories": "Todas las categorías",
+    "popularFilms": "Películas populares",
+    "popularShows": "Series populares",
+    "newFilms": "Películas nuevas",
+    "newShows": "Series nuevas",
     "browseBy": "Explorar por",
     "topRated": "Mejor valoradas",
     "topFilms": "Películas mejor valoradas",
@@ -861,8 +868,6 @@
     "liveChannel": "Canal en directo",
     "actionsFor": "Acciones para {{name}}",
     "noGuideLower": "sin guía",
-    "browseFilms": "Explorar categorías de películas",
-    "browseShows": "Explorar categorías de series",
     "timeline": "vista de línea temporal",
     "reindexing": "Reindexando…",
     "onAirCount": "En emisión {{count}}",

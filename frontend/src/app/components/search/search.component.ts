@@ -27,27 +27,11 @@ import { WIDE_LAYOUT_QUERY, wideLayoutNow } from '../../utils/layout.utils';
 import { t } from '../../utils/i18n';
 import { TPipe } from '../../pipes/t.pipe';
 import { ProviderNamePipe } from '../../pipes/provider-name.pipe';
-import { groupCopies } from '@shared/tmdb/popular';
-import { orderCopies } from '@shared/tmdb/copies';
-import { posterTitle } from '../../utils/series-display.utils';
-import { preferredLanguages } from '../for-you/popular-cards';
+import { oneCardPerTitle } from '../../utils/one-per-title.utils';
 import { RecentSearchesService } from '../../services/recent-searches.service';
 import { ItemAction, ItemActionsComponent } from '../item-actions/item-actions.component';
 import { BackButtonService } from '../../services/back-button.service';
 import { DeviceSyncService } from '../../services/device-sync.service';
-
-/**
- * A film or show once, not once per copy (round 6: "a title is one thing,
- * not twenty"): copies of the same title grouped, each group shown by the
- * copy Play would choose -- the person's languages first.
- */
-function oneCardPerTitle(ranked: Stream[]): Stream[] {
-  const languages = preferredLanguages();
-  return groupCopies(ranked, stream => {
-    const own = posterTitle(stream.name);
-    return { title: own.title, year: own.year ? Number(own.year) : null };
-  }).map(group => orderCopies(group, languages, stream => ({ name: stream.name }))[0]);
-}
 
 /** One library's worth of answers to the query. */
 interface ResultSection {
@@ -512,7 +496,7 @@ export class SearchComponent {
         order === 'closest'
           ? byCloseness(kept, this.query())
           : [...kept].sort((a, b) => (order === 'name_asc' ? byName(a, b) : byName(b, a)));
-      const ranked = type === 'live' ? sorted : oneCardPerTitle(sorted);
+      const ranked = type === 'live' ? sorted : oneCardPerTitle(sorted, stream => stream.name);
       return {
         type,
         label,

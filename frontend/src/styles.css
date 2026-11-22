@@ -1351,7 +1351,7 @@ html.tv ::-webkit-scrollbar {
   height: 16.875rem; /* 270 */
 }
 
-.tv [data-tv-browse-tile] {
+.tv [data-tv-browse-tile]:not([data-front-pill]) {
   min-width: 25rem;
 }
 
@@ -1540,6 +1540,14 @@ html.tv ::-webkit-scrollbar {
 }
 .tv [data-fy-poster-image] {
   height: 18.75rem; /* 300 */
+}
+/* On a library's front page TMDB's rows are the size of its other posters,
+   so the rows read as one shelf (14 November). */
+.tv [data-front] [data-fy-poster] {
+  width: 11.25rem; /* 180 */
+}
+.tv [data-front] [data-fy-poster-image] {
+  height: 16.875rem; /* 270 */
 }
 /* Popular this week (FY-TV-2, FY-D-2, FY-P-2): the way to the rest of the list
    differs by surface -- two end cards on a television, two links in the

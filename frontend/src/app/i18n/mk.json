@@ -677,6 +677,13 @@
     "notOpened": "Овој филм не можеше да се отвори"
   },
   "discover": {
+    "trending": "Во тренд оваа недела",
+    "newReleases": "Нови изданија",
+    "allCategories": "Сите категории",
+    "popularFilms": "Популарни филмови",
+    "popularShows": "Популарни серии",
+    "newFilms": "Нови филмови",
+    "newShows": "Нови серии",
     "browseBy": "Прелистај по",
     "topRated": "Најдобро оценети",
     "topFilms": "Најдобро оценети филмови",
@@ -861,8 +868,6 @@
     "liveChannel": "Канал во живо",
     "actionsFor": "Дејства за {{name}}",
     "noGuideLower": "нема водич",
-    "browseFilms": "Прелистај категории на филмови",
-    "browseShows": "Прелистај категории на серии",
     "timeline": "приказ на временска линија",
     "reindexing": "Се индексира повторно…",
     "onAirCount": "Во етер {{count}}",

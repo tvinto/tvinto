@@ -717,6 +717,13 @@
     "notOpened": "Не удалось открыть этот фильм"
   },
   "discover": {
+    "trending": "В тренде на этой неделе",
+    "newReleases": "Новинки",
+    "allCategories": "Все категории",
+    "popularFilms": "Популярные фильмы",
+    "popularShows": "Популярные сериалы",
+    "newFilms": "Новые фильмы",
+    "newShows": "Новые сериалы",
     "browseBy": "Смотреть по",
     "topRated": "С высоким рейтингом",
     "topFilms": "Фильмы с высоким рейтингом",
@@ -901,8 +908,6 @@
     "liveChannel": "Канал в эфире",
     "actionsFor": "Действия для {{name}}",
     "noGuideLower": "нет телегида",
-    "browseFilms": "Категории фильмов",
-    "browseShows": "Категории сериалов",
     "timeline": "вид временной шкалы",
     "reindexing": "Переиндексирую…",
     "onAirCount": "В эфире {{count}}",

@@ -677,6 +677,13 @@
     "notOpened": "Não foi possível abrir este filme"
   },
   "discover": {
+    "trending": "Em alta esta semana",
+    "newReleases": "Lançamentos",
+    "allCategories": "Todas as categorias",
+    "popularFilms": "Filmes populares",
+    "popularShows": "Séries populares",
+    "newFilms": "Filmes novos",
+    "newShows": "Séries novas",
     "browseBy": "Navegar por",
     "topRated": "Mais bem avaliados",
     "topFilms": "Filmes mais bem avaliados",
@@ -861,8 +868,6 @@
     "liveChannel": "Canal ao vivo",
     "actionsFor": "Ações para {{name}}",
     "noGuideLower": "sem guia",
-    "browseFilms": "Navegar pelas categorias de filmes",
-    "browseShows": "Navegar pelas categorias de séries",
     "timeline": "visão de linha do tempo",
     "reindexing": "Reindexando…",
     "onAirCount": "No ar {{count}}",

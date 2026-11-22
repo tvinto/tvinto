@@ -677,6 +677,13 @@
     "notOpened": "Deze film kon niet worden geopend"
   },
   "discover": {
+    "trending": "Trending deze week",
+    "newReleases": "Nieuw verschenen",
+    "allCategories": "Alle categorieën",
+    "popularFilms": "Populaire films",
+    "popularShows": "Populaire series",
+    "newFilms": "Nieuwe films",
+    "newShows": "Nieuwe series",
     "browseBy": "Bladeren op",
     "topRated": "Best beoordeeld",
     "topFilms": "Best beoordeelde films",
@@ -861,8 +868,6 @@
     "liveChannel": "Livezender",
     "actionsFor": "Acties voor {{name}}",
     "noGuideLower": "geen gids",
-    "browseFilms": "Filmcategorieën bekijken",
-    "browseShows": "Seriecategorieën bekijken",
     "timeline": "tijdlijnweergave",
     "reindexing": "Bezig met opnieuw indexeren…",
     "onAirCount": "Nu op tv {{count}}",

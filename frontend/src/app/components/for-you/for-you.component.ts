@@ -2,7 +2,7 @@ import { lastInput, whenQuiet } from '../../utils/quiet.utils';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal, effect, untracked } from '@angular/core';
 import { Router } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, map } from 'rxjs/operators';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideInfo, lucideLoaderCircle, lucidePlay, lucideX } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
@@ -51,6 +51,7 @@ import { FilmService } from '../../services/film.service';
 import { SpotlightComponent, SpotlightHostDirective } from '../spotlight/spotlight.component';
 import { runtimeLabel } from '../film/film.component';
 import { GuideByStream } from '../../utils/guide.utils';
+import { oneCardPerTitle } from '../../utils/one-per-title.utils';
 
 /** A favourite, with the library it belongs to. */
 interface Favourite {
@@ -474,11 +475,17 @@ export class ForYouComponent {
     this.hasGuide.set(false);
   }
 
-  /** Films and shows, newest first, from what this device's catalogue holds. */
+  /**
+   * Films and shows, newest first, from what this device's catalogue holds:
+   * one card per title, as a provider adds a film's copies together (The
+   * Odyssey three times in a row, 14 November). Asked for four times over
+   * for that reason.
+   */
   private loadRecentlyAdded(): void {
+    const oneEach = (streams: Stream[]) => oneCardPerTitle(streams, stream => stream.name);
     forkJoin({
-      vod: this.xtream.recentlyAdded('vod', 12).pipe(catchError(() => of([] as Stream[]))),
-      series: this.xtream.recentlyAdded('series', 12).pipe(catchError(() => of([] as Stream[])))
+      vod: this.xtream.recentlyAdded('vod', 48).pipe(map(oneEach), catchError(() => of([] as Stream[]))),
+      series: this.xtream.recentlyAdded('series', 48).pipe(map(oneEach), catchError(() => of([] as Stream[])))
     }).subscribe(({ vod, series }) => {
       if (!vod.length && !series.length) {
         return;

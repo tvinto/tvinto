@@ -8,6 +8,7 @@ import {
   computed,
   effect,
   inject,
+  linkedSignal,
   signal,
   untracked,
   viewChild
@@ -63,7 +64,9 @@ import { XtreamService } from '../../services/xtream.service';
 import { AgeLockService } from '../../services/age-lock.service';
 import { ChannelPreviewService } from '../../services/channel-preview.service';
 import { SlowWaitComponent } from '../slow-wait/slow-wait.component';
-import { DiscoverComponent } from '../discover/discover.component';
+import { DiscoverComponent, DiscoverState } from '../discover/discover.component';
+import { DiscoverPillsComponent } from '../discover/discover-pills.component';
+import { firstPerTitle, oneCardPerTitle } from '../../utils/one-per-title.utils';
 import { AgeCoverComponent } from '../age-cover/age-cover.component';
 import { AccountService } from '../../services/account.service';
 import { RemindersService } from '../../services/reminders.service';
@@ -279,7 +282,7 @@ const GUIDE_HOURS_SHOWN = 2;
 @Component({
   selector: 'app-section',
   standalone: true,
-  imports: [DiscoverComponent, SlowWaitComponent, AgeCoverComponent, TPipe, ProviderNamePipe, PosterTitlePipe, ChannelTitlePipe, ChannelMonogramPipe,
+  imports: [DiscoverComponent, DiscoverPillsComponent, SlowWaitComponent, AgeCoverComponent, TPipe, ProviderNamePipe, PosterTitlePipe, ChannelTitlePipe, ChannelMonogramPipe,
     CommonModule,
     ReactiveFormsModule,
     ScrollingModule,
@@ -653,11 +656,15 @@ export class SectionComponent {
    * with, so it is not here -- it was, marked "Watched", beside the ones that
    * were (a user's Movies, 31 October). Channels and shows as before.
    */
-  readonly continueShown = computed(() =>
-    this.type() === 'series'
-      ? latestPerShow(this.recent(), this.hiddenShows())
-      : this.recent().filter(entry => entry.type === 'live' || !isComplete(entry))
-  );
+  readonly continueShown = computed(() => {
+    const type = this.type();
+    if (type === 'live') {
+      return this.recent();
+    }
+    const shown = type === 'series' ? latestPerShow(this.recent(), this.hiddenShows()) : this.recent().filter(entry => !isComplete(entry));
+    // One card per title: the copy last watched, where two copies of it were started.
+    return firstPerTitle(shown, entry => entry.name);
+  });
   readonly favorites = signal<Stream[]>([]);
   readonly favoriteIds = signal<Set<string>>(new Set());
 
@@ -2125,7 +2132,10 @@ export class SectionComponent {
   /** How many favourites the front page shows before "+ N more" (D-1, D-4). */
   readonly FRONT_FAVOURITES = 6;
 
-  readonly frontFavourites = computed(() => this.favorites().slice(0, this.FRONT_FAVOURITES));
+  /** The favourites one per title -- a film starred in 4K and in HD is one card -- in the order starred. */
+  readonly favouriteTitles = computed(() => (this.type() === 'live' ? this.favorites() : firstPerTitle(this.favorites(), stream => stream.name)));
+
+  readonly frontFavourites = computed(() => this.favouriteTitles().slice(0, this.FRONT_FAVOURITES));
 
   /**
    * The most recent thing part-watched in the other library -- a show on
@@ -2244,13 +2254,25 @@ export class SectionComponent {
     return percent < 100 ? percent : 0;
   }
 
-  /** What the library added lately, newest first, from this device's index. */
+  /**
+   * Whether TMDB's rows are on the page ('rows'), or there is no TMDB and the
+   * category rows stand in ('none'); null until it is known, for each library.
+   */
+  readonly discoverState = linkedSignal<StreamType, DiscoverState | null>({ source: this.type, computation: () => null });
+
+  /**
+   * What the library added lately, newest first, from this device's index:
+   * one card per title, as a provider adds 4K, HD and each language of a
+   * film together (The Odyssey twice in a row, 14 November).
+   */
   readonly addedRow = signal<Stream[]>([]);
 
   private readonly loadFrontRows = effect(() => {
     const type = this.type();
     const categories = this.store.categories();
     const last = this.lastCategory();
+    // The category rows only stand in for TMDB's; with TMDB, nothing is read for them.
+    const withRows = this.discoverState() === 'none';
     this.lock.revision();
     if (type === 'live' || !categories.length) {
       this.categoryRows.set([]);
@@ -2260,7 +2282,7 @@ export class SectionComponent {
     untracked(() => {
       const known = new Set(categories.map(category => String(category.category_id)));
       const opened = mostOpened(readOpens(type)).filter(id => known.has(id));
-      const ids = [...opened, last && last.id !== this.FAVORITES_CATEGORY ? last.id : null, ...known]
+      const ids = (withRows ? [...opened, last && last.id !== this.FAVORITES_CATEGORY ? last.id : null, ...known] : [])
         .filter((id): id is string => !!id && !this.lock.keepsOut(type, id))
         .filter((id, index, all) => all.indexOf(id) === index)
         .slice(0, this.FRONT_CATEGORY_ROWS + 2);
@@ -2273,7 +2295,7 @@ export class SectionComponent {
           const streams = await firstValueFrom(this.xtreamService.heldStreams(id, type));
           const category = categories.find(one => String(one.category_id) === id);
           if (streams.length && category) {
-            rows.push({ id, name: withoutTags(category.category_name), count: streams.length, streams: streams.slice(0, this.FRONT_ROW_POSTERS) });
+            rows.push({ id, name: withoutTags(category.category_name), count: streams.length, streams: this.oneEach(streams) });
           }
         }
         if (this.type() === type) {
@@ -2284,13 +2306,23 @@ export class SectionComponent {
           }
         }
       })();
-      this.xtreamService.recentlyAdded(type, this.FRONT_ROW_POSTERS).subscribe(added => {
+      // Asked for four times over, as copies of one title come in together.
+      this.xtreamService.recentlyAdded(type, this.FRONT_ROW_POSTERS * 4).subscribe(added => {
         if (this.type() === type) {
-          this.addedRow.set(added.filter(stream => !this.lock.keepsOut(type, stream.category_id)));
+          this.addedRow.set(this.oneEach(added.filter(stream => !this.lock.keepsOut(type, stream.category_id))));
         }
       });
     });
   });
+
+  /**
+   * A row's posters, one per title (the copy Play would choose, where the
+   * first of them stood), from the head of the list: grouping a category of
+   * thousands would hold up a television for the sake of twelve posters.
+   */
+  private oneEach(streams: readonly Stream[]): Stream[] {
+    return oneCardPerTitle(streams.slice(0, this.FRONT_ROW_POSTERS * 4), stream => stream.name).slice(0, this.FRONT_ROW_POSTERS);
+  }
 
   /**
    * The front page's spotlight before focus rests on a card (NX-TV-7): its
@@ -2307,7 +2339,8 @@ export class SectionComponent {
       const entry = recent.entry;
       return { kind: entry.type, id: entry.type === 'series' ? (entry.seriesId ?? entry.itemId) : entry.itemId, name: recent.title, poster: entry.icon ?? '', line: '' };
     }
-    const stream = this.frontFavourites()[0] ?? this.categoryRows()[0]?.streams[0] ?? this.addedRow()[0];
+    const rows = this.discoverState() === 'none' ? this.categoryRows() : [];
+    const stream = this.frontFavourites()[0] ?? rows[0]?.streams[0] ?? this.addedRow()[0];
     return stream ? { kind: type, id: String(stream.stream_id), name: posterTitle(stream.name).title, poster: stream.stream_icon ?? '', line: '' } : null;
   });
 

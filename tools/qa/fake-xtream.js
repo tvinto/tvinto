@@ -304,6 +304,26 @@ vod.push(
   }))
 );
 
+// What a provider adds in a week: each title in several copies at once -- 4K
+// and HD, another language -- so Recently added and every row of a library's
+// front page must show one card per title (The Odyssey twice in a row on a
+// user's Movies, 14 November). Newer than everything else, so they lead it.
+vodCategories.push({ category_id: '13', category_name: 'EN| New releases', parent_id: 0 });
+[
+  ['EN - The Odyssey 4K (2026)', 'EN - The Odyssey HD (2026)', 'DE - The Odyssey (2026)'],
+  ['EN - Fall 2 4K (2026)', 'EN - Fall 2 (2026)'],
+  ['EN - Other Mommy (2026)', 'EN - Other Mommy FHD (2026)'],
+  ['EN - Never Surrender (2026)', 'HR - Never Surrender (2026)'],
+  ['EN - Quiet Harbour (2025)']
+].forEach((copies, title) =>
+  copies.forEach((name, copy) =>
+    vod.push({
+      num: vod.length + 1, name, stream_type: 'movie', stream_id: 2300 + title * 10 + copy, stream_icon: ART, rating: '7', category_id: '13',
+      container_extension: 'mkv', added: String(Math.floor(Date.now() / 1000) - title * 3600 - copy * 60)
+    })
+  )
+);
+
 const seriesCategories = [
   { category_id: '21', category_name: 'Drama', parent_id: 0 },
   { category_id: '22', category_name: 'Comedy', parent_id: 0 }
