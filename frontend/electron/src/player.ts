@@ -1563,7 +1563,14 @@ export function registerNativePlayer(): void {
           frames.onLog = line => playbackLog(`tvinto-player: ${line.replace(/^log /, '')}`);
           toPage(window.webContents, 'xtream:video-open', true);
         } else {
-          child = spawn(mpv, argumentsFor(request, mpv, inside), { windowsHide: false });
+          // mpv decodes in software unless told otherwise: about 69 % of a
+          // core for a 4K HEVC film, 3.5 % with this (d3d11va). auto-safe
+          // falls back to software where the GPU cannot. tvinto-player sets
+          // the same itself (native/tvinto-player.cpp).
+          // Before the rest, which ends with `--` and the address.
+          child = spawn(mpv, ['--hwdec=auto-safe', ...argumentsFor(request, mpv, inside)], {
+            windowsHide: false
+          });
         }
       } catch (error) {
         resolve({
