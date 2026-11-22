@@ -782,7 +782,16 @@
     "guide": "Udhëzuesi TV · {{name}}",
     "guideUnnamed": "Udhëzuesi TV",
     "guideRead": "{{channels}} kanale · {{size}} MB të lexuara",
-    "waiting": "Pret radhën"
+    "waiting": "Pret radhën",
+    "short": {
+      "guide": "Udhëzuesi TV · {{channels}} kanale",
+      "sync": "Po sinkronizohet"
+    },
+    "open": "Shfaq çfarë po ngarkohet",
+    "many": {
+      "one": "Po ngarkohet {{count}} gjë",
+      "other": "Po ngarkohen {{count}} gjëra"
+    }
   },
   "fy": {
     "newInShows": "E re në serialet tuaja",

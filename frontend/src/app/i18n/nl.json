@@ -782,7 +782,16 @@
     "guide": "Tv-gids · {{name}}",
     "guideUnnamed": "Tv-gids",
     "guideRead": "{{channels}} zenders · {{size}} MB gelezen",
-    "waiting": "Wacht op zijn beurt"
+    "waiting": "Wacht op zijn beurt",
+    "short": {
+      "guide": "Tv-gids · {{channels}} zenders",
+      "sync": "Synchroniseren"
+    },
+    "open": "Laat zien wat er laadt",
+    "many": {
+      "one": "{{count}} ding laden",
+      "other": "{{count}} dingen laden"
+    }
   },
   "fy": {
     "newInShows": "Nieuw in je series",

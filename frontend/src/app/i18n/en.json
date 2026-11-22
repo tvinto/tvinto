@@ -764,7 +764,16 @@
     "guide": "TV guide · {{name}}",
     "guideUnnamed": "TV guide",
     "guideRead": "{{channels}} channels · {{size}} MB read",
-    "waiting": "Waiting its turn"
+    "waiting": "Waiting its turn",
+    "short": {
+      "guide": "TV guide · {{channels}} channels",
+      "sync": "Syncing"
+    },
+    "open": "Show what is loading",
+    "many": {
+      "one": "Loading {{count}} thing",
+      "other": "Loading {{count}} things"
+    }
   },
   "fy": {
     "guideComing": "Downloading the TV guide",

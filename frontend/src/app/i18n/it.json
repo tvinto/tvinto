@@ -782,7 +782,16 @@
     "guide": "Guida TV · {{name}}",
     "guideUnnamed": "Guida TV",
     "guideRead": "{{channels}} canali · {{size}} MB letti",
-    "waiting": "In attesa del suo turno"
+    "waiting": "In attesa del suo turno",
+    "short": {
+      "guide": "Guida TV · {{channels}} canali",
+      "sync": "Sincronizzazione"
+    },
+    "open": "Mostra cosa si sta caricando",
+    "many": {
+      "one": "Caricamento di {{count}} elemento",
+      "other": "Caricamento di {{count}} elementi"
+    }
   },
   "fy": {
     "newInShows": "Novità nelle tue serie",

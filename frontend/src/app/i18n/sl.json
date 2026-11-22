@@ -822,7 +822,18 @@
     "guide": "TV-vodnik · {{name}}",
     "guideUnnamed": "TV-vodnik",
     "guideRead": "{{channels}} kanalov · prebranih {{size}} MB",
-    "waiting": "Čaka na vrsto"
+    "waiting": "Čaka na vrsto",
+    "short": {
+      "guide": "TV-vodnik · {{channels}} kanalov",
+      "sync": "Sinhronizacija"
+    },
+    "open": "Pokaži, kaj se nalaga",
+    "many": {
+      "one": "Nalaga se {{count}} stvar",
+      "two": "Nalagata se {{count}} stvari",
+      "few": "Nalagajo se {{count}} stvari",
+      "other": "Nalaga se {{count}} stvari"
+    }
   },
   "fy": {
     "newInShows": "Novo v vaših serijah",
