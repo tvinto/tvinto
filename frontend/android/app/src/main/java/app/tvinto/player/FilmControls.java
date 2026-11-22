@@ -2231,7 +2231,36 @@ final class FilmControls {
 
     // --- The rail ---------------------------------------------------------------------
 
+    /** Whether a list shows every unlabelled track rather than one row for them (TrackFold); folded again at each opening. */
+    private boolean audioUnfolded = false;
+    private boolean subtitlesUnfolded = false;
+
+    /** Opens a fold; answers the handle of the first track it held, for focus. */
+    @Nullable
+    private Object unfold(FilmPlayback.Track fold) {
+        if (Integer.valueOf(FilmPlayback.Track.AUDIO).equals(fold.handle)) {
+            audioUnfolded = true;
+            return TrackFold.firstFolded(player.audioTracks());
+        }
+        subtitlesUnfolded = true;
+        return TrackFold.firstFolded(player.subtitleTracks());
+    }
+
+    private static int indexOfHandle(List<FilmPlayback.Track> tracks, @Nullable Object handle) {
+        if (handle == null) {
+            return -1;
+        }
+        for (int i = 0; i < tracks.size(); i++) {
+            if (handle.equals(tracks.get(i).handle)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     private void openRail() {
+        audioUnfolded = false;
+        subtitlesUnfolded = false;
         clock.removeCallbacks(hideControlsLater);
         if (seek.isActive()) {
             commitSeek();
@@ -2280,8 +2309,8 @@ final class FilmControls {
         choiceGroups.clear();
 
         // One audio track, or none, is nothing to choose between: no column.
-        List<FilmPlayback.Track> audio = player.audioTracks().size() < 2 ? new java.util.ArrayList<>() : player.audioTracks();
-        List<FilmPlayback.Track> subtitles = player.subtitleTracks();
+        List<FilmPlayback.Track> audio = player.audioTracks().size() < 2 ? new java.util.ArrayList<>() : TrackFold.fold(player.audioTracks(), audioUnfolded);
+        List<FilmPlayback.Track> subtitles = TrackFold.fold(player.subtitleTracks(), subtitlesUnfolded);
         audioColumn.setVisibility(audio.isEmpty() ? View.GONE : View.VISIBLE);
         ((LinearLayout.LayoutParams) subtitleColumn.getLayoutParams()).leftMargin = audio.isEmpty() ? 0 : ui.px(140);
         if (!audio.isEmpty()) {
@@ -2483,6 +2512,16 @@ final class FilmControls {
 
     /** OK applies and keeps the columns open, so audio and subtitles are both set in one visit. */
     private void chooseChoice(FilmPlayback.Track chosen) {
+        if (chosen.kind == FilmPlayback.Track.FOLD) {
+            Object first = unfold(chosen);
+            fillChoices(false);
+            int at = indexOfHandle(choiceTracks, first);
+            if (at >= 0) {
+                choiceFocus = at;
+                drawChoices();
+            }
+            return;
+        }
         // Another subtitle track starts on time: a delay belongs to the track it was set for.
         if (chosen.kind == FilmPlayback.Track.SUBTITLES && !chosen.inUse) {
             setSubtitleDelay(0L);
@@ -2680,8 +2719,8 @@ final class FilmControls {
         railRows.clear();
         railTracks.clear();
 
-        List<FilmPlayback.Track> audio = player.audioTracks();
-        List<FilmPlayback.Track> subtitles = player.subtitleTracks();
+        List<FilmPlayback.Track> audio = TrackFold.fold(player.audioTracks(), audioUnfolded);
+        List<FilmPlayback.Track> subtitles = TrackFold.fold(player.subtitleTracks(), subtitlesUnfolded);
         LinearLayout audioColumn = television ? railList : ui.column(6);
         LinearLayout subtitleColumn = television ? railList : ui.column(6);
         if (!television) {
@@ -2791,6 +2830,16 @@ final class FilmControls {
         }
         FilmPlayback.Track chosen = railTracks.get(railFocus);
         if (chosen.kind == FilmPlayback.Track.TIMING) {
+            return;
+        }
+        if (chosen.kind == FilmPlayback.Track.FOLD) {
+            Object first = unfold(chosen);
+            fillRail(false);
+            int at = indexOfHandle(railTracks, first);
+            if (at >= 0) {
+                railFocus = at;
+                drawRail();
+            }
             return;
         }
         if (chosen.kind == FilmPlayback.Track.PICTURE) {

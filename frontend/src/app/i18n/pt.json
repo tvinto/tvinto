@@ -336,7 +336,8 @@
       "other": "{{count}} downloads"
     },
     "rated": "nota {{rating}}",
-    "spends": "Gasta um download"
+    "spends": "Gasta um download",
+    "showingNow": "Aparecem já, e sempre que isto for reproduzido."
   },
   "epg": {
     "loading": "Carregando o guia…",
@@ -1610,7 +1611,9 @@
       "off": "Desligado",
       "audioNumber": "Áudio {0}",
       "subtitlesNumber": "Legendas {0}",
-      "inUse": "em uso"
+      "inUse": "em uso",
+      "forced": "Forçadas",
+      "default": "Predefinida"
     },
     "seek": {
       "minSteps": "passos de {0} min",
@@ -1624,6 +1627,10 @@
       "channels": {
         "one": "{0} canal",
         "other": "{0} canais"
+      },
+      "unlabelled": {
+        "one": "{0} faixa sem nome",
+        "other": "{0} faixas sem nome"
       }
     }
   },
@@ -1652,7 +1659,14 @@
     "where": "Onde os filmes são vistos neste computador",
     "whereSub": "Dentro da aplicação com os seus controlos, ou na janela do mpv como antes",
     "inApp": "Na aplicação",
-    "inWindow": "Janela do mpv"
+    "inWindow": "Janela do mpv",
+    "forced": "Forçadas",
+    "default": "Predefinida",
+    "unlabelled": {
+      "one": "{{count}} faixa sem nome",
+      "other": "{{count}} faixas sem nome"
+    },
+    "findSubtitles": "Procurar legendas…"
   },
   "tmdbKey": {
     "how": "É grátis: crie uma conta em themoviedb.org, abra Settings → API e solicite uma chave.",

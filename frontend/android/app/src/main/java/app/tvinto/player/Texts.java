@@ -114,6 +114,8 @@ final class Texts {
         word("track.audioNumber", "Audio {0}", "Zvuk {0}");
         word("track.subtitlesNumber", "Subtitles {0}", "Titlovi {0}");
         word("track.inUse", "in use", "u upotrebi");
+        word("track.forced", "Forced", "Prisilni");
+        word("track.default", "Default", "Zadani");
         word("seek.minSteps", "{0} min steps", "koraci od {0} min");
         word("seek.secondSteps", "{0} s steps", "koraci od {0} s");
         word("length.minutes", "{0} min", "{0} min");
@@ -184,6 +186,26 @@ final class Texts {
             text = text.replace("{" + i + "}", String.valueOf(values[i]));
         }
         return text;
+    }
+
+    /** "37 unlabelled tracks" (TrackFold), by the language's plural rules as `channels` is. */
+    static String unlabelled(int count) {
+        String form = given.get("count.unlabelled." + PluralForm.of(language, count));
+        if (form == null) {
+            form = given.get("count.unlabelled.other");
+        }
+        if (form != null) {
+            return form.replace("{0}", String.valueOf(count));
+        }
+        if (!croatian) {
+            return count + (count == 1 ? " unlabelled track" : " unlabelled tracks");
+        }
+        int lastTwo = count % 100;
+        int last = count % 10;
+        if (last == 1 && lastTwo != 11) {
+            return count + " neoznačena traka";
+        }
+        return count + (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14) ? " neoznačene trake" : " neoznačenih traka");
     }
 
     /** "1 channel", "5 channels"; in Croatian one, few or many: "1 kanal", "3 kanala", "5 kanala". */

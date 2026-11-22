@@ -2,6 +2,8 @@ import { Injectable, computed, signal } from '@angular/core';
 import { ChannelBanner } from '../utils/player-banner.utils';
 import { FilmPresentation } from '../utils/film-presentation.utils';
 import { currentLanguage, t } from '../utils/i18n';
+import type { SubtitleItem } from './subtitle-library.service';
+import type { AddedSubtitle } from './native/nativePlayer';
 
 /**
  * The desktop player drawn by the page (tvinto-player, electron/src/videoFrames.ts).
@@ -19,6 +21,9 @@ export interface DesktopTrack {
   id: number;
   label: string;
   selected: boolean;
+  /** The file says neither its language nor a title: "Subtitles 11". */
+  unlabelled: boolean;
+  forced: boolean;
 }
 
 /** A track as mpv names it (electron/src/videoState.ts). */
@@ -27,6 +32,17 @@ export interface MpvTrack {
   title: string;
   lang: string;
   selected: boolean;
+  /** The file's own flags; absent from a main process older than them. */
+  forced?: boolean;
+  default?: boolean;
+}
+
+/** The words a track's flags are said in, in the app's language. */
+export interface TrackWords {
+  /** The list's own word, numbered for a track that says nothing: "Subtitles". */
+  unnamed: string;
+  forced: string;
+  default: string;
 }
 
 /** What the main process says about the player (electron/src/videoState.ts). */
@@ -84,15 +100,91 @@ export function trackLabel(track: MpvTrack, language: string): string {
  * number: two Spanish tracks the file says nothing more about are "Spanish"
  * and "Spanish 2". One the file says nothing about is the list's own word
  * and its place in it: "Subtitles 11".
+ *
+ * Then what the file's flags say, where that tells one track from the rest:
+ * "Subtitles 1 · Forced" always, since forced subtitles are only the signs
+ * and the foreign lines; "Audio 1 · Default" only when some other track is
+ * not the default -- on a lone track, or on all of them, it says nothing.
+ * A title that already says "forced" is not told twice.
  */
-export function trackLabels(tracks: readonly MpvTrack[], language: string, unnamed: string): string[] {
-  const labels = tracks.map((track, at) => trackLabel(track, language) || `${unnamed} ${at + 1}`);
+export function trackLabels(tracks: readonly MpvTrack[], language: string, said: TrackWords): string[] {
+  const defaultTells = tracks.length > 1 && tracks.some(track => !track.default);
+  const labels = tracks.map((track, at) => {
+    const label = trackLabel(track, language) || `${said.unnamed} ${at + 1}`;
+    const flag =
+      track.forced
+        ? /forced/i.test(track.title) ? '' : said.forced
+        : track.default && defaultTells ? said.default : '';
+    return flag ? `${label} · ${flag}` : label;
+  });
   const seen = new Map<string, number>();
   return labels.map(label => {
     const count = (seen.get(label) ?? 0) + 1;
     seen.set(label, count);
     return count === 1 ? label : `${label} ${count}`;
   });
+}
+
+/** More unlabelled tracks than this and the list folds them into one row. */
+export const UNLABELLED_FOLD_AT = 6;
+
+/**
+ * A list as the panel first shows it: a file with 38 subtitle tracks that say
+ * nothing about themselves is 38 rows reading "Subtitles 1" to "Subtitles
+ * 38", which helps nobody choose. Past UNLABELLED_FOLD_AT of them they fold
+ * into one row that opens to the numbered list. The labelled ones stay, and
+ * so do a forced one and the one in use, which are the ones a person looks
+ * for. `hidden` is how many the fold holds; 0 when nothing folds.
+ */
+export function foldUnlabelled<T extends Pick<DesktopTrack, 'unlabelled' | 'forced' | 'selected'>>(
+  tracks: readonly T[]
+): { shown: T[]; hidden: number } {
+  const folds = (track: T) => track.unlabelled && !track.forced && !track.selected;
+  if (tracks.filter(track => track.unlabelled).length <= UNLABELLED_FOLD_AT) {
+    return { shown: [...tracks], hidden: 0 };
+  }
+  const shown = tracks.filter(track => !folds(track));
+  return { shown, hidden: tracks.length - shown.length };
+}
+
+/** What the subtitle picker is opened on from inside the player. */
+export interface PlayingTarget {
+  item: SubtitleItem;
+  name: string;
+}
+
+/**
+ * The film or episode playing, as the subtitle picker names it: the same
+ * `SubtitleItem` the film and show pages hand it. An episode's numbers come
+ * from its title ("S1 E3 · Long, Long Time"), which is all the player is told;
+ * without them the picker finds the episode by the show's name. Null for live,
+ * where there is nothing to add subtitles to.
+ */
+export function playingTarget(
+  item: { type: string; id: string; showId?: string } | undefined,
+  presentation: FilmPresentation | null | undefined,
+  title: string
+): PlayingTarget | null {
+  if (!item || (item.type !== 'vod' && item.type !== 'series')) {
+    return null;
+  }
+  if (item.type === 'vod') {
+    const name = presentation?.title || title;
+    return { item: { type: 'vod', itemId: item.id, name }, name };
+  }
+  const name = presentation?.heading || title;
+  const numbers = /^S(\d+)\s*E(\d+)(?!\d)/i.exec(presentation?.title ?? '');
+  return {
+    item: {
+      type: 'series',
+      itemId: item.id,
+      seriesId: item.showId ?? null,
+      season: numbers ? Number(numbers[1]) : null,
+      episodeNum: numbers ? Number(numbers[2]) : null,
+      name
+    },
+    name
+  };
 }
 
 /** The player as the page shows it. */
@@ -124,6 +216,7 @@ export type DesktopVideoCommand =
   | { kind: 'seek'; seconds: number; mode: 'relative' | 'absolute' }
   | { kind: 'audio'; id: number }
   | { kind: 'subtitle'; id: number | null }
+  | { kind: 'addSubtitle'; subtitle: AddedSubtitle }
   | { kind: 'pause'; paused: boolean }
   | { kind: 'volume'; volume: number }
   | { kind: 'mute'; muted: boolean };
@@ -199,6 +292,9 @@ export class DesktopVideoService {
    */
   readonly presentation = signal<FilmPresentation | null>(null);
 
+  /** The film or episode playing, for "Find subtitles…"; null for live. */
+  readonly playing = signal<PlayingTarget | null>(null);
+
   /** What the next film opens at, and what the controls last set. */
   readonly kept = signal<DesktopVolume>(readVolume());
 
@@ -207,8 +303,14 @@ export class DesktopVideoService {
       const language = currentLanguage();
       const labelled = (tracks: MpvTrack[] | undefined, unnamed: string): DesktopTrack[] => {
         const list = tracks ?? [];
-        const labels = trackLabels(list, language, unnamed);
-        return list.map((track, at) => ({ id: track.id, label: labels[at], selected: track.selected }));
+        const labels = trackLabels(list, language, { unnamed, forced: t('desktopPlayer.forced'), default: t('desktopPlayer.default') });
+        return list.map((track, at) => ({
+          id: track.id,
+          label: labels[at],
+          selected: track.selected,
+          unlabelled: trackLabel(track, language) === '',
+          forced: track.forced === true
+        }));
       };
       this.state.set({ ...CLOSED, ...state, audio: labelled(state.audio, t('desktopPlayer.audio')), subtitles: labelled(state.subtitles, t('desktopPlayer.subtitles')) });
     });

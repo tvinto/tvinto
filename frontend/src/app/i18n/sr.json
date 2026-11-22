@@ -340,7 +340,8 @@
       "other": "{{count}} preuzimanja"
     },
     "rated": "ocena {{rating}}",
-    "spends": "Troši jedno preuzimanje"
+    "spends": "Troši jedno preuzimanje",
+    "showingNow": "Prikazuju se odmah, i svaki put kad se ovo gleda."
   },
   "epg": {
     "loading": "Učitavam vodič…",
@@ -1647,7 +1648,9 @@
       "off": "Isključeno",
       "audioNumber": "Zvuk {0}",
       "subtitlesNumber": "Titlovi {0}",
-      "inUse": "u upotrebi"
+      "inUse": "u upotrebi",
+      "forced": "Prinudni",
+      "default": "Podrazumevani"
     },
     "seek": {
       "minSteps": "koraci od {0} min",
@@ -1662,6 +1665,11 @@
         "one": "{0} kanal",
         "few": "{0} kanala",
         "other": "{0} kanala"
+      },
+      "unlabelled": {
+        "one": "{0} neoznačena traka",
+        "few": "{0} neoznačene trake",
+        "other": "{0} neoznačenih traka"
       }
     }
   },
@@ -1690,7 +1698,15 @@
     "where": "Gde se filmovi gledaju na ovom računaru",
     "whereSub": "U aplikaciji sa njenim kontrolama ili u prozoru mpv-a kao pre",
     "inApp": "U aplikaciji",
-    "inWindow": "Prozor mpv-a"
+    "inWindow": "Prozor mpv-a",
+    "forced": "Prinudni",
+    "default": "Podrazumevani",
+    "unlabelled": {
+      "one": "{{count}} neoznačena traka",
+      "few": "{{count}} neoznačene trake",
+      "other": "{{count}} neoznačenih traka"
+    },
+    "findSubtitles": "Pronađi titlove…"
   },
   "tmdbKey": {
     "how": "Besplatan je: otvorite nalog na themoviedb.org, zatim Settings → API i zatražite ključ.",

@@ -81,7 +81,7 @@
               }
             </div>
             <p class="text-sm text-muted-foreground">
-              {{ 'picker.nextTime' | t }}
+              {{ (playing() ? 'picker.showingNow' : 'picker.nextTime') | t }}
             </p>
 
             @if (justAdded(); as added) {

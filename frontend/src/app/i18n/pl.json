@@ -344,7 +344,8 @@
       "other": "{{count}} pobrania"
     },
     "rated": "ocena {{rating}}",
-    "spends": "Zużywa jedno pobranie"
+    "spends": "Zużywa jedno pobranie",
+    "showingNow": "Wyświetlają się od razu i przy każdym odtworzeniu."
   },
   "epg": {
     "loading": "Wczytuję przewodnik…",
@@ -1684,7 +1685,9 @@
       "off": "Wył.",
       "audioNumber": "Dźwięk {0}",
       "subtitlesNumber": "Napisy {0}",
-      "inUse": "w użyciu"
+      "inUse": "w użyciu",
+      "forced": "Wymuszone",
+      "default": "Domyślne"
     },
     "seek": {
       "minSteps": "kroki po {0} min",
@@ -1700,6 +1703,12 @@
         "few": "{0} kanały",
         "many": "{0} kanałów",
         "other": "{0} kanału"
+      },
+      "unlabelled": {
+        "one": "{0} nieopisana ścieżka",
+        "few": "{0} nieopisane ścieżki",
+        "many": "{0} nieopisanych ścieżek",
+        "other": "{0} nieopisanej ścieżki"
       }
     }
   },
@@ -1728,7 +1737,16 @@
     "where": "Gdzie filmy grają na tym komputerze",
     "whereSub": "W aplikacji z jej własnymi przyciskami albo jak dotąd w oknie mpv",
     "inApp": "W aplikacji",
-    "inWindow": "Okno mpv"
+    "inWindow": "Okno mpv",
+    "forced": "Wymuszone",
+    "default": "Domyślne",
+    "unlabelled": {
+      "one": "{{count}} nieopisana ścieżka",
+      "few": "{{count}} nieopisane ścieżki",
+      "many": "{{count}} nieopisanych ścieżek",
+      "other": "{{count}} nieopisanej ścieżki"
+    },
+    "findSubtitles": "Znajdź napisy…"
   },
   "tmdbKey": {
     "how": "Jest darmowy: załóż konto na themoviedb.org, otwórz Settings → API i poproś o klucz.",

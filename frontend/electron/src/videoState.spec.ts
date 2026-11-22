@@ -38,14 +38,14 @@ describe('VideoState', () => {
       { id: 1, type: 'video', selected: true },
       { id: 1, type: 'audio', lang: 'eng', title: 'English 2.0', selected: true },
       { id: 2, type: 'audio', lang: 'hrv', selected: false },
-      { id: 1, type: 'sub', lang: 'eng', selected: false }
+      { id: 1, type: 'sub', lang: 'eng', selected: false, forced: true, default: true }
     ]);
     state.paused(true);
     expect(last().audio).toEqual([
-      { id: 1, title: 'English 2.0', lang: 'eng', selected: true },
-      { id: 2, title: '', lang: 'hrv', selected: false }
+      { id: 1, title: 'English 2.0', lang: 'eng', selected: true, forced: false, default: false },
+      { id: 2, title: '', lang: 'hrv', selected: false, forced: false, default: false }
     ]);
-    expect(last().subtitles).toEqual([{ id: 1, title: '', lang: 'eng', selected: false }]);
+    expect(last().subtitles).toEqual([{ id: 1, title: '', lang: 'eng', selected: false, forced: true, default: true }]);
   });
 
   it('sends the badge and the skip offer as they change, and the position with the next tick', () => {

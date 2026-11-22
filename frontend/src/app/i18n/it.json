@@ -336,7 +336,8 @@
       "other": "{{count}} download"
     },
     "rated": "voto {{rating}}",
-    "spends": "Consuma un download"
+    "spends": "Consuma un download",
+    "showingNow": "Si vedono già ora, e ogni volta che lo guardi."
   },
   "epg": {
     "loading": "Caricamento della guida…",
@@ -1610,7 +1611,9 @@
       "off": "No",
       "audioNumber": "Audio {0}",
       "subtitlesNumber": "Sottotitoli {0}",
-      "inUse": "in uso"
+      "inUse": "in uso",
+      "forced": "Forzati",
+      "default": "Predefinito"
     },
     "seek": {
       "minSteps": "passi di {0} min",
@@ -1624,6 +1627,10 @@
       "channels": {
         "one": "{0} canale",
         "other": "{0} canali"
+      },
+      "unlabelled": {
+        "one": "{0} traccia senza nome",
+        "other": "{0} tracce senza nome"
       }
     }
   },
@@ -1652,7 +1659,14 @@
     "where": "Dove si guardano i film su questo computer",
     "whereSub": "Nell’app con i suoi controlli, o nella finestra di mpv come prima",
     "inApp": "Nell’app",
-    "inWindow": "Finestra di mpv"
+    "inWindow": "Finestra di mpv",
+    "forced": "Forzati",
+    "default": "Predefinito",
+    "unlabelled": {
+      "one": "{{count}} traccia senza nome",
+      "other": "{{count}} tracce senza nome"
+    },
+    "findSubtitles": "Cerca sottotitoli…"
   },
   "tmdbKey": {
     "how": "È gratuita: crea un account su themoviedb.org, poi apri Settings → API e richiedi una chiave.",

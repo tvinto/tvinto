@@ -3,19 +3,24 @@ import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideArrowLeft,
   lucideCaptions,
+  lucideChevronDown,
   lucideMaximize,
   lucideMinimize,
   lucidePause,
   lucidePlay,
   lucideRotateCcw,
   lucideRotateCw,
+  lucideSearch,
   lucideSkipBack,
   lucideVolume1,
   lucideVolume2,
   lucideVolumeX,
   lucideX
 } from '@ng-icons/lucide';
-import { DesktopTrack, DesktopVideoService } from '../../services/desktop-video.service';
+import { DesktopTrack, DesktopVideoService, PlayingTarget, foldUnlabelled } from '../../services/desktop-video.service';
+import { NativePlayerService } from '../../services/native-player.service';
+import { SubtitlePickerComponent } from '../subtitle-picker/subtitle-picker.component';
+import { SavedSubtitle } from '@shared/subtitles';
 import { channelDisplay } from '../../utils/channel-display.utils';
 import { formatTimecode } from '../../utils/progress.utils';
 import { t } from '../../utils/i18n';
@@ -50,17 +55,19 @@ const VOLUME_STEP = 5;
 @Component({
   selector: 'app-desktop-player',
   standalone: true,
-  imports: [TPipe, NgIcon],
+  imports: [TPipe, NgIcon, SubtitlePickerComponent],
   providers: [
     provideIcons({
       lucideArrowLeft,
       lucideCaptions,
+      lucideChevronDown,
       lucideMaximize,
       lucideMinimize,
       lucidePause,
       lucidePlay,
       lucideRotateCcw,
       lucideRotateCw,
+      lucideSearch,
       lucideSkipBack,
       lucideVolume1,
       lucideVolume2,
@@ -235,9 +242,14 @@ const VOLUME_STEP = 5;
             <div class="column" (click)="$event.stopPropagation()">
               <h3>{{ 'desktopPlayer.audio' | t }}</h3>
               <div class="list" (scroll)="edges($event.target)">
-                @for (track of state().audio; track track.id) {
-                  <button type="button" class="choice" [class.on]="track.selected" (click)="chooseAudio(track)">
+                @for (track of audioRows().shown; track track.id) {
+                  <button type="button" class="choice" [class.on]="track.selected" [attr.data-track]="track.id" (click)="chooseAudio(track)">
                     <span class="tick">{{ track.selected ? '✓' : '' }}</span>{{ track.label }}
+                  </button>
+                }
+                @if (audioRows().hidden) {
+                  <button type="button" class="choice more" (click)="unfold('audio')">
+                    <span class="tick"><ng-icon name="lucideChevronDown" /></span>{{ 'desktopPlayer.unlabelled' | t: { count: audioRows().hidden } }}
                   </button>
                 }
               </div>
@@ -245,16 +257,33 @@ const VOLUME_STEP = 5;
             <div class="column" (click)="$event.stopPropagation()">
               <h3>{{ 'desktopPlayer.subtitles' | t }}</h3>
               <div class="list" (scroll)="edges($event.target)">
+                @if (video.playing()) {
+                  <button type="button" class="choice find" (click)="findSubtitles()">
+                    <span class="tick"><ng-icon name="lucideSearch" /></span>{{ 'desktopPlayer.findSubtitles' | t }}
+                  </button>
+                }
                 <button type="button" class="choice" [class.on]="!anySubtitle()" (click)="chooseSubtitle(null)">
                   <span class="tick">{{ anySubtitle() ? '' : '✓' }}</span>{{ 'desktopPlayer.off' | t }}
                 </button>
-                @for (track of state().subtitles; track track.id) {
-                  <button type="button" class="choice" [class.on]="track.selected" (click)="chooseSubtitle(track)">
+                @for (track of subtitleRows().shown; track track.id) {
+                  <button type="button" class="choice" [class.on]="track.selected" [attr.data-track]="track.id" (click)="chooseSubtitle(track)">
                     <span class="tick">{{ track.selected ? '✓' : '' }}</span>{{ track.label }}
+                  </button>
+                }
+                @if (subtitleRows().hidden) {
+                  <button type="button" class="choice more" (click)="unfold('subtitles')">
+                    <span class="tick"><ng-icon name="lucideChevronDown" /></span>{{ 'desktopPlayer.unlabelled' | t: { count: subtitleRows().hidden } }}
                   </button>
                 }
               </div>
             </div>
+          </div>
+        }
+
+        @if (finding(); as target) {
+          <!-- Over the film, which plays on: what is chosen shows at once. -->
+          <div class="finding" (click)="$event.stopPropagation()" (dblclick)="$event.stopPropagation()" (keydown)="$event.stopPropagation()">
+            <app-subtitle-picker [item]="target.item" [name]="target.name" [playing]="true" (added)="showAdded($event)" (closed)="closeFinding()" />
           </div>
         }
       </div>
@@ -498,6 +527,24 @@ const VOLUME_STEP = 5;
       }
       .choice.on {
         font-weight: 700;
+      }
+      .choice.more,
+      .choice.find {
+        color: oklch(0.8 0.02 260);
+      }
+      .choice.more:focus-visible,
+      .choice.find:focus-visible {
+        color: oklch(0.16 0.03 260);
+      }
+      .tick ng-icon {
+        vertical-align: -0.12em;
+      }
+      /* The picker's own overlay is fixed to the window; this lifts it over the controls. */
+      .finding {
+        position: absolute;
+        inset: 0;
+        z-index: 10;
+        letter-spacing: normal;
       }
       .tick {
         display: inline-block;
@@ -820,6 +867,11 @@ export class DesktopPlayerComponent implements OnDestroy {
 
   readonly controlsUp = signal(true);
   readonly panel = signal(false);
+  /** The subtitle picker, open over the film from "Find subtitles…": what it is about. */
+  readonly finding = signal<PlayingTarget | null>(null);
+  /** Which lists show every unlabelled track rather than one row for them all. */
+  private readonly unfolded = signal<{ audio: boolean; subtitles: boolean }>({ audio: false, subtitles: false });
+  private readonly native = inject(NativePlayerService);
   readonly fullscreen = signal(!!document.fullscreenElement);
   /** The pointer is over the controls, which then stay. */
   private readonly hovering = signal(false);
@@ -853,6 +905,8 @@ export class DesktopPlayerComponent implements OnDestroy {
     this.clock(this.now() + Math.max(0, this.state().durationSeconds - this.state().positionSeconds) * 1000)
   );
   readonly hasTracks = computed(() => this.state().audio.length > 1 || this.state().subtitles.length > 0);
+  readonly audioRows = computed(() => this.rows(this.state().audio, this.unfolded().audio));
+  readonly subtitleRows = computed(() => this.rows(this.state().subtitles, this.unfolded().subtitles));
   readonly anySubtitle = computed(() => this.state().subtitles.some(track => track.selected));
   readonly subtitleLine = computed(() => {
     const audio = this.state().audio.find(track => track.selected);
@@ -890,6 +944,8 @@ export class DesktopPlayerComponent implements OnDestroy {
       if (this.video.open()) {
         untracked(() => {
           this.panel.set(false);
+          this.finding.set(null);
+          this.unfolded.set({ audio: false, subtitles: false });
           this.hovering.set(false);
           this.touched();
         });
@@ -954,7 +1010,7 @@ export class DesktopPlayerComponent implements OnDestroy {
     }
     this.hideTimer = setTimeout(
       () => {
-        if (!this.state().paused && !this.panel() && !this.hovering()) {
+        if (!this.state().paused && !this.panel() && !this.finding() && !this.hovering()) {
           this.controlsUp.set(false);
           // A control left focused would show its tooltip over the picture.
           if (this.host.nativeElement.contains(document.activeElement)) {
@@ -1053,6 +1109,53 @@ export class DesktopPlayerComponent implements OnDestroy {
     list.toggleAttribute('data-more-below', list.scrollTop + list.clientHeight < list.scrollHeight - 2);
   }
 
+  private rows(tracks: DesktopTrack[], unfolded: boolean): { shown: DesktopTrack[]; hidden: number } {
+    return unfolded ? { shown: tracks, hidden: 0 } : foldUnlabelled(tracks);
+  }
+
+  /** Opens a folded list where its row was, focus on the first track it held. */
+  unfold(list: 'audio' | 'subtitles'): void {
+    const before = new Set((list === 'audio' ? this.audioRows() : this.subtitleRows()).shown.map(track => track.id));
+    this.unfolded.update(now => ({ ...now, [list]: true }));
+    const first = (list === 'audio' ? this.state().audio : this.state().subtitles).find(track => !before.has(track.id));
+    setTimeout(() => {
+      const root = this.host.nativeElement;
+      root.querySelectorAll<HTMLElement>('.tracks .list').forEach(one => this.edges(one));
+      const column = root.querySelectorAll<HTMLElement>('.tracks .column')[list === 'audio' ? 0 : 1];
+      if (first) {
+        column?.querySelector<HTMLElement>(`[data-track="${first.id}"]`)?.focus();
+      }
+    });
+  }
+
+  /** The picker over the film, which goes on playing behind it. */
+  findSubtitles(): void {
+    const target = this.video.playing();
+    if (!target) {
+      return;
+    }
+    this.panel.set(false);
+    this.finding.set(target);
+  }
+
+  closeFinding(): void {
+    this.finding.set(null);
+    // Back to the list, where what was just added is the subtitle in use.
+    this.openPanel();
+  }
+
+  /** A subtitle saved in the picker: handed to the running player, which shows it at once. */
+  async showAdded(saved: SavedSubtitle): Promise<void> {
+    try {
+      const subtitle = await this.native.subtitleForPlayer(saved.id);
+      if (this.video.open()) {
+        this.video.send({ kind: 'addSubtitle', subtitle });
+      }
+    } catch {
+      // Saved on the account all the same: it shows the next time this plays.
+    }
+  }
+
   chooseAudio(track: DesktopTrack): void {
     this.video.send({ kind: 'audio', id: track.id });
   }
@@ -1105,6 +1208,18 @@ export class DesktopPlayerComponent implements OnDestroy {
    */
   private onKey(event: KeyboardEvent): void {
     if (!this.video.open() || event.altKey || event.ctrlKey || event.metaKey) {
+      return;
+    }
+    if (this.finding()) {
+      // The picker has the keys -- typing a title, the arrows and OK about its
+      // rows -- and stops them going further itself (the template). Escape,
+      // and Back outside the search field, close it.
+      const typing = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement;
+      if (event.key === 'Escape' || (event.key === 'Backspace' && !typing)) {
+        event.stopImmediatePropagation();
+        event.preventDefault();
+        this.closeFinding();
+      }
       return;
     }
     const live = this.state().live;

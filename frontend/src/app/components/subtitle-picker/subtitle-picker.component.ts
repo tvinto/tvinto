@@ -67,7 +67,15 @@ export class SubtitlePickerComponent implements OnInit {
   /** For an episode: what the show page already fetched, so nothing is asked twice. */
   readonly seriesInfo = input<unknown>(null);
 
+  /**
+   * Opened over a film that is playing (the player's "Find subtitles…"):
+   * what is chosen shows at once, and the words say so.
+   */
+  readonly playing = input(false);
+
   readonly closed = output<void>();
+  /** A subtitle saved, or its timing changed: for a player that is showing it now. */
+  readonly added = output<SavedSubtitle>();
 
   private readonly identityService = inject(SubtitleIdentityService);
   private readonly library = inject(SubtitleLibraryService);
@@ -159,6 +167,7 @@ export class SubtitlePickerComponent implements OnInit {
       if (this.justAdded()?.id === updated.id) {
         this.justAdded.set(updated);
       }
+      this.added.emit(updated);
     } catch (error) {
       this.message.set(this.subtitles.describe(error));
     } finally {
@@ -262,6 +271,7 @@ export class SubtitlePickerComponent implements OnInit {
       const saved = await this.library.add(identity, { ...this.item(), name: this.item().name ?? this.name() }, result);
       this.justAdded.set(saved);
       this.phase.set('added');
+      this.added.emit(saved);
       void this.loadSaved();
     } catch (error) {
       this.fail(error);
