@@ -35,6 +35,18 @@ const missing = [film(9100, 'Nowhere To Be Found', 2026, [28]), film(9101, 'Abse
 const severance = show(95396, 'Severance', 2022, [18, 9648]);
 const spareShow = show(9201, 'Spare Show', 2021, [18]);
 const twelve = show(9202, 'Twelve Seasons', 2015, [35]);
+// In three copies with different seasons; TMDB's says season 3, whose sixth episode aired two days ago.
+const ringSaga = show(9203, 'Ring Saga', 2022, [18]);
+const daysAgo = days => new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+/** What a show's own page adds, where it differs from two seasons and nothing announced. */
+const showDetails = {
+  9203: () => ({
+    number_of_seasons: 3,
+    status: 'Returning Series',
+    last_episode_to_air: { season_number: 3, episode_number: 6, name: 'The Sixth', air_date: daysAgo(2) },
+    next_episode_to_air: null
+  })
+};
 const missingShow = show(9300, 'Never Made', 2024, [18]);
 
 const lists = {
@@ -50,7 +62,7 @@ const lists = {
     popular: [spareShow, severance, twelve],
     top: [severance, twelve, missingShow],
     new: [severance, spareShow],
-    genre: [severance, spareShow, twelve]
+    genre: [severance, spareShow, twelve, ringSaga]
   }
 };
 
@@ -96,7 +108,8 @@ function answer(address) {
       const names = genres[kind];
       return send(200, {
         ...one, runtime: 120, number_of_seasons: 2, genres: one.genre_ids.map(id => ({ id, name: names.find(([g]) => g === id)?.[1] ?? '' })),
-        release_dates: { results: [] }, content_ratings: { results: [] }, recommendations: { results: [] }, videos: { results: [] }, episodes: []
+        release_dates: { results: [] }, content_ratings: { results: [] }, recommendations: { results: [] }, videos: { results: [] }, episodes: [],
+        ...(kind === 'tv' ? showDetails[one.id]?.() : {})
       });
     }
   }

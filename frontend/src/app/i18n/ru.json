@@ -587,6 +587,8 @@
     "newRecent": "Новая серия · S{{s}} E{{e}} · {{name}}",
     "readyToPlay": "можно смотреть",
     "notOnProvider": "у вашего провайдера пока нет",
+    "fromCopy": "Из копии {{copy}}",
+    "episodesFromCopy": "{{episodes}} из копии {{copy}}",
     "newOn": "Новая серия {{day}}",
     "seasonStarts": "Сезон {{season}} начинается {{date}}",
     "endedIn": "Завершён в {{year}}",

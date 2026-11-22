@@ -563,6 +563,8 @@
     "newRecent": "Neue Folge · S{{s}} E{{e}} · {{name}}",
     "readyToPlay": "bereit zum Abspielen",
     "notOnProvider": "noch nicht bei deinem Anbieter",
+    "fromCopy": "Aus der Kopie {{copy}}",
+    "episodesFromCopy": "{{episodes}} aus der Kopie {{copy}}",
     "newOn": "Neue Folge {{day}}",
     "seasonStarts": "Staffel {{season}} startet am {{date}}",
     "endedIn": "Beendet {{year}}",

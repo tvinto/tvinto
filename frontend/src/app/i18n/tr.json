@@ -563,6 +563,8 @@
     "newRecent": "Yeni bölüm · S{{s}} B{{e}} · {{name}}",
     "readyToPlay": "oynatmaya hazır",
     "notOnProvider": "henüz sağlayıcınızda yok",
+    "fromCopy": "{{copy}} kopyasından",
+    "episodesFromCopy": "{{episodes}}, {{copy}} kopyasından",
     "newOn": "Yeni bölüm {{day}}",
     "seasonStarts": "{{season}}. sezon {{date}} tarihinde başlıyor",
     "endedIn": "{{year}} yılında bitti",

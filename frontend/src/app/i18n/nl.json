@@ -563,6 +563,8 @@
     "newRecent": "Nieuwe aflevering · S{{s}} A{{e}} · {{name}}",
     "readyToPlay": "klaar om af te spelen",
     "notOnProvider": "nog niet bij je aanbieder",
+    "fromCopy": "Uit de kopie {{copy}}",
+    "episodesFromCopy": "{{episodes}} uit de kopie {{copy}}",
     "newOn": "Nieuwe aflevering {{day}}",
     "seasonStarts": "Seizoen {{season}} begint op {{date}}",
     "endedIn": "Afgelopen in {{year}}",

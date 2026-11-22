@@ -563,6 +563,8 @@
     "newRecent": "Episod i ri · S{{s}} E{{e}} · {{name}}",
     "readyToPlay": "gati për t'u luajtur",
     "notOnProvider": "ende jo te ofruesi juaj",
+    "fromCopy": "Nga kopja {{copy}}",
+    "episodesFromCopy": "{{episodes}} nga kopja {{copy}}",
     "newOn": "Episod i ri {{day}}",
     "seasonStarts": "Sezoni {{season}} fillon më {{date}}",
     "endedIn": "Përfundoi në {{year}}",

@@ -337,7 +337,14 @@ const series = [
   { name: 'No Episodes Yet', seasons: 0, episodes: 0 },
   // One show twice, for trying another copy when an episode fails.
   { name: 'EN - Spare Show FHD (2021)', seasons: 1, episodes: 3 },
-  { name: 'EN - Spare Show HD (2021)', seasons: 1, episodes: 3 }
+  { name: 'EN - Spare Show HD (2021)', seasons: 1, episodes: 3 },
+  // One show in three copies with different seasons, for the seasons
+  // gathered across copies (22 November): the 4K copy has seasons 1-2, the HD
+  // one 1-3 without the newest episode, the German one only season 3, with a
+  // gap where the HD one ends. fake-tmdb.js says season 3 has six episodes.
+  { name: 'EN - Ring Saga 4K (2022)', tmdb: '9203', layout: { 1: [1, 2, 3], 2: [1, 2, 3] } },
+  { name: 'EN - Ring Saga HD (2022)', tmdb: '9203', layout: { 1: [1, 2, 3], 2: [1, 2, 3], 3: [1, 2, 3, 4, 5] } },
+  { name: 'DE - Ring Saga (2022)', tmdb: '9203', layout: { 3: [1, 2, 3, 4, 6] } }
 ].map((show, i) => ({
   ...show, num: i + 1, series_id: 3000 + i, cover: ART, plot: show.plot ?? sentence(30), cast: 'Somebody, Somebody Else', director: '',
   genre: 'Drama', releaseDate: '2022-02-18', last_modified: added, rating: '8', rating_5based: 4, backdrop_path: [],
@@ -351,8 +358,11 @@ const seriesInfo = id => {
   const show = data.series.find(entry => String(entry.series_id) === String(id));
   if (!show) return { info: {}, episodes: {}, seasons: [] };
   const episodes = {};
-  for (let s = 1; s <= show.seasons; s++) {
-    episodes[String(s)] = Array.from({ length: show.episodes }, (_, e) => ({
+  // `layout` names each season's episode numbers; otherwise every season has `episodes` of them.
+  const layout = show.layout ?? Object.fromEntries(Array.from({ length: show.seasons }, (_, s) => [s + 1, Array.from({ length: show.episodes }, (_, e) => e + 1)]));
+  for (const [season, numbers] of Object.entries(layout)) {
+    const s = Number(season);
+    episodes[String(s)] = numbers.map(number => number - 1).map(e => ({
       id: String(show.series_id * 100 + s * 20 + e), episode_num: e + 1, season: s, container_extension: 'mkv',
       title: DEMO
         ? DEMO.episodeTitle(show, s, e + 1)
@@ -360,8 +370,8 @@ const seriesInfo = id => {
       info: { duration_secs: 3000, duration: '00:50:00', plot: DEMO ? DEMO.episodePlot(show, e + 1) : e === 0 ? sentence(60) : '', video: { duration: '00:50:00' } }
     }));
   }
-  const { seasons, episodes: _count, ...info } = show;
-  return { info, episodes, seasons: Array.from({ length: seasons }, (_, s) => ({ season_number: s + 1, name: `Season ${s + 1}` })) };
+  const { seasons: _seasons, episodes: _count, layout: _layout, ...info } = show;
+  return { info, episodes, seasons: Object.keys(layout).map(s => ({ season_number: Number(s), name: `Season ${s}` })) };
 };
 
 const vodInfo = id => {
@@ -441,7 +451,7 @@ http
       }
       return undefined;
     }
-    console.log(new Date().toISOString().slice(11, 23), url.pathname, q.get('action') ?? '', stream ? `open=${openRequests}${openRequests > 1 ? ' OVERLAP' : ''}` : '');
+    console.log(new Date().toISOString().slice(11, 23), url.pathname, q.get('action') ?? '', q.get('series_id') ?? '', stream ? `open=${openRequests}${openRequests > 1 ? ' OVERLAP' : ''}` : '');
     if (req.method === 'OPTIONS') {
       res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*' });
       return res.end();
@@ -545,7 +555,7 @@ http
       case 'get_series_categories': return json(res, data.seriesCategories);
       case 'get_live_streams': return json(res, inCategory(data.live));
       case 'get_vod_streams': return json(res, inCategory(data.vod).map(({ plot, year, ...film }) => film));
-      case 'get_series': return json(res, inCategory(data.series).map(({ seasons, episodes, ...show }) => show));
+      case 'get_series': return json(res, inCategory(data.series).map(({ seasons, episodes, layout, ...show }) => show));
       case 'get_series_info': return json(res, seriesInfo(q.get('series_id')));
       case 'get_vod_info': return json(res, vodInfo(q.get('vod_id')));
       case 'get_short_epg':
