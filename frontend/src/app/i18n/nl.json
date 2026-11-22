@@ -336,7 +336,8 @@
       "other": "{{count}} downloads"
     },
     "rated": "beoordeeld {{rating}}",
-    "spends": "Kost één download"
+    "spends": "Kost één download",
+    "showingNow": "Ze worden nu getoond, en elke keer dat dit speelt."
   },
   "epg": {
     "loading": "Gids wordt geladen…",
@@ -1610,7 +1611,9 @@
       "off": "Uit",
       "audioNumber": "Audio {0}",
       "subtitlesNumber": "Ondertitels {0}",
-      "inUse": "in gebruik"
+      "inUse": "in gebruik",
+      "forced": "Geforceerd",
+      "default": "Standaard"
     },
     "seek": {
       "minSteps": "stappen van {0} min",
@@ -1624,6 +1627,10 @@
       "channels": {
         "one": "{0} zender",
         "other": "{0} zenders"
+      },
+      "unlabelled": {
+        "one": "{0} naamloos spoor",
+        "other": "{0} naamloze sporen"
       }
     }
   },
@@ -1652,7 +1659,14 @@
     "where": "Waar films op deze computer spelen",
     "whereSub": "In de app met de eigen bediening, of zoals eerder in het venster van mpv",
     "inApp": "In de app",
-    "inWindow": "Venster van mpv"
+    "inWindow": "Venster van mpv",
+    "forced": "Geforceerd",
+    "default": "Standaard",
+    "unlabelled": {
+      "one": "{{count}} naamloos spoor",
+      "other": "{{count}} naamloze sporen"
+    },
+    "findSubtitles": "Ondertitels zoeken…"
   },
   "tmdbKey": {
     "how": "Hij is gratis: maak een account op themoviedb.org, open dan Settings → API en vraag een sleutel aan.",

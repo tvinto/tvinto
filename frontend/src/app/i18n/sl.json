@@ -344,7 +344,8 @@
       "other": "{{count}} prenosov"
     },
     "rated": "ocena {{rating}}",
-    "spends": "Porabi en prenos"
+    "spends": "Porabi en prenos",
+    "showingNow": "Prikazani so takoj, in vsakič, ko se to predvaja."
   },
   "epg": {
     "loading": "Nalagam vodič…",
@@ -1684,7 +1685,9 @@
       "off": "Izklopljeno",
       "audioNumber": "Zvok {0}",
       "subtitlesNumber": "Podnapisi {0}",
-      "inUse": "v uporabi"
+      "inUse": "v uporabi",
+      "forced": "Prisilni",
+      "default": "Privzeti"
     },
     "seek": {
       "minSteps": "koraki po {0} min",
@@ -1700,6 +1703,12 @@
         "two": "{0} kanala",
         "few": "{0} kanali",
         "other": "{0} kanalov"
+      },
+      "unlabelled": {
+        "one": "{0} neoznačena sled",
+        "two": "{0} neoznačeni sledi",
+        "few": "{0} neoznačene sledi",
+        "other": "{0} neoznačenih sledi"
       }
     }
   },
@@ -1728,7 +1737,16 @@
     "where": "Kje se filmi predvajajo na tem računalniku",
     "whereSub": "V aplikaciji z njenimi kontrolami ali v oknu mpv kot prej",
     "inApp": "V aplikaciji",
-    "inWindow": "Okno mpv"
+    "inWindow": "Okno mpv",
+    "forced": "Prisilni",
+    "default": "Privzeti",
+    "unlabelled": {
+      "one": "{{count}} neoznačena sled",
+      "two": "{{count}} neoznačeni sledi",
+      "few": "{{count}} neoznačene sledi",
+      "other": "{{count}} neoznačenih sledi"
+    },
+    "findSubtitles": "Poišči podnapise…"
   },
   "tmdbKey": {
     "how": "Je brezplačen: ustvarite račun na themoviedb.org, nato odprite Settings → API in zaprosite za ključ.",

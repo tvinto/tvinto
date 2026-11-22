@@ -336,7 +336,8 @@
       "other": "{{count}} downloads"
     },
     "rated": "rated {{rating}}",
-    "spends": "Spends one download"
+    "spends": "Spends one download",
+    "showingNow": "It is showing now, and is used each time this plays."
   },
   "epg": {
     "loading": "Loading guide…",
@@ -1583,7 +1584,9 @@
       "off": "Off",
       "audioNumber": "Audio {0}",
       "subtitlesNumber": "Subtitles {0}",
-      "inUse": "in use"
+      "inUse": "in use",
+      "forced": "Forced",
+      "default": "Default"
     },
     "seek": {
       "minSteps": "{0} min steps",
@@ -1597,6 +1600,10 @@
       "channels": {
         "one": "{0} channel",
         "other": "{0} channels"
+      },
+      "unlabelled": {
+        "one": "{0} unlabelled track",
+        "other": "{0} unlabelled tracks"
       }
     }
   },
@@ -1625,7 +1632,14 @@
     "where": "Where films play on this computer",
     "whereSub": "Inside the app with its own controls, or in mpv’s window as before",
     "inApp": "In the app",
-    "inWindow": "mpv’s window"
+    "inWindow": "mpv’s window",
+    "forced": "Forced",
+    "default": "Default",
+    "unlabelled": {
+      "one": "{{count}} unlabelled track",
+      "other": "{{count}} unlabelled tracks"
+    },
+    "findSubtitles": "Find subtitles…"
   },
   "tmdbKey": {
     "how": "It's free: make an account at themoviedb.org, then open Settings → API and request a key.",

@@ -111,6 +111,30 @@ public class TrackNamesTest {
         assertEquals(java.util.Arrays.asList("Titlovi 1"), TrackNames.toldApart(java.util.Arrays.asList(""), "track.subtitlesNumber"));
     }
 
+    // The Rings of Power S3 E1, 22 November: 38 subtitle tracks saying nothing, the first forced and default.
+    @Test
+    public void saysAForcedTrackAndADefaultOnlyWhereItTellsSomething() {
+        java.util.List<String> none = java.util.Arrays.asList("", "", "");
+        assertEquals(
+            java.util.Arrays.asList("Subtitles 1 · Forced", "Subtitles 2", "Subtitles 3"),
+            TrackNames.withFlags(none, java.util.Arrays.asList(true, false, false), java.util.Arrays.asList(true, false, false), "track.subtitlesNumber"));
+        assertEquals(java.util.Arrays.asList("Audio 1"), TrackNames.withFlags(java.util.Arrays.asList(""), java.util.Arrays.asList(false), java.util.Arrays.asList(true), "track.audioNumber"));
+        assertEquals(
+            java.util.Arrays.asList("Audio 1 · Default", "English"),
+            TrackNames.withFlags(java.util.Arrays.asList("", "English"), java.util.Arrays.asList(false, false), java.util.Arrays.asList(true, false), "track.audioNumber"));
+        assertEquals(
+            java.util.Arrays.asList("English (forced)", "English"),
+            TrackNames.withFlags(java.util.Arrays.asList("English (forced)", "English"), java.util.Arrays.asList(true, false), java.util.Arrays.asList(false, false), "track.subtitlesNumber"));
+    }
+
+    @Test
+    public void saysTheFlagsInTheAppsLanguage() {
+        Texts.use("hr");
+        assertEquals(
+            java.util.Arrays.asList("Titlovi 1 · Prisilni", "Titlovi 2"),
+            TrackNames.withFlags(java.util.Arrays.asList("", ""), java.util.Arrays.asList(true, false), java.util.Arrays.asList(false, false), "track.subtitlesNumber"));
+    }
+
     // Supernatural's two subtitle tracks are both "Full": the language decides.
     @Test
     public void knowsOneLanguageByItsCodes() {

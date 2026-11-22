@@ -14,6 +14,9 @@ export interface VideoTrack {
   title: string;
   lang: string;
   selected: boolean;
+  /** The file's own flags: forced subtitles carry only the signs and foreign lines. */
+  forced: boolean;
+  default: boolean;
 }
 
 export interface VideoStateMessage {
@@ -42,6 +45,8 @@ interface MpvTrackRow {
   title?: unknown;
   lang?: unknown;
   selected?: unknown;
+  forced?: unknown;
+  default?: unknown;
 }
 
 /** show-text keeps `$` literal by doubling it; the page shows it once. */
@@ -149,7 +154,9 @@ export class VideoState {
           id: row.id as number,
           title: typeof row.title === 'string' ? row.title : '',
           lang: typeof row.lang === 'string' ? row.lang : '',
-          selected: row.selected === true
+          selected: row.selected === true,
+          forced: row.forced === true,
+          default: row.default === true
         }));
     this.state.audio = of('audio');
     this.state.subtitles = of('sub');

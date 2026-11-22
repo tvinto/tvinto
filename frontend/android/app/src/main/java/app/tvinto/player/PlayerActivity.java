@@ -1210,6 +1210,8 @@ public class PlayerActivity extends Activity implements SleepTimerPanel.Owner {
         int kind = type == C.TRACK_TYPE_AUDIO ? FilmPlayback.Track.AUDIO : FilmPlayback.Track.SUBTITLES;
         java.util.List<String> labels = new java.util.ArrayList<>();
         java.util.List<Boolean> selected = new java.util.ArrayList<>();
+        java.util.List<Boolean> forced = new java.util.ArrayList<>();
+        java.util.List<Boolean> defaults = new java.util.ArrayList<>();
         java.util.List<androidx.media3.common.TrackSelectionOverride> overrides = new java.util.ArrayList<>();
         boolean anySelected = false;
         for (Tracks.Group group : player.getCurrentTracks().getGroups()) {
@@ -1222,14 +1224,18 @@ public class PlayerActivity extends Activity implements SleepTimerPanel.Owner {
                 }
                 boolean on = group.isTrackSelected(i);
                 anySelected |= on;
-                labels.add(trackLabel(group.getTrackFormat(i), type));
+                androidx.media3.common.Format format = group.getTrackFormat(i);
+                labels.add(trackLabel(format, type));
                 selected.add(on);
+                forced.add((format.selectionFlags & C.SELECTION_FLAG_FORCED) != 0);
+                defaults.add((format.selectionFlags & C.SELECTION_FLAG_DEFAULT) != 0);
                 overrides.add(new androidx.media3.common.TrackSelectionOverride(group.getMediaTrackGroup(), i));
             }
         }
-        java.util.List<String> named = TrackNames.toldApart(labels, type == C.TRACK_TYPE_TEXT ? "track.subtitlesNumber" : "track.audioNumber");
+        java.util.List<String> named = TrackNames.withFlags(labels, forced, defaults, type == C.TRACK_TYPE_TEXT ? "track.subtitlesNumber" : "track.audioNumber");
         for (int at = 0; at < named.size(); at++) {
-            out.add(new FilmPlayback.Track(kind, named.get(at), selected.get(at), overrides.get(at)));
+            boolean unlabelled = labels.get(at).trim().isEmpty();
+            out.add(new FilmPlayback.Track(kind, named.get(at), selected.get(at), overrides.get(at), unlabelled, forced.get(at)));
         }
         if (type == C.TRACK_TYPE_TEXT && !out.isEmpty()) {
             out.add(0, new FilmPlayback.Track(kind, Texts.t("track.off"), !anySelected, null));
@@ -1242,7 +1248,8 @@ public class PlayerActivity extends Activity implements SleepTimerPanel.Owner {
      * own name when that adds something ("Spanish · Latin American"), with
      * the channel layout for audio and the kind of subtitle when the stream
      * says and the file does not. '' when nothing says anything: tracksOf
-     * numbers those ("Subtitles 11"), as it numbers repeats ("Spanish 2").
+     * numbers those ("Subtitles 11"), as it numbers repeats ("Spanish 2"),
+     * and adds the forced and default flags (TrackNames.withFlags).
      */
     static String trackLabel(androidx.media3.common.Format format, int type) {
         String own = format.label == null ? "" : format.label;
@@ -1258,9 +1265,6 @@ public class PlayerActivity extends Activity implements SleepTimerPanel.Owner {
             } else {
                 if ((format.roleFlags & C.ROLE_FLAG_DESCRIBES_MUSIC_AND_SOUND) != 0) {
                     extra = "(SDH)";
-                }
-                if ((format.selectionFlags & C.SELECTION_FLAG_FORCED) != 0) {
-                    extra = (extra + " (forced)").trim();
                 }
             }
             label = (label + " " + extra).trim();

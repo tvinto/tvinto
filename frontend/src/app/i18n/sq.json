@@ -336,7 +336,8 @@
       "other": "{{count}} shkarkime"
     },
     "rated": "vlerësuar {{rating}}",
-    "spends": "Harxhon një shkarkim"
+    "spends": "Harxhon një shkarkim",
+    "showingNow": "Shfaqen tani, dhe sa herë që luhet kjo."
   },
   "epg": {
     "loading": "Po ngarkohet udhëzuesi…",
@@ -1610,7 +1611,9 @@
       "off": "Fikur",
       "audioNumber": "Audio {0}",
       "subtitlesNumber": "Titrat {0}",
-      "inUse": "në përdorim"
+      "inUse": "në përdorim",
+      "forced": "E detyruar",
+      "default": "Parazgjedhje"
     },
     "seek": {
       "minSteps": "hapa nga {0} min",
@@ -1624,6 +1627,10 @@
       "channels": {
         "one": "{0} kanal",
         "other": "{0} kanale"
+      },
+      "unlabelled": {
+        "one": "{0} pjesë pa emër",
+        "other": "{0} pjesë pa emër"
       }
     }
   },
@@ -1652,7 +1659,14 @@
     "where": "Ku luhen filmat në këtë kompjuter",
     "whereSub": "Brenda aplikacionit me kontrollet e tij, ose në dritaren e mpv si më parë",
     "inApp": "Në aplikacion",
-    "inWindow": "Dritarja e mpv"
+    "inWindow": "Dritarja e mpv",
+    "forced": "E detyruar",
+    "default": "Parazgjedhje",
+    "unlabelled": {
+      "one": "{{count}} pjesë pa emër",
+      "other": "{{count}} pjesë pa emër"
+    },
+    "findSubtitles": "Gjej titra…"
   },
   "tmdbKey": {
     "how": "Është falas: hapni një llogari në themoviedb.org, pastaj Settings → API dhe kërkoni një çelës.",

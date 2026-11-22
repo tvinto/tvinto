@@ -336,7 +336,8 @@
       "other": "{{count}} Downloads"
     },
     "rated": "Bewertung {{rating}}",
-    "spends": "Verbraucht einen Download"
+    "spends": "Verbraucht einen Download",
+    "showingNow": "Sie werden jetzt angezeigt und jedes Mal verwendet, wenn dies läuft."
   },
   "epg": {
     "loading": "Programmführer wird geladen…",
@@ -1610,7 +1611,9 @@
       "off": "Aus",
       "audioNumber": "Audio {0}",
       "subtitlesNumber": "Untertitel {0}",
-      "inUse": "aktiv"
+      "inUse": "aktiv",
+      "forced": "Erzwungen",
+      "default": "Standard"
     },
     "seek": {
       "minSteps": "Schritte von {0} Min.",
@@ -1624,6 +1627,10 @@
       "channels": {
         "one": "{0} Sender",
         "other": "{0} Sender"
+      },
+      "unlabelled": {
+        "one": "{0} unbenannte Spur",
+        "other": "{0} unbenannte Spuren"
       }
     }
   },
@@ -1652,7 +1659,14 @@
     "where": "Wo Filme auf diesem Computer laufen",
     "whereSub": "In der App mit ihren eigenen Bedienelementen oder wie bisher im Fenster von mpv",
     "inApp": "In der App",
-    "inWindow": "Fenster von mpv"
+    "inWindow": "Fenster von mpv",
+    "forced": "Erzwungen",
+    "default": "Standard",
+    "unlabelled": {
+      "one": "{{count}} unbenannte Spur",
+      "other": "{{count}} unbenannte Spuren"
+    },
+    "findSubtitles": "Untertitel suchen…"
   },
   "tmdbKey": {
     "how": "Er ist kostenlos: Leg ein Konto auf themoviedb.org an, öffne dann Settings → API und beantrage einen Schlüssel.",

@@ -12,7 +12,7 @@ import { shiftWebVtt, withoutStyleTags } from '@shared/opensubtitles/vtt';
 import { SubtitleLibraryService } from './subtitle-library.service';
 import { SwitchAction, SwitchEvent, SwitchState, nextSwitch, startSwitching } from '../utils/channel-switch.utils';
 import { ChannelBanner } from '../utils/player-banner.utils';
-import { DesktopVideoService } from './desktop-video.service';
+import { DesktopVideoService, playingTarget } from './desktop-video.service';
 import { DesktopPlayerBridge, SwitchBridge, androidBridge, desktopBridge } from './native/switch-bridge';
 import { tooBigToDecodeInSoftware } from '../utils/failure-messages.utils';
 import { AheadEpisode, EpisodesAhead, FilmPresentation, ShowSeasons } from '../utils/film-presentation.utils';
@@ -433,6 +433,7 @@ export class NativePlayerService {
         void run.bannerFor(run.current.itemId).then(banner => channels.updateBanner({ itemId: run.current.itemId, banner }), () => undefined);
       }
       this.desktopVideo.presentation.set(request.presentation ?? null);
+      this.desktopVideo.playing.set(playingTarget(request.item, request.presentation, request.title));
       const kept = this.desktopVideo.kept();
       const result = await bridge.play({
         url: request.url,
@@ -671,6 +672,21 @@ export class NativePlayerService {
     return !!result.errorCode && /decode|DECODING|DECODER/i.test(result.errorCode);
   }
 
+  /** One subtitle saved on the account, as a player is handed it. */
+  async subtitleForPlayer(id: string): Promise<AddedSubtitle> {
+    const file = await this.library.withText(id);
+    return {
+      id: file.id,
+      language: file.language,
+      label: `${file.language.toUpperCase()} · added`,
+      // Cleaned here as well as when it was saved, because subtitles added
+      // before that was done are still on the account. The offset is baked
+      // into the cue times, which is the one answer all three players take:
+      // Media3 has no subtitle delay at all.
+      text: shiftWebVtt(withoutStyleTags(file.text), file.offsetMs)
+    };
+  }
+
   /**
    * Subtitles the account added for this item, for the player to show.
    *
@@ -686,17 +702,7 @@ export class NativePlayerService {
 
     const fetch = async (): Promise<AddedSubtitle[]> => {
       const saved = (await this.library.saved(item.type as SubtitleItemType, String(item.id))).slice(0, 2);
-      const files = await Promise.all(saved.map(one => this.library.withText(one.id)));
-      return files.map(file => ({
-        id: file.id,
-        language: file.language,
-        label: `${file.language.toUpperCase()} · added`,
-        // Cleaned here as well as when it was saved, because subtitles added
-        // before that was done are still on the account. The offset is baked
-        // into the cue times, which is the one answer all three players take:
-        // Media3 has no subtitle delay at all.
-        text: shiftWebVtt(withoutStyleTags(file.text), file.offsetMs)
-      }));
+      return Promise.all(saved.map(one => this.subtitleForPlayer(one.id)));
     };
 
     try {

@@ -421,7 +421,8 @@ public class VlcPlayerActivity extends Activity implements SleepTimerPanel.Owner
             java.util.List<Track> out = new java.util.ArrayList<>(tracks.size());
             for (int at = 0; at < tracks.size(); at++) {
                 Track track = tracks.get(at);
-                out.add(new Track(track.kind, told.get(at), track.inUse, track.handle));
+                String own = labels.get(at) == null ? "" : labels.get(at).trim();
+                out.add(new Track(track.kind, told.get(at), track.inUse, track.handle, own.isEmpty(), false));
             }
             return out;
         }

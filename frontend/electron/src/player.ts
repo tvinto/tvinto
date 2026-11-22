@@ -145,6 +145,7 @@ type VideoCommand =
   | { kind: 'seek'; seconds: number; mode: 'relative' | 'absolute' }
   | { kind: 'audio'; id: number }
   | { kind: 'subtitle'; id: number | null }
+  | { kind: 'addSubtitle'; subtitle: AddedSubtitle }
   | { kind: 'pause'; paused: boolean }
   | { kind: 'volume'; volume: number }
   | { kind: 'mute'; muted: boolean };
@@ -197,32 +198,60 @@ interface MpvTrack {
  * skipped: a film should still play.
  */
 function subtitleFiles(request: PlayRequest): string[] {
-  const added = request.subtitles ?? [];
-  if (!added.length) {
-    return [];
-  }
-
-  const folder = join(app.getPath('userData'), 'subtitles');
-  const paths: string[] = [];
-
-  for (const subtitle of added) {
-    // Only ids this service made: nothing from the page reaches a path.
-    if (!/^[A-Za-z0-9-]{8,64}$/.test(subtitle.id) || typeof subtitle.text !== 'string') {
-      continue;
-    }
-    try {
-      mkdirSync(folder, { recursive: true });
-      const path = join(folder, `${subtitle.id}.vtt`);
-      writeFileSync(path, subtitle.text, 'utf8');
-      paths.push(path);
-    } catch {
-      // No file, no subtitle; the stream's own tracks are unaffected.
-    }
-  }
-
-  return paths;
+  return (request.subtitles ?? []).map(subtitleFile).filter((path): path is string => path !== null);
 }
 
+type AddedSubtitle = NonNullable<PlayRequest['subtitles']>[number];
+
+/** One added subtitle written where mpv can open it; null when it cannot be. */
+function subtitleFile(subtitle: AddedSubtitle): string | null {
+  // Only ids this service made: nothing from the page reaches a path.
+  if (!subtitle || typeof subtitle.id !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(subtitle.id) || typeof subtitle.text !== 'string') {
+    return null;
+  }
+  try {
+    const folder = join(app.getPath('userData'), 'subtitles');
+    mkdirSync(folder, { recursive: true });
+    const path = join(folder, `${subtitle.id}.vtt`);
+    writeFileSync(path, subtitle.text, 'utf8');
+    return path;
+  } catch {
+    // No file, no subtitle; the stream's own tracks are unaffected.
+    return null;
+  }
+}
+
+/**
+ * The paths added to the running player with `sub-add`, so the same subtitle
+ * chosen again -- its timing nudged in the picker -- is read again from its
+ * file rather than listed a second time.
+ */
+const addedWhilePlaying = new Set<string>();
+
+/**
+ * A subtitle chosen in the picker while the film plays (PX-TV-5's "Find
+ * subtitles…"): written beside the others and handed to mpv, which reads the
+ * file from disk -- nothing more is asked of the provider -- and shows it at
+ * once.
+ */
+function addWhilePlaying(send: (command: unknown[]) => void, subtitle: AddedSubtitle): void {
+  const path = subtitleFile(subtitle);
+  if (!path) {
+    return;
+  }
+  const title = typeof subtitle.label === 'string' ? subtitle.label.slice(0, 80) : '';
+  const lang = typeof subtitle.language === 'string' && /^[A-Za-z-]{2,12}$/.test(subtitle.language) ? subtitle.language : '';
+  if (addedWhilePlaying.has(path)) {
+    // The copy already listed is selected (`cached` loads nothing new) and
+    // removed, so the new timing replaces it rather than listing it twice.
+    // Not `sub-reload`, which reads the file again but names the track by it.
+    send(['sub-add', path, 'cached']);
+    send(['sub-remove']);
+  }
+  addedWhilePlaying.add(path);
+  send(['sub-add', path, 'select', title, lang]);
+  send(['set_property', 'sub-visibility', true]);
+}
 
 function chooseTrack(
   tracks: MpvTrack[],
@@ -606,7 +635,10 @@ function argumentsFor(
     args.push('--sub-border-size=0', '--sub-shadow-offset=0');
   }
 
+  // A new mpv lists only what it was started with.
+  addedWhilePlaying.clear();
   for (const file of subtitleFiles(request)) {
+    addedWhilePlaying.add(file);
     args.push(`--sub-file=${file}`);
   }
 
@@ -1485,6 +1517,9 @@ export function registerNativePlayer(): void {
           watcher.send(['set_property', 'sid', command.id]);
           watcher.send(['set_property', 'sub-visibility', true]);
         }
+        return;
+      case 'addSubtitle':
+        addWhilePlaying(line => watcher.send(line), command.subtitle);
         return;
       case 'pause':
         watcher.send(['set_property', 'pause', command.paused === true]);

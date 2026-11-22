@@ -113,12 +113,36 @@ final class TrackNames {
      * `unnamedKey` ("track.audioNumber"): "Audio 3", "Subtitles 11".
      */
     static java.util.List<String> toldApart(java.util.List<String> labels, String unnamedKey) {
+        java.util.List<Boolean> none = java.util.Collections.nCopies(labels.size(), false);
+        return withFlags(labels, none, none, unnamedKey);
+    }
+
+    /**
+     * toldApart, with what the file's flags say where that tells one track
+     * from the rest, in the desktop's words (desktop-video.service.ts,
+     * `trackLabels`): "Subtitles 1 · Forced" always, since forced subtitles
+     * are only the signs and the foreign lines; "Audio 1 · Default" only when
+     * some other track is not the default -- on a lone track, or on all of
+     * them, it says nothing. A name that already says "forced" is not told
+     * twice.
+     */
+    static java.util.List<String> withFlags(java.util.List<String> labels, java.util.List<Boolean> forced, java.util.List<Boolean> defaults, String unnamedKey) {
+        boolean defaultTells = labels.size() > 1 && defaults.contains(Boolean.FALSE);
         java.util.List<String> out = new java.util.ArrayList<>(labels.size());
         java.util.Map<String, Integer> seen = new java.util.HashMap<>();
         for (int at = 0; at < labels.size(); at++) {
             String label = labels.get(at) == null ? "" : labels.get(at).trim();
             if (label.isEmpty()) {
                 label = Texts.t(unnamedKey, at + 1);
+            }
+            String flag = "";
+            if (Boolean.TRUE.equals(forced.get(at))) {
+                flag = label.toLowerCase(java.util.Locale.ROOT).contains("forced") ? "" : Texts.t("track.forced");
+            } else if (Boolean.TRUE.equals(defaults.get(at)) && defaultTells) {
+                flag = Texts.t("track.default");
+            }
+            if (!flag.isEmpty()) {
+                label = label + " · " + flag;
             }
             int count = seen.merge(label, 1, Integer::sum);
             out.add(count == 1 ? label : label + " " + count);

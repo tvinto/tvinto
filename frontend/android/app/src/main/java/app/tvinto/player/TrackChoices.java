@@ -157,6 +157,8 @@ final class TrackChoices {
     /** Opens on the subtitles in use -- what is most often changed -- or the audio when there are none. */
     void open(FilmPlayback with) {
         playback = with;
+        audioUnfolded = false;
+        subtitlesUnfolded = false;
         fill(true);
         root.setVisibility(View.VISIBLE);
         changed.run();
@@ -194,12 +196,36 @@ final class TrackChoices {
         }
     }
 
+    /** Whether a list shows every unlabelled track rather than one row for them (TrackFold). */
+    private boolean audioUnfolded = false;
+    private boolean subtitlesUnfolded = false;
+
     private void choose(int index) {
         FilmPlayback with = playback;
         if (with == null || index >= tracks.size()) {
             return;
         }
         focus = index;
+        FilmPlayback.Track chosen = tracks.get(index);
+        if (chosen.kind == FilmPlayback.Track.FOLD) {
+            boolean audio = Integer.valueOf(FilmPlayback.Track.AUDIO).equals(chosen.handle);
+            Object first = TrackFold.firstFolded(audio ? with.audioTracks() : with.subtitleTracks());
+            if (audio) {
+                audioUnfolded = true;
+            } else {
+                subtitlesUnfolded = true;
+            }
+            fill(false);
+            // Focus where the fold's row was: on the first track it held.
+            for (int i = 0; first != null && i < tracks.size(); i++) {
+                if (first.equals(tracks.get(i).handle)) {
+                    focus = i;
+                    draw();
+                    break;
+                }
+            }
+            return;
+        }
         with.choose(tracks.get(index));
         clock.removeCallbacksAndMessages(null);
         clock.postDelayed(() -> fill(false), REDRAW_MS);
@@ -218,8 +244,8 @@ final class TrackChoices {
         groups.clear();
 
         // One audio track is not a choice: no column for it.
-        List<FilmPlayback.Track> audio = with.audioTracks().size() < 2 ? new ArrayList<>() : with.audioTracks();
-        List<FilmPlayback.Track> subtitles = with.subtitleTracks();
+        List<FilmPlayback.Track> audio = with.audioTracks().size() < 2 ? new ArrayList<>() : TrackFold.fold(with.audioTracks(), audioUnfolded);
+        List<FilmPlayback.Track> subtitles = TrackFold.fold(with.subtitleTracks(), subtitlesUnfolded);
         audioColumn.setVisibility(audio.isEmpty() ? View.GONE : View.VISIBLE);
         ((LinearLayout.LayoutParams) subtitleColumn.getLayoutParams()).leftMargin = audio.isEmpty() ? 0 : ui.px(television ? COLUMN_GAP_TV : COLUMN_GAP_PHONE);
         if (!audio.isEmpty()) {

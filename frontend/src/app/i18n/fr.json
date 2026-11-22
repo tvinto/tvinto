@@ -336,7 +336,8 @@
       "other": "{{count}} téléchargements"
     },
     "rated": "note {{rating}}",
-    "spends": "Utilise un téléchargement"
+    "spends": "Utilise un téléchargement",
+    "showingNow": "Ils s’affichent dès maintenant, et à chaque lecture."
   },
   "epg": {
     "loading": "Chargement du guide…",
@@ -1610,7 +1611,9 @@
       "off": "Désactivé",
       "audioNumber": "Audio {0}",
       "subtitlesNumber": "Sous-titres {0}",
-      "inUse": "utilisée"
+      "inUse": "utilisée",
+      "forced": "Forcés",
+      "default": "Par défaut"
     },
     "seek": {
       "minSteps": "pas de {0} min",
@@ -1624,6 +1627,10 @@
       "channels": {
         "one": "{0} chaîne",
         "other": "{0} chaînes"
+      },
+      "unlabelled": {
+        "one": "{0} piste sans nom",
+        "other": "{0} pistes sans nom"
       }
     }
   },
@@ -1652,7 +1659,14 @@
     "where": "Où les films sont lus sur cet ordinateur",
     "whereSub": "Dans l’application avec ses propres commandes, ou dans la fenêtre de mpv comme avant",
     "inApp": "Dans l’application",
-    "inWindow": "Fenêtre de mpv"
+    "inWindow": "Fenêtre de mpv",
+    "forced": "Forcés",
+    "default": "Par défaut",
+    "unlabelled": {
+      "one": "{{count}} piste sans nom",
+      "other": "{{count}} pistes sans nom"
+    },
+    "findSubtitles": "Chercher des sous-titres…"
   },
   "tmdbKey": {
     "how": "C'est gratuit : crée un compte sur themoviedb.org, puis ouvre Settings → API et demande une clé.",

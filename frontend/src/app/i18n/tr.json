@@ -336,7 +336,8 @@
       "other": "{{count}} indirme"
     },
     "rated": "puan {{rating}}",
-    "spends": "Bir indirme harcar"
+    "spends": "Bir indirme harcar",
+    "showingNow": "Şimdi gösteriliyor ve her oynatıldığında kullanılacak."
   },
   "epg": {
     "loading": "Rehber yükleniyor…",
@@ -1610,7 +1611,9 @@
       "off": "Kapalı",
       "audioNumber": "Ses {0}",
       "subtitlesNumber": "Altyazı {0}",
-      "inUse": "kullanımda"
+      "inUse": "kullanımda",
+      "forced": "Zorunlu",
+      "default": "Varsayılan"
     },
     "seek": {
       "minSteps": "{0} dk adımlar",
@@ -1624,6 +1627,10 @@
       "channels": {
         "one": "{0} kanal",
         "other": "{0} kanal"
+      },
+      "unlabelled": {
+        "one": "{0} adsız parça",
+        "other": "{0} adsız parça"
       }
     }
   },
@@ -1652,7 +1659,14 @@
     "where": "Filmler bu bilgisayarda nerede oynatılır",
     "whereSub": "Uygulamanın içinde kendi kontrolleriyle ya da eskisi gibi mpv penceresinde",
     "inApp": "Uygulamada",
-    "inWindow": "mpv penceresi"
+    "inWindow": "mpv penceresi",
+    "forced": "Zorunlu",
+    "default": "Varsayılan",
+    "unlabelled": {
+      "one": "{{count}} adsız parça",
+      "other": "{{count}} adsız parça"
+    },
+    "findSubtitles": "Altyazı bul…"
   },
   "tmdbKey": {
     "how": "Ücretsizdir: themoviedb.org'da bir hesap açın, ardından Settings → API'yi açıp anahtar isteyin.",

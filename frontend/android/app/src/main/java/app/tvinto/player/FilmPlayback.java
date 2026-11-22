@@ -73,6 +73,8 @@ interface FilmPlayback {
         static final int TIMING = 3;
         /** Not a track: a shape for the picture, its PictureMode the handle. */
         static final int PICTURE = 4;
+        /** Not a track: "37 unlabelled tracks", which opens to them (TrackFold); the kind it folds is the handle. */
+        static final int FOLD = 5;
 
         final int kind;
         final String label;
@@ -80,12 +82,22 @@ interface FilmPlayback {
         /** Whatever the player needs to select it again; null for subtitles "Off". */
         @Nullable
         final Object handle;
+        /** The file says neither its language nor a name: "Subtitles 11". */
+        final boolean unlabelled;
+        /** The file's forced flag: only the signs and the foreign lines. */
+        final boolean forced;
 
         Track(int kind, String label, boolean inUse, @Nullable Object handle) {
+            this(kind, label, inUse, handle, false, false);
+        }
+
+        Track(int kind, String label, boolean inUse, @Nullable Object handle, boolean unlabelled, boolean forced) {
             this.kind = kind;
             this.label = label;
             this.inUse = inUse;
             this.handle = handle;
+            this.unlabelled = unlabelled;
+            this.forced = forced;
         }
 
         boolean isOff() {
