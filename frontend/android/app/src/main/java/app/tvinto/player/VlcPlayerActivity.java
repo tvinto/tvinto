@@ -415,6 +415,17 @@ public class VlcPlayerActivity extends Activity implements SleepTimerPanel.Owner
             }
         }
 
+        /** The tracks with their labels told apart (TrackNames.toldApart): "Spanish", "Spanish 2", "Audio 3". */
+        private java.util.List<Track> named(java.util.List<Track> tracks, java.util.List<String> labels, String unnamedKey) {
+            java.util.List<String> told = TrackNames.toldApart(labels, unnamedKey);
+            java.util.List<Track> out = new java.util.ArrayList<>(tracks.size());
+            for (int at = 0; at < tracks.size(); at++) {
+                Track track = tracks.get(at);
+                out.add(new Track(track.kind, told.get(at), track.inUse, track.handle));
+            }
+            return out;
+        }
+
         @Override
         public java.util.List<Track> audioTracks() {
             java.util.List<Track> out = new java.util.ArrayList<>();
@@ -423,15 +434,17 @@ public class VlcPlayerActivity extends Activity implements SleepTimerPanel.Owner
             }
             MediaPlayer.TrackDescription[] tracks = player.getAudioTracks();
             int current = player.getAudioTrack();
+            java.util.List<String> labels = new java.util.ArrayList<>();
             if (tracks != null) {
                 for (MediaPlayer.TrackDescription track : tracks) {
                     // -1 is VLC's "Disable", which is not a thing to offer for sound.
                     if (track.id >= 0) {
-                        out.add(new Track(Track.AUDIO, TrackNames.fromVlc(track.name, out.size() + 1), track.id == current, track.id));
+                        labels.add(TrackNames.fromVlc(track.name));
+                        out.add(new Track(Track.AUDIO, "", track.id == current, track.id));
                     }
                 }
             }
-            return out;
+            return named(out, labels, "track.audioNumber");
         }
 
         @Override
@@ -442,13 +455,16 @@ public class VlcPlayerActivity extends Activity implements SleepTimerPanel.Owner
             }
             MediaPlayer.TrackDescription[] tracks = player.getSpuTracks();
             int current = player.getSpuTrack();
+            java.util.List<String> labels = new java.util.ArrayList<>();
             if (tracks != null) {
                 for (MediaPlayer.TrackDescription track : tracks) {
                     if (track.id >= 0) {
-                        out.add(new Track(Track.SUBTITLES, TrackNames.fromVlc(track.name, out.size() + 1), track.id == current, track.id));
+                        labels.add(TrackNames.fromVlc(track.name));
+                        out.add(new Track(Track.SUBTITLES, "", track.id == current, track.id));
                     }
                 }
             }
+            out = named(out, labels, "track.subtitlesNumber");
             if (!out.isEmpty()) {
                 out.add(0, new Track(Track.SUBTITLES, Texts.t("track.off"), current < 0, null));
             }

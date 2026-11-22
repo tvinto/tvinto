@@ -1607,8 +1607,7 @@
     },
     "track": {
       "off": "Isključeno",
-      "number": "Zapis {0}",
-      "subtitles": "Titlovi",
+      "audioNumber": "Zvuk {0}",
       "subtitlesNumber": "Titlovi {0}",
       "inUse": "u upotrebi"
     },

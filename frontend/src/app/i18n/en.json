@@ -1579,8 +1579,7 @@
     },
     "track": {
       "off": "Off",
-      "number": "Track {0}",
-      "subtitles": "Subtitles",
+      "audioNumber": "Audio {0}",
       "subtitlesNumber": "Subtitles {0}",
       "inUse": "in use"
     },

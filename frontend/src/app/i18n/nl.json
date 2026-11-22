@@ -1606,8 +1606,7 @@
     },
     "track": {
       "off": "Uit",
-      "number": "Spoor {0}",
-      "subtitles": "Ondertitels",
+      "audioNumber": "Audio {0}",
       "subtitlesNumber": "Ondertitels {0}",
       "inUse": "in gebruik"
     },

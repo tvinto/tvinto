@@ -1606,8 +1606,7 @@
     },
     "track": {
       "off": "Kapalı",
-      "number": "İz {0}",
-      "subtitles": "Altyazılar",
+      "audioNumber": "Ses {0}",
       "subtitlesNumber": "Altyazı {0}",
       "inUse": "kullanımda"
     },

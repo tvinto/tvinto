@@ -1606,8 +1606,7 @@
     },
     "track": {
       "off": "No",
-      "number": "Traccia {0}",
-      "subtitles": "Sottotitoli",
+      "audioNumber": "Audio {0}",
       "subtitlesNumber": "Sottotitoli {0}",
       "inUse": "in uso"
     },
