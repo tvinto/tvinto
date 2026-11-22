@@ -13,6 +13,8 @@ import { playbackLog, redactUrl, setPlaybackLogFolder } from './playbackLog';
 import { VideoFrames } from './videoFrames';
 import { VideoState } from './videoState';
 import { PipeOpening, playerPipeName } from './playerPipe';
+import { MpvLogMessage, streamRequestLine } from './streamRequests';
+import { subtitleArguments, subtitleCommands } from './subtitleChoice';
 
 /**
  * Playback on the desktop, by mpv rather than by Chromium.
@@ -511,7 +513,7 @@ function overlayGeometry(window: BrowserWindow | null): { geometry: string; scre
 /** The arguments that carry the account's subtitle preferences into mpv. */
 function argumentsFor(
   request: PlayRequest,
-  mpv: string,
+  player: 'tvinto-player' | 'mpv',
   inside: { geometry: string; screen: number } | null,
   pipe: string
 ): string[] {
@@ -646,15 +648,15 @@ function argumentsFor(
     args.push(`--alang=${request.audioLanguage}`);
   }
 
-  if (request.subtitlesEnabled) {
-    if (request.subtitleLanguage) {
-      args.push(`--slang=${request.subtitleLanguage}`);
-    }
-  } else if (!request.subtitles?.length) {
-    args.push('--sid=no');
-  }
+  args.push(
+    ...subtitleArguments({
+      enabled: request.subtitlesEnabled,
+      language: request.subtitleLanguage,
+      added: Boolean(request.subtitles?.length),
+      inApp: player === 'tvinto-player'
+    })
+  );
 
-  void mpv;
   // The address last, after `--`: it comes from the provider -- any line of an
   // M3U playlist -- and one starting with `--` would otherwise be read as an
   // option (`--script=...`), which runs code.
@@ -801,6 +803,8 @@ class PositionWatcher {
         connecting = null;
         this.socket = socket;
         opening.opened();
+        // mpv's own log, for a line per request to the provider (streamRequests.ts).
+        this.command(['request_log_messages', 'v']);
         this.pause?.connected();
       });
       socket.on('error', error => {
@@ -930,7 +934,8 @@ class PositionWatcher {
     }
 
     if (!this.wanted.subtitlesEnabled) {
-      // Nothing to select, and `--sid=no` already said so on the command line.
+      // Nothing to show: the command line selected no track, or the remembered
+      // language hidden, ready to be shown with no request (subtitleChoice.ts).
       return;
     }
 
@@ -1042,7 +1047,12 @@ class PositionWatcher {
       try {
         const message = JSON.parse(line) as { request_id?: number; data?: unknown; event?: string };
 
-        if (message.event) {
+        if (message.event === 'log-message') {
+          const request = streamRequestLine(message as MpvLogMessage);
+          if (request) {
+            playbackLog(request);
+          }
+        } else if (message.event) {
           this.logEvent(message as MpvEvent);
           if (!this.pause?.onEvent(message as MpvEvent)) {
             this.onEvent?.(message as MpvEvent);
@@ -1086,6 +1096,7 @@ class PositionWatcher {
           this.subtitleLanguage = message.data;
         } else if (message.request_id === 5 && typeof message.data === 'boolean') {
           this.subVisible = message.data;
+          this.inPage?.subtitlesShown(message.data);
           this.settleSubtitles();
         } else if (message.request_id === 9 && Array.isArray(message.data)) {
           this.inPage?.tracks(message.data);
@@ -1511,11 +1522,9 @@ export function registerNativePlayer(): void {
         }
         return;
       case 'subtitle':
-        if (command.id === null) {
-          watcher.send(['set_property', 'sid', 'no']);
-        } else if (Number.isInteger(command.id)) {
-          watcher.send(['set_property', 'sid', command.id]);
-          watcher.send(['set_property', 'sub-visibility', true]);
+        // Off hides the track rather than unselecting it (subtitleChoice.ts).
+        if (command.id === null || Number.isInteger(command.id)) {
+          subtitleCommands(command.id).forEach(line => watcher.send(line));
         }
         return;
       case 'addSubtitle':
@@ -1596,7 +1605,7 @@ export function registerNativePlayer(): void {
               // it is a file to play, and these two once were.
               '--osd-level=0',
               '--osc=no',
-              ...argumentsFor(request, helper, null, watcher.pipe)
+              ...argumentsFor(request, 'tvinto-player', null, watcher.pipe)
             ],
             { windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'] }
           );
@@ -1609,7 +1618,7 @@ export function registerNativePlayer(): void {
           // falls back to software where the GPU cannot. tvinto-player sets
           // the same itself (native/tvinto-player.cpp).
           // Before the rest, which ends with `--` and the address.
-          child = spawn(mpv, ['--hwdec=auto-safe', ...argumentsFor(request, mpv, inside, watcher.pipe)], {
+          child = spawn(mpv, ['--hwdec=auto-safe', ...argumentsFor(request, 'mpv', inside, watcher.pipe)], {
             windowsHide: false
           });
         }

@@ -33,6 +33,27 @@ const PORT = Number(process.argv[process.argv.indexOf('--port') + 1]) || 8767;
 const SLOW_MS = process.argv.includes('--slow') ? Number(process.argv[process.argv.indexOf('--slow') + 1]) * 1000 : 0;
 /** --play <file>: a local video every stream address answers with, instead of 404. */
 const PLAY = process.argv.includes('--play') ? process.argv[process.argv.indexOf('--play') + 1] : null;
+/**
+ * --play-kbps <n>: that video sent no faster than this, as over a real line,
+ * so a player's cache fills slowly and a request is still sending when the
+ * next one starts. Unpaced without it.
+ */
+const PLAY_KBPS = process.argv.includes('--play-kbps') ? Number(process.argv[process.argv.indexOf('--play-kbps') + 1]) : 0;
+
+/** The file's bytes from start to end into the response, paced by --play-kbps. */
+function sendFile(res, options) {
+  const file = require('fs').createReadStream(PLAY, { ...options, highWaterMark: 64 * 1024 });
+  if (!PLAY_KBPS) {
+    return file.pipe(res);
+  }
+  res.on('close', () => file.destroy());
+  file.on('data', chunk => {
+    file.pause();
+    res.write(chunk);
+    setTimeout(() => file.resume(), (chunk.length * 8) / PLAY_KBPS);
+  });
+  return file.on('end', () => res.end());
+}
 
 /**
  * --live <file.ts>: live channels answer with this MPEG-TS clip sent over and
@@ -91,12 +112,62 @@ const hlsPieces = () => {
  *   /qa/fault                           clears them all
  *
  * And /qa/count says how many stream requests were made, and the most ever
- * open at once, since the last /qa/count?reset=1.
+ * open at once, since the last /qa/count?reset=1. Films and episodes count
+ * as stream requests too.
+ *
+ * /qa/requests lists each of those requests since the last reset: when it
+ * started and ended (ms since the reset), the range it asked for, the bytes
+ * sent, and which other requests were open at the same moment (`overlaps`,
+ * with how many ms they shared). For seeing whether a player ever holds two
+ * connections to a provider that allows one (a subtitle chosen mid-film, 22
+ * November). It is reset with /qa/count.
  */
 const fault = { playlist: null, segment: null, ms: 0, times: 0, segmentTimes: 0 };
 let lastPlaylist = null;
 let skipAhead = 0;
 const counts = { playlists: 0, segments: 0, streams: 0, mostOpen: 0 };
+let requestLog = [];
+let requestClock = performance.now();
+const since = moment => Math.round((moment - requestClock) * 10) / 10;
+
+/**
+ * One stream request into /qa/requests. Its times are its connection's: from
+ * when the socket was accepted to when it closed, to a tenth of a millisecond,
+ * because that is what a provider counting connections sees -- a response can
+ * end while its socket is still open.
+ */
+function logRequest(req, res, path) {
+  const socket = req.socket;
+  const entry = {
+    n: requestLog.length + 1, path, range: req.headers.range ?? null, port: socket.remotePort,
+    start: since(socket.acceptedAt ?? performance.now()), end: null, bytes: 0
+  };
+  requestLog.push(entry);
+  const before = socket.bytesWritten;
+  res.on('close', () => {
+    entry.bytes = socket.bytesWritten - before;
+  });
+  const closed = () => {
+    entry.end = since(performance.now());
+  };
+  if (socket.destroyed) {
+    closed();
+  } else {
+    socket.once('close', closed);
+  }
+}
+
+/** The request log, each with the others it was open at the same time as. */
+function requestsWithOverlaps() {
+  const now = since(performance.now());
+  return requestLog.map(entry => {
+    const end = entry.end ?? now;
+    const overlaps = requestLog
+      .filter(other => other !== entry && other.port !== entry.port && other.start < end && (other.end ?? now) > entry.start)
+      .map(other => ({ n: other.n, ms: Math.round((Math.min(end, other.end ?? now) - Math.max(entry.start, other.start)) * 10) / 10 }));
+    return { ...entry, open: entry.end === null, overlaps };
+  });
+}
 const openSockets = new Set();
 
 function serveFault(q, res) {
@@ -424,8 +495,9 @@ http
     const url = new URL(req.url, `http://${req.headers.host}`);
     const q = url.searchParams;
     // Stream requests (a playlist or a piece) say how many were open at once.
-    const stream = /^\/(hls|live)\//.test(url.pathname);
+    const stream = /^\/(hls|live|movie|series)\//.test(url.pathname);
     if (stream) {
+      logRequest(req, res, url.pathname);
       openRequests++;
       counts.streams++;
       counts.mostOpen = Math.max(counts.mostOpen, openRequests);
@@ -448,10 +520,16 @@ http
       res.end(JSON.stringify({ ...counts, openNow: openRequests }));
       if (q.get('reset')) {
         Object.assign(counts, { playlists: 0, segments: 0, streams: 0, mostOpen: openRequests });
+        requestLog = [];
+        requestClock = performance.now();
       }
       return undefined;
     }
-    console.log(new Date().toISOString().slice(11, 23), url.pathname, q.get('action') ?? '', q.get('series_id') ?? '', stream ? `open=${openRequests}${openRequests > 1 ? ' OVERLAP' : ''}` : '');
+    if (url.pathname === '/qa/requests') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify(requestsWithOverlaps(), null, 1));
+    }
+    console.log(new Date().toISOString().slice(11, 23), url.pathname, q.get('action') ?? '', q.get('series_id') ?? '', stream ? `open=${openRequests}${openRequests > 1 ? ' OVERLAP' : ''} range=${req.headers.range ?? 'none'}` : '');
     if (req.method === 'OPTIONS') {
       res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*' });
       return res.end();
@@ -525,10 +603,10 @@ http
             'Content-Range': `bytes ${start}-${end}/${size}`,
             'Accept-Ranges': 'bytes'
           });
-          return require('fs').createReadStream(PLAY, { start, end }).pipe(res);
+          return sendFile(res, { start, end });
         }
         res.writeHead(200, { 'Content-Type': 'video/mp2t', 'Content-Length': size, 'Accept-Ranges': 'bytes' });
-        return require('fs').createReadStream(PLAY).pipe(res);
+        return sendFile(res, {});
       }
       res.writeHead(404);
       return res.end();
@@ -563,5 +641,8 @@ http
       default: return json(res, []);
     }
     }
+  })
+  .on('connection', socket => {
+    socket.acceptedAt = performance.now();
   })
   .listen(PORT, () => console.log(`fake Xtream on ${PORT}: user and password "${USER}"`));
