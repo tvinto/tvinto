@@ -56,6 +56,9 @@ export class VideoState {
   private readonly state: VideoStateMessage;
   private osdTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly ticker: ReturnType<typeof setInterval>;
+  /** mpv's last track-list, and its `sub-visibility` (`subtitlesShown`). */
+  private rows: unknown[] = [];
+  private subtitlesVisible = true;
 
   constructor(
     private readonly emit: (state: VideoStateMessage) => void,
@@ -147,19 +150,32 @@ export class VideoState {
   }
 
   tracks(rows: unknown[]): void {
-    const of = (type: string): VideoTrack[] =>
+    this.rows = rows;
+    const of = (type: string, shown: boolean): VideoTrack[] =>
       (rows as MpvTrackRow[])
         .filter(row => row && row.type === type && typeof row.id === 'number')
         .map(row => ({
           id: row.id as number,
           title: typeof row.title === 'string' ? row.title : '',
           lang: typeof row.lang === 'string' ? row.lang : '',
-          selected: row.selected === true,
+          selected: shown && row.selected === true,
           forced: row.forced === true,
           default: row.default === true
         }));
-    this.state.audio = of('audio');
-    this.state.subtitles = of('sub');
+    this.state.audio = of('audio', true);
+    this.state.subtitles = of('sub', this.subtitlesVisible);
+  }
+
+  /**
+   * mpv's `sub-visibility`. Subtitles are turned off by hiding the track
+   * rather than unselecting it (subtitleChoice.ts), so a hidden track is Off
+   * in the panel however selected mpv calls it.
+   */
+  subtitlesShown(visible: boolean): void {
+    if (visible !== this.subtitlesVisible) {
+      this.subtitlesVisible = visible;
+      this.tracks(this.rows);
+    }
   }
 
   /** The channel on screen changed inside the player. */

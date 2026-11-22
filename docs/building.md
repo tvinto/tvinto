@@ -160,7 +160,11 @@ Each of these has cost someone hours.
   channels play, and `/qa/fault` makes the playlist fail, hang, repeat or
   skip, so you can test what the player does when a provider has a hiccup.
   `/qa/count` says how many stream requests were made and the most open at
-  once.
+  once, and `/qa/requests` lists each one -- films and episodes too -- with
+  its range, its bytes, when its connection opened and closed, and any other
+  request open at the same moment. `--play <film>` serves a local film for
+  every stream address, and `--play-kbps <n>` sends it no faster than a real
+  line would, so a player's cache fills slowly and a switch happens mid-transfer.
 - **A TV change isn't finished until you've walked it.**
   `tools/qa/tv-walk.js` presses every direction from every focusable element
   on each screen of the TV emulator and reports where focus gets lost.

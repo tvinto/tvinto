@@ -48,6 +48,21 @@ describe('VideoState', () => {
     expect(last().subtitles).toEqual([{ id: 1, title: '', lang: 'eng', selected: false, forced: true, default: true }]);
   });
 
+  it('shows a hidden subtitle track as off, and as chosen again once shown', () => {
+    const { state, last } = make();
+    state.tracks([
+      { id: 1, type: 'audio', lang: 'eng', selected: true },
+      { id: 3, type: 'sub', lang: 'hrv', selected: true }
+    ]);
+    state.subtitlesShown(false);
+    state.paused(true);
+    expect(last().subtitles.map(track => track.selected)).toEqual([false]);
+    expect(last().audio.map(track => track.selected)).toEqual([true]);
+    state.subtitlesShown(true);
+    state.paused(false);
+    expect(last().subtitles.map(track => track.selected)).toEqual([true]);
+  });
+
   it('sends the badge and the skip offer as they change, and the position with the next tick', () => {
     const { state, sent, last } = make();
     state.badge({ line: 'PAUSED · 0:10', hint: 'Back to live · End' });
