@@ -26,7 +26,7 @@ export interface GroupedFailure extends Failure {
   count: number;
 }
 
-/** One event per kind per this long. */
+/** One event per failure (its title) per this long. */
 export const FAILURE_WINDOW_MS = 5 * 60 * 1000;
 
 /**
@@ -35,35 +35,61 @@ export const FAILURE_WINDOW_MS = 5 * 60 * 1000;
  * the last of them with the count (`due`).
  */
 export class FailureGroups {
-  private readonly windows = new Map<FailureKind, { opened: number; held: GroupedFailure | null }>();
+  // By title: a live channel that never starts and a film that will not open are two reports.
+  private readonly windows = new Map<string, { opened: number; held: GroupedFailure | null }>();
 
   constructor(private readonly windowMs = FAILURE_WINDOW_MS) {}
 
   /** The event to send now, or null when it is counted towards the next one. */
   note(failure: Failure, now: number): GroupedFailure | null {
-    const open = this.windows.get(failure.kind);
+    const title = failureTitle(failure);
+    const open = this.windows.get(title);
     if (open && now - open.opened < this.windowMs) {
       open.held = { ...failure, count: (open.held?.count ?? 0) + 1 };
       return null;
     }
     // The previous window's last failures, if any, go with this one's count.
     const count = 1 + (open?.held?.count ?? 0);
-    this.windows.set(failure.kind, { opened: now, held: null });
+    this.windows.set(title, { opened: now, held: null });
     return { ...failure, count };
   }
 
   /** The counted failures whose window has closed, to send now; each window then starts again. */
   due(now: number): GroupedFailure[] {
     const out: GroupedFailure[] = [];
-    for (const [kind, open] of this.windows) {
+    for (const [title, open] of this.windows) {
       if (now - open.opened >= this.windowMs) {
         if (open.held) {
           out.push(open.held);
         }
-        this.windows.delete(kind);
+        this.windows.delete(title);
       }
     }
     return out;
+  }
+}
+
+/**
+ * A failure's title in Sentry, and its grouping: what failed, in a few plain
+ * words, the same every time -- "Stream failed: live, tvinto-player, mpv exit 2".
+ * Without one Sentry named the issue after a minified function (TVINTO-1,
+ * "Module.Ht"), a title that says nothing and changes with every build.
+ */
+export function failureTitle({ kind, code, context }: Failure): string {
+  const short = code.replace(/^mpv exited with code (\d+)$/, 'mpv exit $1');
+  const parts = (...values: unknown[]): string =>
+    values.filter(value => typeof value === 'string' && value && value !== 'unknown').join(', ');
+  switch (kind) {
+    case 'stream':
+      return `Stream failed: ${parts(context['kind'], context['player'], short)}`;
+    case 'guide':
+      return `Guide failed: ${parts(context['source'], short)}`;
+    case 'sync':
+      return `Sync failed: ${parts(context['endpoint'], short)}`;
+    case 'tmdb':
+      return `TMDB failed: ${short}`;
+    case 'opensubtitles':
+      return `OpenSubtitles failed: ${short}`;
   }
 }
 
@@ -110,9 +136,14 @@ export function failureCode(code: string): string {
  * "no decoder on this device managed hevc 3840x2160 (ERROR_CODE_DECODING_FAILED)"
  * and "ERROR_CODE_IO_BAD_HTTP_STATUS (HTTP 404)"; mpv's are "mpv exited with code 2".
  */
-export function streamFailure(errorCode: string): { code: string; codec: string | null; http: number | null } {
+export function streamFailure(errorCode: string): { code: string; codec: string | null; http: number | null; waitedSeconds: number | null } {
+  // "no picture in 20 s", every player's give-up on a channel that never started.
+  const waited = /^no picture in (\d+) s$/.exec(errorCode.trim());
+  if (waited) {
+    return { code: 'no picture', codec: null, http: null, waitedSeconds: Number(waited[1]) };
+  }
   const named = /\bERROR_CODE_[A-Z0-9_]+/.exec(errorCode)?.[0];
   const codec = /\b(hevc|avc|h264|h265|hev1|hvc1|mpeg2video|mpeg4|vp8|vp9|av01|av1|dvhe|dolby-vision|ac3|eac3|e-ac3|dts|aac|mp4a-latm|opus|truehd|mp3)\b/i.exec(errorCode)?.[1]?.toLowerCase() ?? null;
   const http = Number(/\bHTTP (\d{3})\b/.exec(errorCode)?.[1]) || null;
-  return { code: named ?? failureCode(errorCode), codec, http };
+  return { code: named ?? failureCode(errorCode), codec, http, waitedSeconds: null };
 }

@@ -1,7 +1,7 @@
 import { appendFileSync, closeSync, openSync, readSync, renameSync, statSync } from 'fs';
 import { join } from 'path';
 
-import { cleanAddress } from './shared/errorReports';
+import { streamAddress } from './shared/errorReports';
 
 /**
  * A record of every time playback starts, stops or is reopened, in
@@ -26,9 +26,9 @@ export function redactUrl(url: unknown): string {
   if (typeof url !== 'string' || !url.trim()) {
     return '(none)';
   }
-  // The same as an error report's (shared/errorReports.ts): a local file --
-  // a recording of the app's own -- is "a local file".
-  return cleanAddress(url);
+  // As an error report's (shared/errorReports.ts), with the stream's number
+  // kept: this file stays on the device. A recording of the app's own is "a local file".
+  return streamAddress(url);
 }
 
 /** Any address inside a message (mpv's errors can quote one), redacted the same way. */

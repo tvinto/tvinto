@@ -52,6 +52,7 @@ type DesktopPlayerEvent =
   | { type: 'channelRequested'; step: 'next' | 'previous' | 'last' | 'cancel'; itemId: string; started: boolean }
   | { type: 'channelStarted'; itemId: string }
   | { type: 'switchFailed'; itemId: string; errorCode: string }
+  | { type: 'streamFailed'; errorCode: string }
   | { type: 'bannerRequested'; itemId: string }
   | { type: 'progress'; positionSeconds: number; durationSeconds: number };
 

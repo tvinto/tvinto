@@ -87,13 +87,14 @@ describe('NativePlayerService, saving progress along the way', () => {
       ]
     });
     const desktop = TestBed.inject(NativePlayerService);
-    let fromMain: ((event: unknown) => void) | null = null;
+    // As the preload's: every listener hears every event.
+    const listeners = new Set<(event: unknown) => void>();
     const asked: Record<string, unknown>[] = [];
     (window as { xtreamDesktop?: unknown }).xtreamDesktop = {
-      player: { onEvent: (listener: (event: unknown) => void) => ((fromMain = listener), () => (fromMain = null)), command: async () => undefined },
+      player: { onEvent: (listener: (event: unknown) => void) => (listeners.add(listener), () => listeners.delete(listener)), command: async () => undefined },
       play: async (request: Record<string, unknown>) => {
         asked.push(request);
-        fromMain?.({ type: 'progress', positionSeconds: 1800, durationSeconds: 7200 });
+        listeners.forEach(listener => listener({ type: 'progress', positionSeconds: 1800, durationSeconds: 7200 }));
         return { positionSeconds: 1830, durationSeconds: 7200, played: true, errorCode: null };
       }
     };
@@ -110,7 +111,7 @@ describe('NativePlayerService, saving progress along the way', () => {
 
     expect(asked[0]['reportProgress']).toBe(true);
     expect(reached).toEqual([['f1', 1800, 7200]]);
-    expect(fromMain).toBeNull();
+    expect(listeners.size).toBe(0);
   });
 
   it('saves a viewing whose player never closed, once, at the next launch', async () => {

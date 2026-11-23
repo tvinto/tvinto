@@ -75,6 +75,20 @@ public class VlcPlayerActivity extends Activity implements SleepTimerPanel.Owner
         }
     };
 
+    /** A live channel with no picture yet: failed once StartWatch's time is up, as in PlayerActivity. */
+    private final StartWatch startWatch = new StartWatch(reporter, () -> {
+        if (isFinishing() || film != null) {
+            return;
+        }
+        android.util.Log.e("TvintoPlayer", "VLC: no picture in " + StartWatch.TIMEOUT_MS + " ms; giving up");
+        if (session != null && session.onFailure(StartWatch.CODE)) {
+            return;
+        }
+        failed = true;
+        PlaybackReports.failure(0L, StartWatch.CODE);
+        finish();
+    });
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -131,6 +145,7 @@ public class VlcPlayerActivity extends Activity implements SleepTimerPanel.Owner
                 // The video's size is known now, which Fill screen needs.
                 applyPicture();
                 // VLC's nearest thing to a first frame: a video output exists.
+                startWatch.disarm();
                 if (session != null) {
                     session.onFirstFrame();
                 }
@@ -315,6 +330,9 @@ public class VlcPlayerActivity extends Activity implements SleepTimerPanel.Owner
             frameRate.restart();
         }
         Media media = new Media(libVlc, Uri.parse(url));
+        if (film == null) {
+            startWatch.arm();
+        }
         if (startSeconds > 0) {
             media.addOption(":start-time=" + startSeconds);
         }
@@ -576,6 +594,7 @@ public class VlcPlayerActivity extends Activity implements SleepTimerPanel.Owner
     private final ChannelSession.Engine engine = new ChannelSession.Engine() {
         @Override
         public void stopStream() {
+            startWatch.disarm();
             if (player != null) {
                 player.stop();
             }
@@ -930,6 +949,7 @@ public class VlcPlayerActivity extends Activity implements SleepTimerPanel.Owner
     protected void onDestroy() {
         publishPosition();
         reporter.removeCallbacks(reportTick);
+        startWatch.disarm();
         reminders.destroy();
         if (sleep != null) {
             sleep.destroy();

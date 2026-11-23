@@ -5,6 +5,8 @@ import {
   cleanLogTail,
   cleanReport,
   cleanText,
+  foldRepeats,
+  NO_LOCATION,
   errorReportsValue,
   isReportAddress,
   mayReport,
@@ -52,7 +54,7 @@ describe('cleanText', () => {
   });
 
   it('keeps the stream number, the scheme and what went wrong', () => {
-    expect(cleanText(`mpv: Failed to open http://${HOST}:8789/live/${USER}/x/1234.ts.`, personal)).toBe('mpv: Failed to open http …/1234.ts.');
+    expect(cleanText(`mpv: Failed to open http://${HOST}:8789/live/${USER}/x/1234.ts.`, personal)).toBe('mpv: Failed to open http …/[stream].ts.');
     expect(cleanText('TypeError: Cannot read properties of undefined (reading "id")')).toBe('TypeError: Cannot read properties of undefined (reading "id")');
   });
 
@@ -119,7 +121,8 @@ describe('cleanReport', () => {
   });
 
   it('sends no user, no IP address, no breadcrumbs, no headers', () => {
-    expect(cleaned).not.toHaveProperty('user');
+    // No one's: only a location that says none was sent (NO_LOCATION).
+    expect(cleaned['user']).toEqual({ geo: { region: NO_LOCATION } });
     expect(cleaned).not.toHaveProperty('breadcrumbs');
     expect(cleaned).not.toHaveProperty('server_name');
     expect(cleaned.request).toEqual({ url: 'app:///live', headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0) Chrome/140.0' } });
@@ -192,5 +195,43 @@ describe('helpers', () => {
     expect(abnormalPlayerExit(3221225477, null)).toBe(true);
     expect(abnormalPlayerExit(null, 'SIGSEGV')).toBe(true);
     expect(abnormalPlayerExit(null, null)).toBe(false);
+  });
+});
+
+describe('what leaves the device about a stream', () => {
+  it('names no stream by its number, in an address or a log line already shortened', () => {
+    expect(cleanText('app: opens a film http …/478781.mkv in tvinto-player')).toBe('app: opens a film http …/[stream].mkv in tvinto-player');
+    expect(cleanText('opening http://203.0.113.9:8080/movie/u/p/478781.mkv')).toBe('opening http …/[stream].mkv');
+    expect(cleanText('live http …/1234 dropped')).toBe('live http …/[stream] dropped');
+    expect(cleanLogTail('2026-11-23T12:41:26.729Z app: opens http …/975975.mkv')).toEqual(['2026-11-23T12:41:26.729Z app: opens http …/[stream].mkv']);
+  });
+
+  it('carries a location that says none was sent, so Sentry works none out', () => {
+    const cleaned = cleanReport({ user: { ip_address: '203.0.113.9', geo: { city: 'Zagreb' } } }) as Record<string, unknown>;
+    expect(cleaned['user']).toEqual({ geo: { region: NO_LOCATION } });
+  });
+});
+
+describe('foldRepeats', () => {
+  it('folds lines that say the same thing in a row, whatever their time', () => {
+    const lines = [
+      '2026-11-23T12:47:45.250Z app: opens a live channel',
+      '2026-11-23T12:47:50.413Z tvinto-player: stats sent=1 waited=0',
+      '2026-11-23T12:47:55.438Z tvinto-player: stats sent=1 waited=0',
+      '2026-11-23T12:48:00.473Z tvinto-player: stats sent=1 waited=0',
+      '2026-11-23T12:48:05.000Z app: no picture in 20 s',
+      '2026-11-23T12:48:06.000Z tvinto-player: stats sent=1 waited=0'
+    ];
+    expect(foldRepeats(lines)).toEqual([
+      '2026-11-23T12:47:45.250Z app: opens a live channel',
+      '2026-11-23T12:47:50.413Z tvinto-player: stats sent=1 waited=0 (3 times in a row)',
+      '2026-11-23T12:48:05.000Z app: no picture in 20 s',
+      '2026-11-23T12:48:06.000Z tvinto-player: stats sent=1 waited=0'
+    ]);
+  });
+
+  it('gives the folded tail room for what happened before the repeats', () => {
+    const log = ['2026-11-23T12:47:45.250Z app: opens a live channel', ...Array.from({ length: 60 }, (_, i) => `2026-11-23T12:48:${String(i).padStart(2, '0')}.000Z stats sent=1`)].join('\n');
+    expect(cleanLogTail(log)).toHaveLength(2);
   });
 });
