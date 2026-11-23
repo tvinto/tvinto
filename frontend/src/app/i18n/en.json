@@ -1650,5 +1650,14 @@
     "token": "API read access token",
     "tokenShape": "long, starts with eyJ",
     "notAKey": "That doesn't look like either value. Copy the API key or the read access token, whole."
+  },
+  "errorReports": {
+    "heading": "Error reports",
+    "title": "Send error reports",
+    "body": "When something goes wrong, Tvinto sends what failed, the app version and the kind of device. Never your provider, channels, what you watch or your account.",
+    "onboarding": "When something fails, Tvinto sends what went wrong, never who you are or what you watch. You can turn this off in Settings.",
+    "noticeTitle": "Tvinto sends error reports",
+    "noticeBody": "When something fails: what failed and the kind of device, nothing personal. You can turn it off under Account, Playback.",
+    "noticeAction": "Settings"
   }
 }

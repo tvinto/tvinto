@@ -1677,5 +1677,14 @@
     "token": "Token leximi API",
     "tokenShape": "i gjatë, fillon me eyJ",
     "notAKey": "Kjo nuk duket si asnjëra nga dy vlerat. Kopjoni çelësin API ose tokenin e leximit, të plotë."
+  },
+  "errorReports": {
+    "heading": "Raportet e gabimeve",
+    "title": "Dërgo raportet e gabimeve",
+    "body": "Kur diçka shkon keq, Tvinto dërgon çfarë dështoi, versionin e aplikacionit dhe llojin e pajisjes. Kurrë ofruesin tuaj, kanalet, çfarë shikoni apo llogarinë tuaj.",
+    "onboarding": "Kur diçka dështon, Tvinto dërgon çfarë shkoi keq, kurrë kush jeni apo çfarë shikoni. Mund ta çaktivizoni te Cilësimet.",
+    "noticeTitle": "Tvinto dërgon raporte gabimesh",
+    "noticeBody": "Kur diçka dështon: çfarë dështoi dhe llojin e pajisjes, asgjë personale. Mund ta çaktivizoni te Llogaria, Luajtja.",
+    "noticeAction": "Cilësimet"
   }
 }

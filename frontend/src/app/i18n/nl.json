@@ -1677,5 +1677,14 @@
     "token": "API-leestoken",
     "tokenShape": "lang, begint met eyJ",
     "notAKey": "Dat lijkt op geen van beide waarden. Kopieer de API-sleutel of het leestoken, helemaal."
+  },
+  "errorReports": {
+    "heading": "Foutrapporten",
+    "title": "Foutrapporten versturen",
+    "body": "Als er iets misgaat, stuurt Tvinto wat er misging, de app-versie en het soort apparaat. Nooit je provider, zenders, wat je kijkt of je account.",
+    "onboarding": "Als er iets misgaat, stuurt Tvinto wat er fout ging, nooit wie je bent of wat je kijkt. Je kunt dit uitzetten in Instellingen.",
+    "noticeTitle": "Tvinto stuurt foutrapporten",
+    "noticeBody": "Als er iets misgaat: wat er misging en het soort apparaat, niets persoonlijks. Uitzetten onder Account, Afspelen.",
+    "noticeAction": "Instellingen"
   }
 }

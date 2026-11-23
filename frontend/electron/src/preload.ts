@@ -148,6 +148,23 @@ contextBridge.exposeInMainWorld('xtreamDesktop', {
     }
   },
 
+  /**
+   * Error reports (src/errorReports.ts): the page's switch to the main
+   * process, the version both report under, and the playback log's last
+   * lines, already cleaned.
+   */
+  errorReports: {
+    release: (() => {
+      try {
+        return String(ipcRenderer.sendSync('tvinto:error-reports-release') ?? '');
+      } catch {
+        return '';
+      }
+    })(),
+    set: (state: unknown) => ipcRenderer.send('tvinto:error-reports', state),
+    logTail: (): Promise<string[]> => ipcRenderer.invoke('tvinto:error-reports-log')
+  },
+
   updates: {
     ready: (): Promise<string | null> => ipcRenderer.invoke('xtream:update-ready'),
     onReady: (listener: (version: string) => void) => {

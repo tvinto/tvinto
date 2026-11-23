@@ -1757,5 +1757,14 @@
     "token": "Žeton za branje (API read access token)",
     "tokenShape": "dolg, začne se z eyJ",
     "notAKey": "To ni videti kot nobena od obeh vrednosti. Kopirajte ključ API ali žeton za branje, celega."
+  },
+  "errorReports": {
+    "heading": "Poročila o napakah",
+    "title": "Pošiljaj poročila o napakah",
+    "body": "Ko gre kaj narobe, Tvinto pošlje, kaj ni uspelo, različico aplikacije in vrsto naprave. Nikoli vašega ponudnika, kanalov, tega, kaj gledate, ali vašega računa.",
+    "onboarding": "Ko kaj ne uspe, Tvinto pošlje, kaj je šlo narobe, nikoli kdo ste ali kaj gledate. To lahko izklopite v nastavitvah.",
+    "noticeTitle": "Tvinto pošilja poročila o napakah",
+    "noticeBody": "Ko kaj ne uspe: kaj ni uspelo in vrsto naprave, nič osebnega. Izklopite jih lahko pod Račun, Predvajanje.",
+    "noticeAction": "Nastavitve"
   }
 }

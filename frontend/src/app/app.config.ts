@@ -1,4 +1,5 @@
-import { ApplicationConfig, inject, provideAppInitializer, provideZonelessChangeDetection } from '@angular/core';
+import { ReportingErrorHandler } from './services/error-reports.service';
+import { ApplicationConfig, ErrorHandler, inject, provideAppInitializer, provideZonelessChangeDetection } from '@angular/core';
 import { LanguageService } from './services/language.service';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
@@ -17,6 +18,9 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     // The chosen language's words before the first screen is drawn (LanguageService.init).
     provideAppInitializer(() => inject(LanguageService).init()),
-    provideHttpClient(withInterceptors([setupHoldInterceptor, sessionInterceptor]))
+    provideHttpClient(withInterceptors([setupHoldInterceptor, sessionInterceptor])),
+    // Error reports (docs/error-reports.md): Angular's errors to the console
+    // and, where the switch allows, to a report.
+    { provide: ErrorHandler, useClass: ReportingErrorHandler }
   ]
 };

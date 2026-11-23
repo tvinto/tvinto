@@ -4,6 +4,7 @@ import { makeKeyPair, openPrivateKey, openWith } from '../../shared/auth/keyPair
 import { serverAddressCandidates } from '../../shared/server';
 import { hostOf, readProviderRecord, recordAddress } from '../../shared/providers/providerRecord';
 import { SETTING_KEYS } from '../../shared/types';
+import { sendsErrorReports } from '../../shared/errorReports';
 import { countOf, readCategorySets, readLockSettings } from '../../shared/categoryLock';
 import { readPlayerPreferences, PlayerPreferences } from '../../shared/player';
 import { FamilyRole } from '../../shared/family';
@@ -450,6 +451,7 @@ export interface SettingsView {
   ageLock: { limit: number; country: string };
   /** Whether a television plays the channel in focus above the guide. */
   channelPreview: boolean;
+  errorReports: boolean;
   /** Copies and trailers in this order; empty for the app's language, then English. */
   languages: string[];
   player: PlayerPreferences;
@@ -479,6 +481,7 @@ export async function settings(current: Session): Promise<SettingsView> {
     descriptions: value(SETTING_KEYS.descriptionLanguage) || 'provider',
     openLastChannel: value(SETTING_KEYS.openLastChannel) === 'on',
     channelPreview: value(SETTING_KEYS.channelPreview) !== 'off',
+    errorReports: sendsErrorReports(value(SETTING_KEYS.errorReports)),
     languages: value(SETTING_KEYS.languages) ? readLanguages(value(SETTING_KEYS.languages), 'en') : [],
     ageLock: lock ? readAgeLock(value(SETTING_KEYS.ageLock)) : { limit: 0, country: readAgeLock(null).country },
     player: readPlayerPreferences(value(SETTING_KEYS.player))

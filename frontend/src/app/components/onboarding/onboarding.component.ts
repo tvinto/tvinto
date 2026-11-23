@@ -19,6 +19,8 @@ import { technicalDetail } from '../../utils/failure-messages.utils';
 import { AccountService } from '../../services/account.service';
 import { BackButtonService } from '../../services/back-button.service';
 import { ChannelPreviewService } from '../../services/channel-preview.service';
+import { ErrorReportsService } from '../../services/error-reports.service';
+import { SettingRowComponent } from '../../ui/setting-row.component';
 import { GuideService } from '../../services/guide.service';
 import { GuideSourcesService, guideAddressProblem, guideName } from '../../services/guide-sources.service';
 import { EpgShareService } from '../../services/epg-share.service';
@@ -55,7 +57,7 @@ const CHECK_TIMEOUT_MS = 30_000;
 @Component({
   selector: 'app-onboarding',
   standalone: true,
-  imports: [TPipe, NgIcon, HlmButton, HlmInput, HlmLabel, StartupSettingsComponent, TvintoMarkComponent, PhoneFormOfferComponent, LanguagePickerComponent, TmdbKeyComponent],
+  imports: [TPipe, NgIcon, HlmButton, HlmInput, HlmLabel, StartupSettingsComponent, TvintoMarkComponent, PhoneFormOfferComponent, LanguagePickerComponent, TmdbKeyComponent, SettingRowComponent],
   providers: [provideIcons({ lucideArrowLeft, lucideCheck, lucideEye, lucideEyeOff, lucideGlobe, lucideLoaderCircle, lucidePlus })],
   templateUrl: './onboarding.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -73,6 +75,8 @@ export class OnboardingComponent {
   readonly preview = inject(ChannelPreviewService);
   readonly tv = inject(TvNavigationService);
   readonly tmdb = inject(TmdbService);
+  /** Send error reports, on Welcome: on, and said so, before anything can be sent. */
+  readonly reports = inject(ErrorReportsService);
 
   readonly step = signal<Step>(inject(ActivatedRoute).snapshot.queryParamMap.get('step') === 'startup' ? 'startup' : 'welcome');
 
@@ -141,6 +145,9 @@ export class OnboardingComponent {
   constructor() {
     if (!this.signedIn && !this.onboarding.shouldShow()) {
       void this.router.navigate(['/for-you'], { replaceUrl: true });
+    } else if (this.step() === 'welcome' && this.reports.available) {
+      // Welcome is where a walk-through starts, and it shows the switch.
+      this.reports.markShown();
     }
 
     // Back goes to the step before, down to Welcome.

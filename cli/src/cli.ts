@@ -28,6 +28,7 @@ import {
   guideRemoveChange,
   hideChange,
   lastChannelChange,
+  errorReportsChange,
   ageLockChange,
   languagesChange,
   previewChange,
@@ -154,6 +155,7 @@ Changes answer with what they will do and a code; nothing changes until
   tvinto descriptions <provider|en|hr|de|...>
   tvinto last-channel <on|off>                 televisions open into it
   tvinto preview <on|off>                      a television plays the channel in focus
+  tvinto error-reports <on|off>                the apps send error reports (nothing personal)
   tvinto languages <code...|default>          copies and trailers in this order, up to 3
   tvinto age-lock <off|12|16|18> [HR|DE|US|GB] films and shows by age rating (opening up: the PIN)
   tvinto recordings book <channel id> <YYYY-MM-DDTHH:MM> <minutes> <device> [title]
@@ -491,6 +493,7 @@ export async function run(argv: string[], deps: Deps): Promise<number> {
             `Descriptions: ${view.descriptions}`,
             `Open into the last channel: ${onOff(view.openLastChannel)}`,
             `Channel preview on a television: ${onOff(view.channelPreview)}`,
+            `Error reports: ${onOff(view.errorReports)}`,
             `Your languages: ${view.languages.length ? view.languages.join(', ') : "the app's, then English"}`,
             `Age lock: ${view.ageLock.limit ? `${view.ageLock.limit} and over, by ${view.ageLock.country}'s ratings` : 'off'}`,
             `Subtitles: ${onOff(player.subtitlesEnabled)}, ${player.subtitleScale}%, ${player.subtitleLanguage || 'any language'}`,
@@ -917,6 +920,15 @@ export async function run(argv: string[], deps: Deps): Promise<number> {
         }
         const current = await acting();
         preview(current, lastChannelChange(await current.service.pull(), args[0] === 'on'));
+        return 0;
+      }
+
+      case 'error-reports': {
+        if (args.length !== 1 || (args[0] !== 'on' && args[0] !== 'off')) {
+          throw new Error('tvinto error-reports <on|off>');
+        }
+        const current = await acting();
+        preview(current, errorReportsChange(await current.service.pull(), args[0] === 'on'));
         return 0;
       }
 

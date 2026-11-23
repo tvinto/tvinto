@@ -26,6 +26,9 @@ import { ConfirmDialogComponent } from './components/confirm-dialog/confirm-dial
 import { ChoicePanelComponent } from './ui/choice-panel.component';
 import { XtreamService } from './services/xtream.service';
 import { NativePlayerService } from './services/native-player.service';
+import { ErrorReportsService } from './services/error-reports.service';
+import { ToastService } from './services/toast.service';
+import { t } from './utils/i18n';
 
 @Component({
     selector: 'app-root',
@@ -129,8 +132,18 @@ export class AppComponent {
 
     // A new screen on a television starts with something focused, or the
     // first press of the D-pad has nothing to move from.
-    inject(Router)
-      .events.pipe(filter(event => event instanceof NavigationEnd))
-      .subscribe(() => this.tv.focusContentWhenReady());
+    const router = inject(Router);
+    router.events.pipe(filter(event => event instanceof NavigationEnd)).subscribe(() => this.tv.focusContentWhenReady());
+
+    // Error reports, said once on a device that skips the walk-through.
+    const reports = inject(ErrorReportsService);
+    const toasts = inject(ToastService);
+    router.events.pipe(filter(event => event instanceof NavigationEnd)).subscribe(event =>
+      reports.noticeIfNeeded(
+        event.urlAfterRedirects,
+        open => toasts.info(t('errorReports.noticeTitle'), t('errorReports.noticeBody'), { label: t('errorReports.noticeAction'), run: open }),
+        () => void router.navigate(['/account'], { queryParams: { section: 'subtitles' } })
+      )
+    );
   }
 }

@@ -368,6 +368,14 @@ export const TOOLS: Tool[] = [
     argv: args => ['last-channel', args['on'] === true ? 'on' : 'off']
   },
   {
+    name: 'error_reports',
+    description: `Whether this account's devices send error reports when something goes wrong (errors only, nothing personal). ${PREVIEW}`,
+    properties: { on: { type: 'boolean' } },
+    required: ['on'],
+    readOnly: true,
+    argv: args => ['error-reports', args['on'] === true ? 'on' : 'off']
+  },
+  {
     name: 'channel_preview',
     description: `Whether televisions play the channel in focus above the guide. ${PREVIEW}`,
     properties: { on: { type: 'boolean' } },

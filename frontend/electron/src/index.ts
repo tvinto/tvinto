@@ -6,6 +6,7 @@ import { app, ipcMain, MenuItem } from 'electron';
 import unhandled from 'electron-unhandled';
 
 import { setupDeepLinks } from './deepLinks';
+import { startErrorReports } from './errorReports';
 import { registerExternalLinks } from './externalLinks';
 import { startLocalApi } from './localApi';
 import { acceptPageChannels } from './pageChannel';
@@ -43,6 +44,11 @@ if (!app.isPackaged) {
   const throwaway = process.env['XTREAM_DEV_DATA']?.trim();
   app.setPath('userData', join(app.getPath('appData'), throwaway ? `Tvinto (test ${throwaway})` : 'Tvinto (development)'));
 }
+
+// Error reports, when the person has them on (src/errorReports.ts): before
+// anything else can fail, and with the native crash handler in place before
+// the app is ready.
+startErrorReports();
 
 // Graceful handling of unhandled errors.
 unhandled();

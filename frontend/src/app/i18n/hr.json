@@ -1681,5 +1681,14 @@
     "token": "API read access token",
     "tokenShape": "dug, počinje s eyJ",
     "notAKey": "To ne izgleda kao nijedna od te dvije vrijednosti. Kopirajte API ključ ili read access token, cijeli."
+  },
+  "errorReports": {
+    "heading": "Izvješća o greškama",
+    "title": "Šalji izvješća o greškama",
+    "body": "Kad nešto pođe po zlu, Tvinto šalje što nije uspjelo, verziju aplikacije i vrstu uređaja. Nikad vašeg pružatelja, kanale, što gledate ni vaš račun.",
+    "onboarding": "Kad nešto ne uspije, Tvinto šalje što je pošlo po zlu, nikad tko ste ni što gledate. Možete to isključiti u postavkama.",
+    "noticeTitle": "Tvinto šalje izvješća o greškama",
+    "noticeBody": "Kad nešto ne uspije: što nije uspjelo i vrstu uređaja, ništa osobno. Možete to isključiti pod Račun, Reprodukcija.",
+    "noticeAction": "Postavke"
   }
 }

@@ -1757,5 +1757,14 @@
     "token": "Token odczytu API",
     "tokenShape": "długi, zaczyna się od eyJ",
     "notAKey": "To nie wygląda na żadną z tych dwóch wartości. Skopiuj klucz API albo token odczytu w całości."
+  },
+  "errorReports": {
+    "heading": "Raporty błędów",
+    "title": "Wysyłaj raporty błędów",
+    "body": "Gdy coś pójdzie nie tak, Tvinto wysyła, co się nie udało, wersję aplikacji i rodzaj urządzenia. Nigdy twojego dostawcy, kanałów, tego, co oglądasz, ani twojego konta.",
+    "onboarding": "Gdy coś się nie uda, Tvinto wysyła, co poszło nie tak, nigdy kim jesteś ani co oglądasz. Możesz to wyłączyć w ustawieniach.",
+    "noticeTitle": "Tvinto wysyła raporty błędów",
+    "noticeBody": "Gdy coś się nie uda: co się nie udało i rodzaj urządzenia, nic osobistego. Wyłączysz to w Konto, Odtwarzanie.",
+    "noticeAction": "Ustawienia"
   }
 }

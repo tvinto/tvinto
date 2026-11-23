@@ -19,6 +19,7 @@ import { AheadEpisode, EpisodesAhead, FilmPresentation, ShowSeasons } from '../u
 import { currentLanguage, nativePlayerWords, t } from '../utils/i18n';
 import { PLAYING_KEY, ProgressEntry, readPlayingRecord, recoveredProgress } from '../utils/playback-checkpoint.utils';
 import { WatchProgressInput } from '@shared/types';
+import { rememberPlayedTitle } from '../utils/played-titles';
 
 /** What the Electron preload puts on the window, and nothing else. */
 interface DesktopBridge {
@@ -201,6 +202,8 @@ export class NativePlayerService {
     if (!this.available) {
       return null;
     }
+    // Kept out of error reports from now on (ErrorReportsService).
+    rememberPlayedTitle(request.title, request.presentation?.heading, request.presentation?.title);
     // Every stream from the provider needs a connection, and a recording may
     // hold the only one. Refused here, for every way of playing, with a
     // reason the caller shows; a recording itself (a file) always plays.

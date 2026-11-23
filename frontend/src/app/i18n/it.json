@@ -1677,5 +1677,14 @@
     "token": "Token di accesso in lettura API",
     "tokenShape": "lungo, inizia con eyJ",
     "notAKey": "Non sembra nessuno dei due valori. Copia la chiave API o il token di accesso in lettura, per intero."
+  },
+  "errorReports": {
+    "heading": "Segnalazioni di errore",
+    "title": "Invia segnalazioni di errore",
+    "body": "Quando qualcosa va storto, Tvinto invia cosa non ha funzionato, la versione dell'app e il tipo di dispositivo. Mai il tuo provider, i canali, cosa guardi o il tuo account.",
+    "onboarding": "Quando qualcosa non funziona, Tvinto invia cosa è andato storto, mai chi sei o cosa guardi. Puoi disattivarlo nelle impostazioni.",
+    "noticeTitle": "Tvinto invia segnalazioni di errore",
+    "noticeBody": "Quando qualcosa non funziona: cosa non ha funzionato e il tipo di dispositivo, niente di personale. Puoi disattivarlo in Account, Riproduzione.",
+    "noticeAction": "Impostazioni"
   }
 }

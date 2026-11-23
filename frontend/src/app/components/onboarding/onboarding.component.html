@@ -58,6 +58,17 @@
       @switch (step()) {
         @case ('welcome') {
           <app-language-picker focusKey="onboarding-language" />
+          @if (reports.available) {
+            <app-setting-row
+              [label]="'errorReports.title' | t"
+              [sub]="'errorReports.onboarding' | t"
+              kind="switch"
+              [checked]="reports.on()"
+              focusKey="onboarding-error-reports"
+              data-onboarding-error-reports
+              (activate)="reports.setOn(!reports.on())"
+            />
+          }
           <div class="mt-auto flex flex-col gap-2 sm:flex-row" data-onboarding-actions>
             <button hlmBtn variant="primary" type="button" class="sm:flex-1" data-onboarding-first data-focus-key="onboarding-start" (click)="getStarted()">
               {{ 'onboarding.getStarted' | t }}

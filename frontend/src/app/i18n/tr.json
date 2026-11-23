@@ -1677,5 +1677,14 @@
     "token": "API okuma erişim belirteci",
     "tokenShape": "uzun, eyJ ile başlar",
     "notAKey": "Bu iki değerden hiçbirine benzemiyor. API anahtarını ya da okuma erişim belirtecini eksiksiz kopyalayın."
+  },
+  "errorReports": {
+    "heading": "Hata raporları",
+    "title": "Hata raporları gönder",
+    "body": "Bir şeyler ters gittiğinde Tvinto neyin başarısız olduğunu, uygulama sürümünü ve cihaz türünü gönderir. Asla sağlayıcınızı, kanalları, ne izlediğinizi veya hesabınızı göndermez.",
+    "onboarding": "Bir şey başarısız olduğunda Tvinto neyin ters gittiğini gönderir, asla kim olduğunuzu veya ne izlediğinizi değil. Bunu Ayarlar’dan kapatabilirsiniz.",
+    "noticeTitle": "Tvinto hata raporları gönderir",
+    "noticeBody": "Bir şey başarısız olduğunda: neyin başarısız olduğu ve cihaz türü, kişisel hiçbir şey. Hesap, Oynatma altından kapatabilirsiniz.",
+    "noticeAction": "Ayarlar"
   }
 }
