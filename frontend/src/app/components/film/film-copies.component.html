@@ -112,7 +112,11 @@
         </div>
       </div>
     } @else if (failed()) {
-      <p class="text-lg font-semibold">{{ 'film.notOpened' | t }}</p>
+      <div class="flex flex-col items-start gap-4">
+        <p class="text-lg font-semibold">{{ 'film.notOpened' | t }}</p>
+        <!-- As the film's and the collection's: with nothing to focus, a television was left on nothing (the walk, 23 November). -->
+        <button hlmBtn variant="primary" type="button" data-focus-key="copies-back" (click)="back()">{{ 'common.back' | t }}</button>
+      </div>
     } @else {
       <p class="flex items-center gap-2 text-sm text-muted-foreground">
         <ng-icon name="lucideLoaderCircle" size="16" class="animate-spin" />

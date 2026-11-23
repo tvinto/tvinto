@@ -470,7 +470,7 @@ export class SectionComponent {
     // OK goes straight to full screen: the channel being recorded plays from
     // its recording there, and another says why it cannot. Before, OK on
     // either did nothing at all.
-    if (!this.previewShown() || this.preview.showing(stream.stream_id) || !this.recordings.mayOpen(String(stream.stream_id))) {
+    if (!this.previewShown() || this.preview.showing(stream.stream_id) || this.preview.failed(stream.stream_id) || !this.recordings.mayOpen(String(stream.stream_id))) {
       this.openCard(stream);
       return;
     }
@@ -2684,6 +2684,12 @@ export class SectionComponent {
       .map(prefix => `${prefix}${itemId}`);
 
     setTimeout(() => {
+      // Not from under a dialog: the player's failure opened one as it
+      // closed, and OK on Close went to the dead channel behind it (the walk,
+      // 23 November). The dialog hands focus back when it goes.
+      if (document.querySelector('[data-dialog-shell]')) {
+        return;
+      }
       const element = keys
         .map(key => document.querySelector<HTMLElement>(`[data-focus-key="${key}"]`))
         .find(found => !!found);

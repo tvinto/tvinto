@@ -86,6 +86,9 @@ export class ChannelPreviewService {
         } else if (state === 'playing') {
           this.state.set('playing');
         } else if (state === 'failed') {
+          // The window has let the stream go itself, so the box's own text shows.
+          this.active = false;
+          this.following();
           this.state.set('failed');
         } else {
           // Stopped, or taken over by the full player: nothing of this one is left to let go.
@@ -121,6 +124,11 @@ export class ChannelPreviewService {
   /** Whether this channel is the one in the preview, playing or on its way. */
   showing(streamId: string | number): boolean {
     return this.streamId() === String(streamId) && (this.state() === 'opening' || this.state() === 'playing');
+  }
+
+  /** Whether this channel's preview gave up: OK on it then goes full screen, which tries again and reports. */
+  failed(streamId: string | number): boolean {
+    return this.streamId() === String(streamId) && this.state() === 'failed';
   }
 
   /**

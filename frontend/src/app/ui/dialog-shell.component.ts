@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, computed, inject, input, output } from '@angular/core';
 import { BackButtonService } from '../services/back-button.service';
 import { FocusScopeDirective } from '../directives/focus-scope.directive';
+import { TvNavigationService } from '../services/tv-navigation.service';
 
 let nextShell = 1;
 
@@ -72,8 +73,10 @@ export class DialogShellComponent implements OnDestroy {
   /** What had focus as the dialog opened, to hand it back. */
   private readonly returnTo: HTMLElement | null = (() => {
     const active = document.activeElement;
-    return active instanceof HTMLElement && !active.closest('[data-dialog-shell]') ? active : null;
+    return active instanceof HTMLElement && active !== document.body && !active.closest('[data-dialog-shell]') ? active : null;
   })();
+
+  private readonly tv = inject(TvNavigationService);
 
   constructor() {
     inject(BackButtonService).bindTo(
@@ -84,8 +87,15 @@ export class DialogShellComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     const back = this.returnTo;
-    if (back) {
-      requestAnimationFrame(() => back.isConnected && back.focus({ preventScroll: true }));
-    }
+    // Nothing to hand back, or something that can no longer take it -- a
+    // failure shown as the page opened, over a control that then went --
+    // left the television's focus on nothing (a film TMDB could not open,
+    // the walk of 23 November).
+    requestAnimationFrame(() => {
+      back?.focus({ preventScroll: true });
+      if (!back || document.activeElement !== back) {
+        this.tv.focusContentWhenReady();
+      }
+    });
   }
 }

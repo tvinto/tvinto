@@ -155,14 +155,22 @@ export class OnboardingComponent {
 
     // A television starts each step on its first control: the step changes
     // within the page, so nothing else moves focus.
+    // And again within TMDB's step when a key is saved or removed, if the
+    // button pressed went with it: focus was left on nothing (the walk,
+    // 23 November).
+    let shownStep: Step | null = null;
     effect(() => {
-      this.step();
+      const step = this.step();
+      this.tmdb.ownKey();
       if (!this.tv.isTelevision()) {
         return;
       }
+      const newStep = step !== shownStep;
+      shownStep = step;
       requestAnimationFrame(() => {
         const first = document.querySelector<HTMLElement>('[data-onboarding-first]');
-        if (first) {
+        const lost = !document.activeElement || document.activeElement === document.body;
+        if (first && (newStep || lost)) {
           this.tv.focusAsIfMoved(first);
         }
       });

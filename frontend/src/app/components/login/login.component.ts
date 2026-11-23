@@ -384,6 +384,9 @@ export class LoginComponent {
     this.mode.set(mode);
     this.error.set('');
     this.fieldErrors.set({});
+    // The link pressed goes with the mode it switched from, and focus went
+    // with it to nothing on the television (the walk, 23 November).
+    this.focusField('username');
   }
 
   togglePassword(): void {
