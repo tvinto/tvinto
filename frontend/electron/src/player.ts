@@ -8,7 +8,7 @@ import { dirname, join } from 'path';
 import { app, BrowserWindow, ipcMain, powerSaveBlocker, screen } from 'electron';
 import { desktopRecorder } from './recorderIpc';
 import { CacheState, LivePause, LiveWords } from './livePause';
-import { LiveRecovery } from './liveRecovery';
+import { LiveRecovery, NO_PICTURE, START_TIMEOUT_MS } from './liveRecovery';
 import { playbackLog, redactUrl, setPlaybackLogFolder } from './playbackLog';
 import { rememberPlayed, reportPlayerExit } from './errorReports';
 import { VideoFrames } from './videoFrames';
@@ -165,6 +165,13 @@ const UNTIL_REPLACED_MS = 120_000;
 
 /** mpv's exit code when the page closes the player over a failure. */
 const CLOSED_OVER_FAILURE_EXIT = 4;
+
+/**
+ * The viewer closed the player (Escape, Backspace, Back). Said outright
+ * because mpv's own code is 2 for a stream that never opened, which read as a
+ * failure after the viewer had chosen to leave (23 November).
+ */
+const VIEWER_CLOSED_EXIT = 0;
 
 /** mpv's exit codes for "change channel", from the input.conf written below. */
 const CHANNEL_PREVIOUS_EXIT = 10;
@@ -423,9 +430,9 @@ function inputConf(channelKeys: boolean, inPlayer: boolean, live: boolean): stri
   // passes to the page, and Backspace cancels a switch before it closes
   // anything. `i` is the banner, over mpv's statistics page.
   const keys = inPlayer
-    ? 'ESC quit\nBS script-message xtream back\nPGUP script-message xtream channel previous\n' +
+    ? `ESC ${quitCommand(VIEWER_CLOSED_EXIT)}\nBS script-message xtream back\nPGUP script-message xtream channel previous\n` +
       'PGDWN script-message xtream channel next\ni script-message xtream banner\n'
-    : `ESC quit\nBS quit\n${channelKeys ? `PGUP ${quitCommand(CHANNEL_PREVIOUS_EXIT)}\nPGDWN ${quitCommand(CHANNEL_NEXT_EXIT)}\n` : ''}` +
+    : `ESC ${quitCommand(VIEWER_CLOSED_EXIT)}\nBS ${quitCommand(VIEWER_CLOSED_EXIT)}\n${channelKeys ? `PGUP ${quitCommand(CHANNEL_PREVIOUS_EXIT)}\nPGDWN ${quitCommand(CHANNEL_NEXT_EXIT)}\n` : ''}` +
       // A film or an episode: Enter takes the offer to skip an intro (skips.ts).
       (channelKeys ? '' : 'ENTER script-message xtream skip\nKP_ENTER script-message xtream skip\n');
   // A live channel steps within a pause (livePause.ts) rather than seeking in
@@ -733,6 +740,7 @@ class PositionWatcher {
    * cannot pass it on, so it is also left where tvinto-player reads it.
    */
   quitWith(code: number): void {
+    this.askedExit = code;
     this.command(['set_property', 'user-data/tvinto-exit', String(code)]);
     this.command(['quit', String(code)]);
   }
@@ -758,6 +766,24 @@ class PositionWatcher {
   positionMs = 0;
   /** The position to the microsecond, and when it was read, for a pause. */
   positionExact: { seconds: number; at: number } | null = null;
+
+  /** Why the app closed the player, when it did over a failure (CLOSED_OVER_FAILURE_EXIT). */
+  closingWith: string | null = null;
+
+  /**
+   * The exit the app or the viewer asked for, which is what the player's own
+   * code means. tvinto-player reads `user-data/tvinto-exit` once libmpv has
+   * shut down, when it can no longer be read, and exits 0 or 2 whatever was
+   * asked (23 November); mpv.exe exits with it.
+   */
+  askedExit: number | null = null;
+
+  /** A key the page passed on: Escape, and Backspace outside in-player switching, close the player. */
+  pressed(key: string): void {
+    if (key === 'ESC' || (key === 'BS' && !channels)) {
+      this.askedExit ??= VIEWER_CLOSED_EXIT;
+    }
+  }
   cacheState: CacheState | null = null;
   osdSize: { width: number; height: number } | null = null;
   private osdWidth = 0;
@@ -1205,19 +1231,84 @@ interface MpvEvent {
 class LiveKeeper {
   private readonly recovery = new LiveRecovery();
   private pending: NodeJS.Timeout | null = null;
+  /** Counting to START_TIMEOUT_MS since a stream was handed to mpv, until its picture. */
+  private starting: NodeJS.Timeout | null = null;
   /** Given up: the message is on screen, and Enter tries again. */
   private stopped = false;
+
+  /** A channel that never showed a picture, past START_TIMEOUT_MS: the owner closes or asks the page. */
+  onNeverStarted: (errorCode: string) => void = () => undefined;
 
   constructor(
     private readonly watcher: PositionWatcher,
     private url: string,
-    private readonly words: LiveWords
+    private readonly words: LiveWords,
+    /** Given up on a channel that had played: the page reports it. */
+    private readonly onGaveUp: (errorCode: string) => void = () => undefined
   ) {}
 
-  /** The picture is there. */
+  /**
+   * A stream was handed to mpv: without a picture in START_TIMEOUT_MS it has
+   * failed. mpv does not say so itself -- at an address that refuses it
+   * retries for minutes -- so the time is kept here.
+   */
+  opening(): void {
+    this.stopStarting();
+    this.starting = setTimeout(() => {
+      this.starting = null;
+      playbackLog(`app: no picture in ${START_TIMEOUT_MS / 1000} s`);
+      if (this.recovery.played) {
+        // A reopen after a drop that does not come back: an ending like any other.
+        this.ended({ event: 'end-file', reason: 'error' });
+      } else {
+        this.onNeverStarted(NO_PICTURE);
+      }
+    }, START_TIMEOUT_MS);
+  }
+
+  private stopStarting(): void {
+    if (this.starting) {
+      clearTimeout(this.starting);
+      this.starting = null;
+    }
+  }
+
+  /** Whether the channel has shown a picture since it was opened. */
+  get played(): boolean {
+    return this.recovery.played;
+  }
+
+  /** The position last read, and when it last moved: a picture that stops moving has dropped too. */
+  private lastPosition = -1;
+  private movedAt = 0;
+
+  /** The picture is there: told at mpv's `playback-restart` and at every position read. */
   playing(): void {
+    this.stopStarting();
     if (!this.stopped && !this.pending) {
       this.recovery.playing();
+      this.watchStall();
+    }
+  }
+
+  /**
+   * A channel whose provider has gone: mpv holds the last picture and goes on
+   * reconnecting, without ever ending the stream (a provider stopped under a
+   * playing channel, 23 November). Not moving for START_TIMEOUT_MS, while no
+   * pause of the viewer's is in progress, is an ending like any other.
+   */
+  private watchStall(): void {
+    const position = this.watcher.positionSeconds;
+    const now = Date.now();
+    if (position !== this.lastPosition || this.watcher.pause?.active) {
+      this.lastPosition = position;
+      this.movedAt = now;
+      return;
+    }
+    if (now - this.movedAt >= START_TIMEOUT_MS) {
+      playbackLog(`app: the picture has not moved for ${START_TIMEOUT_MS / 1000} s`);
+      this.lastPosition = -1;
+      this.ended({ event: 'end-file', reason: 'error' });
     }
   }
 
@@ -1233,6 +1324,10 @@ class LiveKeeper {
     const next = this.recovery.ended();
     if (next.kind === 'giveUp') {
       this.stopped = true;
+      this.stopStarting();
+      // Not left retrying behind the message, holding the one connection.
+      this.watcher.send(['stop']);
+      this.onGaveUp(`stopped after ${next.attempts} reopens`);
       playbackLog(`app: gave up after ${next.attempts} reopens in a row; waiting for Enter or Escape`);
       const text =
         `${this.words.stopped ?? 'The channel stopped. The provider may have ended the connection.'}\n` +
@@ -1261,20 +1356,25 @@ class LiveKeeper {
   switched(url: string): void {
     this.url = url;
     this.cancel();
+    this.stopStarting();
     this.stopped = false;
     this.recovery.forget();
   }
 
   stop(): void {
     this.cancel();
+    this.stopStarting();
   }
 
   private reopen(delayMs: number): void {
     this.cancel();
+    this.stopStarting();
+    this.lastPosition = -1;
     this.showText(this.words.reconnecting ?? 'Reconnecting\u2026', UNTIL_REPLACED_MS);
     this.pending = setTimeout(() => {
       this.pending = null;
       this.watcher.send(['loadfile', this.url, 'replace']);
+      this.opening();
     }, delayMs);
   }
 
@@ -1318,6 +1418,23 @@ class DesktopChannels {
     this.itemId = itemId;
     watcher.onEvent = event => this.onEvent(event);
     watcher.onPosition = () => this.arrived();
+    if (keeper) {
+      keeper.onNeverStarted = error => this.failedToStart(error);
+    }
+  }
+
+  /** No picture, by mpv's error or the keeper's clock: a switched channel is the page's to decide, the first closes. */
+  private failedToStart(error: string): void {
+    if (this.switched && !this.started) {
+      // The page decides: once more, give up, or close.
+      this.lastError = error;
+      this.watcher.send(['stop']);
+      this.emit({ type: 'switchFailed', itemId: this.itemId, errorCode: error });
+    } else {
+      this.closingWith = error;
+      playbackLog(`app: closing the player over ${error}`);
+      this.watcher.quitWith(CLOSED_OVER_FAILURE_EXIT);
+    }
   }
 
   /** The picture is there: say so once per channel. */
@@ -1350,7 +1467,7 @@ class DesktopChannels {
         if (this.switching) {
           this.emit({ type: 'channelRequested', step: 'cancel', itemId: this.itemId, started: this.started });
         } else {
-          this.watcher.send(['quit']);
+          this.watcher.quitWith(VIEWER_CLOSED_EXIT);
         }
       } else if (what === 'banner') {
         this.emit({ type: 'bannerRequested', itemId: this.itemId });
@@ -1371,16 +1488,7 @@ class DesktopChannels {
         return;
       }
       if (event.reason === 'error') {
-        const error = `mpv could not open it (${event.file_error ?? 'unknown'})`;
-        if (this.switched && !this.started) {
-          // The page decides: once more, give up, or close.
-          this.lastError = error;
-          this.emit({ type: 'switchFailed', itemId: this.itemId, errorCode: error });
-        } else {
-          this.closingWith = error;
-          playbackLog(`app: closing the player over ${error}`);
-          this.watcher.quitWith(CLOSED_OVER_FAILURE_EXIT);
-        }
+        this.failedToStart(`mpv could not open it (${event.file_error ?? 'unknown'})`);
       } else if (event.reason === 'eof') {
         // Idle would leave an empty window where a stream ended.
         playbackLog('app: closing the player at the end of the stream');
@@ -1416,6 +1524,7 @@ class DesktopChannels {
         this.pending = setTimeout(() => {
           this.pending = null;
           this.watcher.send(['loadfile', command.url, 'replace']);
+          this.keeper?.opening();
         }, Math.max(0, command.waitMs));
         return;
       case 'text':
@@ -1496,6 +1605,7 @@ export function registerNativePlayer(): void {
   });
   ipcMain.on('xtream:video-key', (event, key: unknown) => {
     if (fromAppPage(event) && typeof key === 'string' && /^[A-Za-z0-9_+-]{1,16}$|^.$/.test(key)) {
+      keys?.pressed(key);
       keys?.send(['keypress', key]);
     }
   });
@@ -1509,6 +1619,7 @@ export function registerNativePlayer(): void {
     switch (command.kind) {
       case 'key':
         if (typeof command.key === 'string' && /^[A-Za-z0-9_+-]{1,16}$|^.$/.test(command.key)) {
+          watcher.pressed(command.key);
           watcher.send(['keypress', command.key]);
         }
         return;
@@ -1657,7 +1768,13 @@ export function registerNativePlayer(): void {
             }
           }, PROGRESS_EVERY_MS)
         : null;
-      const keeper = isLive(request) ? new LiveKeeper(watcher, request.url, request.liveWords ?? {}) : null;
+      const keeper = isLive(request)
+        ? new LiveKeeper(watcher, request.url, request.liveWords ?? {}, errorCode => {
+            if (window && !window.isDestroyed()) {
+              toPage(window.webContents, 'xtream:player-event', { type: 'streamFailed', errorCode });
+            }
+          })
+        : null;
       channels =
         request.channelKeys === true && request.inPlayerSwitching === true
           ? new DesktopChannels(watcher, window, request.itemId ?? '', keeper)
@@ -1679,13 +1796,22 @@ export function registerNativePlayer(): void {
             // Opened again, or the message is up.
           } else if (event.event === 'end-file' && event.reason === 'error') {
             playbackLog('app: closing the player: the channel would not open');
-            watcher.quitWith(2);
+            watcher.closingWith = `mpv could not open it (${event.file_error ?? 'unknown'})`;
+            watcher.quitWith(CLOSED_OVER_FAILURE_EXIT);
           } else if (event.event === 'end-file' && event.reason === 'eof') {
             playbackLog('app: closing the player at the end of the stream');
             watcher.send(['quit']);
           }
         };
       }
+      if (keeper && !session) {
+        keeper.onNeverStarted = error => {
+          playbackLog(`app: closing the player over ${error}`);
+          watcher.closingWith = error;
+          watcher.quitWith(CLOSED_OVER_FAILURE_EXIT);
+        };
+      }
+      keeper?.opening();
       if (!session && !pause) {
         if (request.skipIntros !== 'off') {
           new DesktopSkips(watcher, handedSkips(request.skips), request.skipWords ?? {}, request.skipIntros === 'auto');
@@ -1695,7 +1821,11 @@ export function registerNativePlayer(): void {
       // A child window goes when its parent does; the process behind it does
       // not. Without this, closing the app mid-film leaves mpv running with
       // no window, holding the subscription's one allowed connection.
-      const stopWithWindow = () => child.kill();
+      let closedWithWindow = false;
+      const stopWithWindow = () => {
+        closedWithWindow = true;
+        child.kill();
+      };
       window?.once('closed', stopWithWindow);
 
       const done = () => {
@@ -1742,11 +1872,15 @@ export function registerNativePlayer(): void {
         });
       });
 
-      child.on('exit', (code, signal) => {
+      child.on('exit', (exitCode, signal) => {
         done();
-        playbackLog(`mpv exited with code ${code}`);
+        const code = signal ? exitCode : watcher.askedExit ?? exitCode;
+        playbackLog(`mpv exited with code ${exitCode}${code !== exitCode ? ` (as asked: ${code})` : ''}`);
         // A crash or an unexpected exit, as an error report (src/errorReports.ts).
-        reportPlayerExit(helper ? 'tvinto-player' : 'mpv', code, signal);
+        // Not the app's window closing, which kills it on purpose.
+        if (!closedWithWindow) {
+          reportPlayerExit(helper ? 'tvinto-player' : 'mpv', code, signal);
+        }
 
         // mpv exits zero when the viewer closes the window, which is the
         // ordinary way playback ends rather than a failure -- and with one of
@@ -1755,12 +1889,13 @@ export function registerNativePlayer(): void {
         const channelStep =
           code === CHANNEL_NEXT_EXIT ? 'next' : code === CHANNEL_PREVIOUS_EXIT ? 'previous' : null;
         const failed = code !== 0 && code !== null && !channelStep;
-        const closedOverFailure = code === CLOSED_OVER_FAILURE_EXIT ? session?.closingWith : null;
+        const closedOverFailure = code === CLOSED_OVER_FAILURE_EXIT ? session?.closingWith ?? watcher.closingWith : null;
 
         resolve({
           positionSeconds: watcher.positionSeconds,
           durationSeconds: watcher.durationSeconds,
-          played: !failed,
+          // A channel left before its picture came was not watched.
+          played: !failed && (keeper === null || keeper.played),
           errorCode: failed ? closedOverFailure ?? `mpv exited with code ${code}` : null,
           channelStep,
           itemId: session?.itemId ?? request.itemId ?? null,

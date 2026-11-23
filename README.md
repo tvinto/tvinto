@@ -139,7 +139,8 @@ system. That includes crashes of the Android app and failures that show no
 error, such as a stream that won't play or a guide that won't load, sent as
 a short code and a few numbers. Never your provider, its address, username
 or password, your channels, the films and shows you have or watch, your
-account or your IP address. Only errors: nothing about how you use the app.
+account, your IP address or where you are. Only errors: nothing about how you
+use the app.
 
 It's on from the start, and the first screen says so. Turn it off in the app
 under Account, Playback, "Send error reports", or with

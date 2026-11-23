@@ -140,6 +140,21 @@ public class PlayerActivity extends Activity implements SleepTimerPanel.Owner {
         }
     };
 
+    /** A live channel with no picture yet: failed once StartWatch's time is up. */
+    private final StartWatch startWatch = new StartWatch(reporter, () -> {
+        if (pictured || isFinishing() || film != null) {
+            return;
+        }
+        android.util.Log.e("TvintoPlayer", "No picture in " + StartWatch.TIMEOUT_MS + " ms; giving up");
+        // A switched channel is the web app's to decide about, as any failure of one.
+        if (session != null && session.onFailure(StartWatch.CODE)) {
+            return;
+        }
+        failed = true;
+        PlaybackReports.failure(0L, StartWatch.CODE);
+        finish();
+    });
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -440,6 +455,7 @@ public class PlayerActivity extends Activity implements SleepTimerPanel.Owner {
             @Override
             public void onRenderedFirstFrame() {
                 pictured = true;
+                startWatch.disarm();
                 if (session != null) {
                     session.onFirstFrame();
                 }
@@ -533,6 +549,9 @@ public class PlayerActivity extends Activity implements SleepTimerPanel.Owner {
 
         player.setPlayWhenReady(true);
         reporter.postDelayed(reportTick, REPORT_INTERVAL_MS);
+        if (film == null && !pictured) {
+            startWatch.arm();
+        }
     }
 
     /**
@@ -1291,6 +1310,7 @@ public class PlayerActivity extends Activity implements SleepTimerPanel.Owner {
     private final ChannelSession.Engine engine = new ChannelSession.Engine() {
         @Override
         public void stopStream() {
+            startWatch.disarm();
             // Another channel: a pause of this one goes with it.
             endPause();
             if (player != null) {
@@ -1312,6 +1332,7 @@ public class PlayerActivity extends Activity implements SleepTimerPanel.Owner {
             player.setMediaItem(MediaItem.fromUri(url));
             player.prepare();
             player.setPlayWhenReady(true);
+            startWatch.arm();
         }
 
         @Override
@@ -1824,6 +1845,7 @@ public class PlayerActivity extends Activity implements SleepTimerPanel.Owner {
         publishPosition();
         endPause();
         reporter.removeCallbacks(reportTick);
+        startWatch.disarm();
         reminders.destroy();
         if (sleep != null) {
             sleep.destroy();

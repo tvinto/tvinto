@@ -54,11 +54,18 @@ const REMOVED = '[removed]';
 const SHORT = 3;
 
 /**
- * The stream's file name without where it lives or who asked: "http …/1234.m3u8".
- * The same as the desktop playback log's (frontend/electron/src/playbackLog.ts),
- * which a report's log lines have already passed through.
+ * A stream without where it lives, who asked, or which it was: "http …/[stream].m3u8".
+ * The number is the provider's for one channel, film or episode, and with
+ * the provider's catalogue it says what somebody watched, so only the kind of
+ * file stays. The playback log on disk keeps the number
+ * (frontend/electron/src/playbackLog.ts); a report's log lines lose it here.
  */
 export function cleanAddress(url: string): string {
+  return streamAddress(url).replace(/…\/\d+/, `…/${STREAM}`);
+}
+
+/** The same with the stream's number kept, for the playback log that stays on the device. */
+export function streamAddress(url: string): string {
   const scheme = /^([a-z][a-z0-9+.-]*):\/\//i.exec(url.trim())?.[1]?.toLowerCase();
   if (!scheme) {
     return 'a local file';
@@ -68,6 +75,9 @@ export function cleanAddress(url: string): string {
   // A channel number and an extension; anything else could be a name or a token.
   return /^\d{1,12}(\.[A-Za-z0-9]{1,5})?$/.test(last) ? `${scheme} …/${last}` : `${scheme} …`;
 }
+
+/** What a stream's number becomes. */
+const STREAM = '[stream]';
 
 const escape = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -85,6 +95,8 @@ const ADDRESS_PATTERNS: readonly Pattern[] = [
     const end = /[.,;:!?]+$/.exec(match)?.[0] ?? '';
     return cleanAddress(match.slice(0, match.length - end.length)) + end;
   }],
+  // A stream already shortened by the playback log: "http …/478781.mkv".
+  [/…\/\d{1,12}(\.[A-Za-z0-9]{1,5})?\b/g, match => `…/${STREAM}${/\.[A-Za-z0-9]+$/.exec(match)?.[0] ?? ''}`],
   // A person's own folder, which is named after them: C:\Users\Mario\..., /home/mario/...
   [/\b[A-Za-z]:[\\/]+(?:Users|Documents and Settings)[\\/]+[^\\/\s'"]+/gi, '[home]'],
   [/(?:\/home|\/Users)\/[^/\s'"]+/g, '[home]'],
@@ -315,8 +327,15 @@ export function cleanReport<T extends object>(event: T, personal: readonly strin
     cleaned.contexts = kept;
   }
   cleaned.sdk = { ...(sdk ?? {}), settings: { ...(sdk?.settings ?? {}), infer_ip: 'never' } };
+  // Sentry works out a city and country from the connection's address when
+  // an event has no location of its own, even with no IP address stored
+  // (23 November). A location that says it was not sent stops that.
+  cleaned['user'] = { geo: { region: NO_LOCATION } };
   return cleaned as T;
 }
+
+/** The one thing a report says about where it came from. */
+export const NO_LOCATION = 'not sent';
 
 /** The screen a report came from, without ids: `#/live/12/345` -> `app:///live`. */
 export function appScreen(url: string): string {
@@ -328,13 +347,40 @@ export function appScreen(url: string): string {
 /** How many of the app's own log lines go with a report. */
 export const LOG_LINES = 50;
 
-/** The last lines of a log, cleaned, for a report's extra data. */
+/** The last lines of a log, cleaned, repeats folded, for a report's extra data. */
 export function cleanLogTail(log: string, personal: readonly string[] = [], lines = LOG_LINES): string[] {
-  return log
-    .split(/\r?\n/)
-    .filter(line => line.trim())
+  return foldRepeats(log.split(/\r?\n/).filter(line => line.trim()))
     .slice(-lines)
     .map(line => cleanText(line, personal));
+}
+
+/**
+ * Lines that say the same thing in a row, whatever their time, as the first
+ * of them with a count: 45 of the 50 lines of the first real report were
+ * "stats sent=1 waited=0", which left no room for what happened.
+ */
+export function foldRepeats(lines: readonly string[]): string[] {
+  const out: string[] = [];
+  let last: string | null = null;
+  let count = 0;
+  const fold = (): void => {
+    if (count > 1) {
+      out[out.length - 1] += ` (${count} times in a row)`;
+    }
+  };
+  for (const line of lines) {
+    const said = line.replace(/^\d{4}-\d\d-\d\dT[\d:.]+Z\s+/, '');
+    if (said === last) {
+      count++;
+      continue;
+    }
+    fold();
+    out.push(line);
+    last = said;
+    count = 1;
+  }
+  fold();
+  return out;
 }
 
 /**

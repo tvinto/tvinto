@@ -9,7 +9,7 @@ import { ProvidersService } from './providers.service';
 import { SettingsService } from './settings.service';
 import { heldTitleFilter, playedTitles } from '../utils/held-titles';
 import { setFailureSink } from '../utils/failure-reports';
-import { FAILURE_WINDOW_MS, Failure, FailureGroups, GroupedFailure } from '@shared/failureReports';
+import { FAILURE_WINDOW_MS, Failure, FailureGroups, GroupedFailure, failureTitle } from '@shared/failureReports';
 import { removeTitles } from '@shared/heldTitles';
 import { nativeErrorReports } from './native/nativeErrorReports';
 
@@ -173,16 +173,21 @@ export class ErrorReportsService {
     }, FAILURE_WINDOW_MS + 1000);
   }
 
-  private sendFailure({ kind, code, context, count }: GroupedFailure): void {
+  private sendFailure(failure: GroupedFailure): void {
     if (!this.enabled()) {
       return;
     }
+    const { kind, code, context, count } = failure;
+    const title = failureTitle(failure);
+    // An event, not a message: a message gets a stack of where it was sent
+    // from, and Sentry then titles and groups it by that stack's top frame.
     this.whenLoaded(sentry =>
-      sentry.captureMessage(`${kind} failed: ${code}`, {
+      sentry.captureEvent({
+        message: title,
         level: 'error',
         tags: { failure: kind, code },
         extra: { ...context, count },
-        fingerprint: ['failure', kind, code]
+        fingerprint: [title]
       })
     );
   }
@@ -245,6 +250,7 @@ export class ErrorReportsService {
         maxBreadcrumbs: 0,
         beforeBreadcrumb: () => null,
         sendClientReports: false,
+        attachStacktrace: false,
         // Sentry 11's sendDefaultPii: nothing about the person, and no IP address.
         dataCollection: { userInfo: false, cookies: false, httpHeaders: false, httpBodies: [], urlQueryParams: false },
         beforeSend: async event => {

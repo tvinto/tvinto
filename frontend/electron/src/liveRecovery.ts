@@ -18,6 +18,18 @@
  * moment (the same reason a channel switch waits).
  */
 
+/**
+ * A live channel that shows no picture in this long has failed. On
+ * 23 November a channel at a dead address stayed black for 2 min 11 s while
+ * mpv retried it, with no message until the viewer pressed Back. A slow
+ * provider has been seen taking 9 to 15 s to answer, so a little past that.
+ * Android waits the same (player/StartWatch.java).
+ */
+export const START_TIMEOUT_MS = 20_000;
+
+/** The failure's code, the same on every player. */
+export const NO_PICTURE = `no picture in ${START_TIMEOUT_MS / 1000} s`;
+
 /** The waits before each reopen in a row; one more ending after the last is giving up. */
 export const REOPEN_DELAYS_MS = [1_000, 3_000, 8_000];
 

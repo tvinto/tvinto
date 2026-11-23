@@ -14,7 +14,10 @@ what that means.
 - Which screen it happened on, by name only (Live TV, Movies), never which
   channel or film.
 - On the computer, the last 50 lines of the app's own playback log, which says
-  when playback started and stopped and why.
+  when playback started and stopped and why. A line repeated several times in
+  a row is sent once, with how many times. A stream is named only by its type
+  (`http …/[stream].mkv`), not by the provider's number for it. The log on your
+  computer keeps the numbers; only the copy in a report loses them.
 - When the Android app crashes or stops responding: where in its code, and
   what each of its threads was doing at the time (function names, not data).
 
@@ -25,13 +28,22 @@ not answer. Each of these is one report with a short code and a few numbers:
 
 | What failed | What the report says |
 |---|---|
-| A stream that won't start, or stops and doesn't come back | which player (Media3, VLC, the desktop's, the page's), its error code, whether it was live TV, a film or an episode, the file type (ts, m3u8, mkv), the codec when the player named one, the HTTP status, and how many seconds it played |
+| A stream that won't start, or stops and doesn't come back | which player (Media3, VLC, the desktop's, the page's), its error code, whether it was live TV, a film or an episode, the file type (ts, m3u8, mkv), the codec when the player named one, the HTTP status, how many seconds it played, and for a live channel that showed no picture, how long it waited (20 seconds) |
 | A guide that won't load | at which stage (opening, downloading, reading), the HTTP status, whether it was too large, its size in whole megabytes and how many programmes it got to |
 | A sync that fails | which call (sending changes or fetching them) and the HTTP status. Not while the device is offline |
 | TMDB or OpenSubtitles failing | the HTTP status, nothing else |
 
+Each has a plain title that says what failed, such as "Stream failed: live,
+tvinto-player, no picture", and failures with the same title are grouped
+together. Crashes and other errors are grouped by Sentry as usual, by where
+in the code they happened.
+
+Closing the player yourself is never a failure: pressing Back or Escape,
+closing it, or choosing another channel sends nothing, even when the stream
+never started.
+
 A provider having a bad evening would otherwise send one of these for every
-channel tried, so they are grouped: at most one report of each kind every five
+channel tried, so they are grouped: at most one report of each failure (each title) every five
 minutes, and the one at the end of the five minutes says how many there were.
 
 ## What a report never holds
@@ -43,7 +55,16 @@ minutes, and the one at the end of the five minutes says how many there were.
 - TMDB or OpenSubtitles keys.
 - Your IP address. The app doesn't send it, and it asks the report service not
   to work it out from the connection either.
+- Where you are. Sentry works out a city and a country from the connection
+  when a report has no location of its own, even when it stores no IP
+  address. So every report carries a location that says "not sent", which
+  leaves Sentry nothing to fill in.
+- The provider's numbers for streams, which with the provider's list would say
+  what you watched.
 - Your computer's name or the names of your folders.
+
+What Sentry records for each report, then, is exactly what is listed under
+"What a report holds", the time it arrived, and that location of "not sent".
 
 Every report goes through one cleaning step on your device before it leaves
 ([shared/errorReports.ts](../shared/errorReports.ts)). It takes out every web

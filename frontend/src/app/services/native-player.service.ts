@@ -242,14 +242,19 @@ export class NativePlayerService {
     if (!result?.errorCode || result.errorCode === RECORDING_HOLDS_CONNECTION) {
       return;
     }
-    const { code, codec, http } = streamFailure(result.errorCode);
+    this.reportStreamFailure(request, result.errorCode, result.positionSeconds);
+  }
+
+  private reportStreamFailure(request: PlayRequest, errorCode: string, positionSeconds = 0): void {
+    const { code, codec, http, waitedSeconds } = streamFailure(errorCode);
     reportFailure('stream', code, {
       player: this.lastEngine,
       kind: streamKind(request.item?.type, request.url),
       container: streamContainer(request.url),
       codec,
       http,
-      playedSeconds: Math.max(0, Math.round((result.positionSeconds || 0) - (request.startAtSeconds || 0)))
+      waitedSeconds,
+      playedSeconds: Math.max(0, Math.round((positionSeconds || 0) - (request.startAtSeconds || 0)))
     });
   }
 
@@ -464,6 +469,18 @@ export class NativePlayerService {
         stopListening = await this.listenForSwitching(run, channels);
         void run.bannerFor(run.current.itemId).then(banner => channels.updateBanner({ itemId: run.current.itemId, banner }), () => undefined);
       }
+      // A live channel that played, dropped and would not come back: the
+      // player says so and waits, and the report goes now (LiveKeeper).
+      const stopFailures = bridge.player?.onEvent(event => {
+        if (event.type === 'streamFailed') {
+          this.reportStreamFailure(request, event.errorCode);
+        }
+      });
+      const stopSwitching = stopListening;
+      stopListening = () => {
+        stopSwitching?.();
+        stopFailures?.();
+      };
       this.desktopVideo.presentation.set(request.presentation ?? null);
       this.desktopVideo.playing.set(playingTarget(request.item, request.presentation, request.title));
       const kept = this.desktopVideo.kept();
