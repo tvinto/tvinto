@@ -20,6 +20,8 @@ import { CapacitorGuideStore } from './native/capacitorGuideStore';
 import { IndexedDbGuideStore } from './native/indexedDbGuideStore';
 import { capacitorGuideBytes, fetchGuideBytes } from './native/guideBytesSource';
 import { downloadedFileAddress, downloadedFileBytes, guideDownloadPlugin } from './native/guideDownload';
+import { noteHeldTitles } from '../utils/held-titles';
+import { reportFailure } from '../utils/failure-reports';
 import { rememberLoadedHere } from './guide-loaded-here';
 
 /**
@@ -120,11 +122,15 @@ export class GuideService {
     this.loading.set({ sourceId, channels: 0, programmes: 0, chars: 0 });
     this.wontLoad([sourceId]);
     let source: GuideBytes | null = null;
+    // Where a failure happened, for its error report: never what or whose.
+    let stage: 'open' | 'download' | 'read' | 'prune' = 'open';
 
     try {
       const store = await this.opened();
+      stage = 'download';
       source = await this.bytesFrom(url);
       const bytes = source.bytes;
+      stage = 'read';
 
       // The progress shown twice a second at most: the count redrawn per
       // batch was two seconds of style and layout in forty on the TV emulator
@@ -152,9 +158,22 @@ export class GuideService {
 
       // Done after rather than before: a load that fails should leave what was
       // there, and pruning first would take some of it away for nothing.
+      stage = 'prune';
       await store.prune(Date.now() - KEEP_FINISHED_HOURS * 60 * 60 * 1000);
 
       return report;
+    } catch (error) {
+      const chars = this.loading()?.chars ?? 0;
+      reportFailure('guide', stage, {
+        error: error instanceof Error ? error.name : typeof error,
+        // The guide server's status and the size limit, from the messages that say them; nothing else of the message.
+        http: Number(/answered (\d{3})\b/.exec(String(error))?.[1]) || null,
+        tooLarge: /is larger than/.test(String(error)),
+        // Rounded to a megabyte: the size says big or small, not which guide.
+        megabytes: Math.round(chars / 1_000_000),
+        programmes: this.loading()?.programmes ?? 0
+      });
+      throw error;
     } finally {
       // Ends the byte source however the load went. A parse that fails part
       // way stops reading without telling the source, and on Android the
@@ -265,7 +284,10 @@ export class GuideService {
       return [];
     }
 
-    return (await this.opened()).programmesFor(refs, from, to);
+    const programmes = await (await this.opened()).programmesFor(refs, from, to);
+    // Kept out of error reports from now on (utils/held-titles.ts).
+    noteHeldTitles(programmes);
+    return programmes;
   }
 
   /** Programmes whose titles hold the words, across this device's guides (guideSearch.ts). */
@@ -273,7 +295,9 @@ export class GuideService {
     if (!this.supported) {
       return [];
     }
-    return (await this.opened()).searchProgrammes(query, from, to, limit);
+    const hits = await (await this.opened()).searchProgrammes(query, from, to, limit);
+    noteHeldTitles(hits);
+    return hits;
   }
 
   /** When the last programme a source holds ends, or null. */

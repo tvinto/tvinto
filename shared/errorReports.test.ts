@@ -183,6 +183,7 @@ describe('helpers', () => {
 
   it('keeps a file name only', () => {
     expect(appFile('/home/me/app/build/src/index.js')).toBe('app:///index.js');
+    expect(appFile('app.tvinto.device.ErrorReportsPlugin$$ExternalSyntheticLambda0')).toBe('app:///app.tvinto.device.ErrorReportsPlugin$$ExternalSyntheticLambda0');
   });
 
   it('reports a player that crashed, not one closed or refused', () => {

@@ -19,6 +19,8 @@ import { HlmButton } from '@spartan-ng/helm/button';
 import { lucideLoaderCircle, lucideMaximize, lucideMinimize } from '@ng-icons/lucide';
 import { formatTimecode } from '../../utils/progress.utils';
 import { safeToLog } from '../../utils/stream.utils';
+import { reportFailure } from '../../utils/failure-reports';
+import { streamContainer, streamKind } from '@shared/failureReports';
 import { t } from '../../utils/i18n';
 import { TPipe } from '../../pipes/t.pipe';
 
@@ -179,10 +181,28 @@ export class VideoPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
       });
       video.addEventListener('error', err => {
         console.error('Video error:', err);
+        this.reportFailure(`MEDIA_ERR_${video.error?.code ?? 0}`);
         this.errorMessage.set(t('player.loadFailed'));
         this.isLoading.set(false);
       });
     }
+  }
+
+  /**
+   * A stream the page could not play, as an error report: the browser's or
+   * hls.js's code, the kind and container from the address's shape, how long
+   * it played (shared/failureReports.ts).
+   */
+  private reportFailure(code: string, http?: number): void {
+    const video = this.videoElement().nativeElement;
+    reportFailure('stream', code, {
+      player: 'web',
+      kind: streamKind(null, this.streamUrl()),
+      container: streamContainer(this.streamUrl()),
+      codec: null,
+      http: http ?? null,
+      playedSeconds: Math.max(0, Math.round((video.currentTime || 0) - (this.startPositionSeconds() || 0)))
+    });
   }
 
   /**
@@ -232,6 +252,7 @@ export class VideoPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
             ` status=${data.response?.code ?? 'none'} url=${safeToLog(data.url)}`
         );
         if (data.fatal) {
+          this.reportFailure(String(data.details), data.response?.code);
           this.errorMessage.set(t('player.streamError', { type: data.type, details: data.details }));
           this.isLoading.set(false);
         }

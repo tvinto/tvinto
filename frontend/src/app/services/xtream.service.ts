@@ -31,6 +31,7 @@ import {
   streamsByGuideChannel
 } from '@shared/xtream/guideMatching';
 import { GuideService } from './guide.service';
+import { noteShowTitles } from '../utils/held-titles';
 import { KnownChannel } from '@shared/xtream/guide';
 import { GUIDE_SEARCH_AHEAD_MS, GUIDE_SEARCH_LIMIT, GuideFind, linkGuideHits } from '../utils/guide-search.utils';
 import { GuideSourcesService } from './guide-sources.service';
@@ -1109,10 +1110,19 @@ export class XtreamService {
       return null;
     }
     const kept = await this.seriesCache.get(`${direct.providerUsername}:${seriesId}`).catch(() => null);
-    return kept && Object.keys(kept.episodes ?? {}).length ? kept : null;
+    if (!kept || !Object.keys(kept.episodes ?? {}).length) {
+      return null;
+    }
+    noteShowTitles(kept);
+    return kept;
   }
 
   getSeriesInfo(seriesId: string | number): Observable<SeriesInfo> {
+    // The show's and its episodes' names, kept out of error reports (utils/held-titles.ts).
+    return this.seriesInfoFromProvider(seriesId).pipe(tap(info => noteShowTitles(info)));
+  }
+
+  private seriesInfoFromProvider(seriesId: string | number): Observable<SeriesInfo> {
     if (!this.isAuthenticated()) {
       throw new Error('Not authenticated');
     }

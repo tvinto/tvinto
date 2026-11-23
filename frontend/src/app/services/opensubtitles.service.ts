@@ -1,4 +1,5 @@
 import { Injectable, effect, inject, signal, untracked } from '@angular/core';
+import { reportingFetch } from '../utils/failure-reports';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import {
@@ -99,7 +100,8 @@ export class OpenSubtitlesService {
   readonly userAgent = userAgentFor(version);
 
   /** How requests reach OpenSubtitles. A seam for tests. */
-  fetchImpl: OpenSubtitlesFetch = (url, init) => fetch(url, init);
+  // Failing answers reported by status only (utils/failure-reports.ts).
+  fetchImpl: OpenSubtitlesFetch = reportingFetch('opensubtitles', (url, init) => fetch(url, init));
 
   constructor() {
     // A different account, or none, must not inherit the last one's login or token.

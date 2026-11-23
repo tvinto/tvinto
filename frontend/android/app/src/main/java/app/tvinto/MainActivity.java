@@ -55,6 +55,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(HomeScreenPlugin.class);
         registerPlugin(SystemColorsPlugin.class);
         registerPlugin(StartUpPlugin.class);
+        registerPlugin(app.tvinto.device.ErrorReportsPlugin.class);
         registerPlugin(DatabaseSpacePlugin.class);
         registerPlugin(app.tvinto.phone.PhoneFormPlugin.class);
         registerPlugin(app.tvinto.recording.RecorderPlugin.class);

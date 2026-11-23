@@ -15,11 +15,30 @@ what that means.
   channel or film.
 - On the computer, the last 50 lines of the app's own playback log, which says
   when playback started and stopped and why.
+- When the Android app crashes or stops responding: where in its code, and
+  what each of its threads was doing at the time (function names, not data).
+
+### Failures that show no error
+
+Some things fail without anything in the app going wrong: the provider does
+not answer. Each of these is one report with a short code and a few numbers:
+
+| What failed | What the report says |
+|---|---|
+| A stream that won't start, or stops and doesn't come back | which player (Media3, VLC, the desktop's, the page's), its error code, whether it was live TV, a film or an episode, the file type (ts, m3u8, mkv), the codec when the player named one, the HTTP status, and how many seconds it played |
+| A guide that won't load | at which stage (opening, downloading, reading), the HTTP status, whether it was too large, its size in whole megabytes and how many programmes it got to |
+| A sync that fails | which call (sending changes or fetching them) and the HTTP status. Not while the device is offline |
+| TMDB or OpenSubtitles failing | the HTTP status, nothing else |
+
+A provider having a bad evening would otherwise send one of these for every
+channel tried, so they are grouped: at most one report of each kind every five
+minutes, and the one at the end of the five minutes says how many there were.
 
 ## What a report never holds
 
 - Your provider's address, username or password, or the address of any stream.
-- The names of channels, films or shows, or anything about what you watch.
+- The names of channels, films, shows, episodes or programmes, or anything
+  about what you watch.
 - Your Tvinto account's name or email, or your sync server's address.
 - TMDB or OpenSubtitles keys.
 - Your IP address. The app doesn't send it, and it asks the report service not
@@ -33,9 +52,25 @@ values the app actually holds for you, wherever they turn up in the report.
 Tests plant a made-up provider's details in each part of a report and check
 that none of them come out.
 
+The values include every title the app has read: the channels, films and shows
+of the library, the episodes of a show, the guide's programmes -- whatever was
+on a screen, played or only scrolled past -- both as the provider names them
+("EN - Never Surrender (2026)") and as the app shows them ("Never Surrender").
+Each is taken out wherever it stands, as `[title]`
+([shared/heldTitles.ts](../shared/heldTitles.ts)). Titles shorter than three
+letters are left, as taking them out would empty every message.
+
 When the desktop app itself crashes, the report says which part crashed and
 how. It doesn't include a memory dump, because a dump is a copy of the app's
 memory, and that could hold your provider's login.
+
+The Android app is the same: a crash in its Java code, in the players' native
+code or in a plugin, and the app not responding, are reported without a
+memory dump, a tombstone or a thread dump. Android's crash reports are kept on
+the device, in the app's own folder, and handed to the same cleaning step as
+everything else before anything is sent. A crash usually ends the app, so its
+report waits on the device until the next start, and is sent then only if the
+switch is on; with the switch off it is deleted.
 
 ## Only errors
 
@@ -45,7 +80,8 @@ press, and no recordings of your screen.
 ## When
 
 Only when something fails: a JavaScript error in the app, an error or a crash
-in the desktop app, or the desktop player stopping unexpectedly. Nothing is
+in the desktop or the Android app, the desktop player stopping unexpectedly,
+or one of the failures in the table above. Nothing is
 sent before the first screen has shown you the switch.
 
 ## Where
@@ -61,7 +97,9 @@ project's own account. Only the people who work on Tvinto can read them.
 
 The setting belongs to your account, so turning it off on one device turns it
 off on all of them. Off means nothing is sent at all. On the computer, the
-reporting part doesn't even start the next time you open the app.
+reporting part doesn't even start the next time you open the app; on Android,
+it stops at once, deletes any crash reports kept on the device, and doesn't
+start again until the switch is on.
 
 ## Building it yourself
 
@@ -82,3 +120,10 @@ Without it, the switch isn't shown and nothing is sent.
 `"errorReportsDsn": "http://fakekey@127.0.0.1:8790/1"`, then
 `http://127.0.0.1:8790/qa/received` lists what arrived, and the files it saved
 show the reports in full.
+
+On Android, build the app with the stand-in's address as the emulator sees
+it (`http://fakekey@10.0.2.2:8790/1`). A debug build can rehearse a crash and
+the app not responding from the page:
+`Capacitor.Plugins.ErrorReports.rehearse({ what: 'crash' })` or
+`{ what: 'anr' }` (then press a key: Android closes the app that stopped
+answering). Both reports arrive at the next start. A release build refuses.

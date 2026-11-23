@@ -7,7 +7,11 @@ import { AccountService } from './account.service';
 import { API_URL } from './api-url';
 import { ProvidersService } from './providers.service';
 import { SettingsService } from './settings.service';
-import { playedTitles } from '../utils/played-titles';
+import { heldTitleFilter, playedTitles } from '../utils/held-titles';
+import { setFailureSink } from '../utils/failure-reports';
+import { FAILURE_WINDOW_MS, Failure, FailureGroups, GroupedFailure } from '@shared/failureReports';
+import { removeTitles } from '@shared/heldTitles';
+import { nativeErrorReports } from './native/nativeErrorReports';
 
 /** Set on this device once the switch has been on screen: onboarding, or the notice (ErrorReportsNoticeService). */
 const SHOWN_KEY = 'tvinto_error_reports_shown';
@@ -90,16 +94,23 @@ export class ErrorReportsService {
 
   private sentry: SentryModule | null = null;
   private loading = false;
-  private readonly early: unknown[] = [];
+  /** What to send once Sentry has loaded: errors and failures from before it. */
+  private readonly early: ((sentry: SentryModule) => void)[] = [];
+  private readonly groups = new FailureGroups();
+  private groupTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     effect(() => {
       const on = this.enabled();
       desktop()?.set({ on, personal: this.held() });
+      // Android's own crashes: kept on the device until now, sent or deleted by this.
+      void nativeErrorReports?.set({ on }).catch(() => undefined);
       if (on) {
         void this.load();
       }
     });
+    setFailureSink(failure => this.failure(failure));
+    void nativeErrorReports?.addListener('kept', () => void this.sendNative()).catch(() => undefined);
   }
 
   /** The switch has been on screen on this device; reports may go from now on. */
@@ -138,10 +149,64 @@ export class ErrorReportsService {
     if (!this.enabled()) {
       return;
     }
+    this.whenLoaded(sentry => sentry.captureException(error));
+  }
+
+  /**
+   * A failure that threw nothing (utils/failure-reports.ts): one event per
+   * kind every few minutes, and the window's end sends the rest as a count.
+   */
+  failure(failure: Failure): void {
+    if (!this.enabled()) {
+      return;
+    }
+    const now = Date.now();
+    const send = this.groups.note(failure, now);
+    if (send) {
+      this.sendFailure(send);
+    }
+    this.groupTimer ??= setTimeout(() => {
+      this.groupTimer = null;
+      for (const due of this.groups.due(Date.now())) {
+        this.sendFailure(due);
+      }
+    }, FAILURE_WINDOW_MS + 1000);
+  }
+
+  private sendFailure({ kind, code, context, count }: GroupedFailure): void {
+    if (!this.enabled()) {
+      return;
+    }
+    this.whenLoaded(sentry =>
+      sentry.captureMessage(`${kind} failed: ${code}`, {
+        level: 'error',
+        tags: { failure: kind, code },
+        extra: { ...context, count },
+        fingerprint: ['failure', kind, code]
+      })
+    );
+  }
+
+  /** Android's own crashes, kept on the device since they happened, through the same cleaning as the rest. */
+  private async sendNative(): Promise<void> {
+    if (!this.sentry || !this.enabled() || !nativeErrorReports) {
+      return;
+    }
+    const { events } = await nativeErrorReports.take().catch(() => ({ events: [] as string[] }));
+    for (const json of events) {
+      try {
+        this.sentry.captureEvent(JSON.parse(json) as Parameters<SentryModule['captureEvent']>[0]);
+      } catch {
+        // Not readable: dropped, as it would be by Sentry.
+      }
+    }
+  }
+
+  private whenLoaded(send: (sentry: SentryModule) => void): void {
     if (this.sentry) {
-      this.sentry.captureException(error);
+      send(this.sentry);
     } else if (this.early.length < EARLY_MAX) {
-      this.early.push(error);
+      this.early.push(send);
     }
   }
 
@@ -196,13 +261,15 @@ export class ErrorReportsService {
             contexts: { ...event.contexts, device: { ...event.contexts?.['device'], screen_resolution: `${screen.width}x${screen.height}` } },
             extra: { ...event.extra, ...(log.length ? { log: cleanLogTail(log.join('\n'), personal) } : {}) }
           };
-          return cleanReport(withContext, personal);
+          // Then every title the app holds, played or only browsed past (utils/held-titles.ts).
+          return removeTitles(cleanReport(withContext, personal), heldTitleFilter());
         }
       });
       this.sentry = sentry;
-      for (const error of this.early.splice(0)) {
-        sentry.captureException(error);
+      for (const send of this.early.splice(0)) {
+        send(sentry);
       }
+      void this.sendNative();
     } catch (error) {
       console.warn('Error reports could not start', String(error).slice(0, 200));
     } finally {
