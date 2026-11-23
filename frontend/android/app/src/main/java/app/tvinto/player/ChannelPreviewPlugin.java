@@ -44,6 +44,14 @@ public class ChannelPreviewPlugin extends Plugin {
     /** The address playing, for the full player to know it may take this one over. */
     private String playing;
 
+    /**
+     * A channel that shows no picture in the full player's time has failed
+     * here too, and the window goes so the page can say so in the box: a
+     * hanging stream left the box black for ever (23 November). No report --
+     * only the full player reports.
+     */
+    private final StartWatch startWatch = new StartWatch(new android.os.Handler(android.os.Looper.getMainLooper()), () -> fail(StartWatch.CODE));
+
     /** Where the box was last, in screen pixels: where a player handed back goes. */
     private int[] lastArea;
 
@@ -85,6 +93,7 @@ public class ChannelPreviewPlugin extends Plugin {
         preview.listener = null;
         preview.playing = null;
         preview.pictured = false;
+        preview.startWatch.disarm();
         preview.notifyListeners("previewState", state("taken", ""));
         return taken;
     }
@@ -131,6 +140,7 @@ public class ChannelPreviewPlugin extends Plugin {
                 player.setMediaItem(MediaItem.fromUri(url));
                 player.prepare();
                 player.setPlayWhenReady(true);
+                startWatch.arm();
                 call.resolve();
             } catch (Exception failure) {
                 call.reject("Could not start the preview (" + failure.getClass().getSimpleName() + ")");
@@ -300,18 +310,31 @@ public class ChannelPreviewPlugin extends Plugin {
             @Override
             public void onRenderedFirstFrame() {
                 pictured = true;
+                startWatch.disarm();
                 notifyListeners("previewState", state("playing", ""));
             }
 
             @Override
             public void onPlayerError(PlaybackException error) {
-                notifyListeners("previewState", state("failed", error.getErrorCodeName()));
+                // Posted: not released from inside its own callback.
+                String code = error.getErrorCodeName();
+                getActivity().runOnUiThread(() -> fail(code));
             }
         };
         target.addListener(listener);
     }
 
+    /** Lets the stream and the window go, so the box's own text shows, and tells the page. */
+    private void fail(String detail) {
+        if (player == null) {
+            return;
+        }
+        release();
+        notifyListeners("previewState", state("failed", detail));
+    }
+
     private void release() {
+        startWatch.disarm();
         if (player != null) {
             player.stop();
             player.release();

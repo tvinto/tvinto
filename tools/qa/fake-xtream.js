@@ -109,6 +109,7 @@ const hlsPieces = () => {
  *   /qa/fault?playlist=skip&times=1     the next reload jumps 4 pieces ahead
  *   /qa/fault?segment=fail&times=1      the next piece answers 500
  *   /qa/fault?cut=1                     closes every open stream request
+ *   /qa/fault?live=hang                 every live channel answers 200 and sends nothing, until cleared
  *   /qa/fault                           clears them all
  *
  * And /qa/count says how many stream requests were made, and the most ever
@@ -122,7 +123,7 @@ const hlsPieces = () => {
  * connections to a provider that allows one (a subtitle chosen mid-film, 22
  * November). It is reset with /qa/count.
  */
-const fault = { playlist: null, segment: null, ms: 0, times: 0, segmentTimes: 0 };
+const fault = { live: null, playlist: null, segment: null, ms: 0, times: 0, segmentTimes: 0 };
 let lastPlaylist = null;
 let skipAhead = 0;
 const counts = { playlists: 0, segments: 0, streams: 0, mostOpen: 0 };
@@ -176,6 +177,7 @@ function serveFault(q, res) {
       socket.destroy();
     }
   }
+  fault.live = q.get('live');
   fault.playlist = q.get('playlist');
   fault.segment = q.get('segment');
   fault.ms = Number(q.get('ms') ?? 0);
@@ -562,6 +564,11 @@ http
       // Every stream address: nothing plays -- unless --play names a local
       // video, served for every film, episode and channel alike, for checking
       // the player against the app's own path (a resumed episode, 29 October).
+      // A channel that never starts: the connection opens and nothing comes (23 November).
+      if (fault.live === 'hang' && /\/live\//.test(url.pathname)) {
+        res.writeHead(200, { 'Content-Type': 'video/mp2t' });
+        return undefined;
+      }
       const film = /\/movie\/[^/]+\/[^/]+\/(\d+)\./.exec(url.pathname)?.[1];
       if (Number(film) === COPY_GONE || Number(film) === COPY_REFUSED) {
         res.writeHead(Number(film) === COPY_GONE ? 404 : 403);

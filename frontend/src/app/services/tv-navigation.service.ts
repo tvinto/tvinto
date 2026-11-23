@@ -386,7 +386,11 @@ export class TvNavigationService {
     const startedAt = Date.now();
     const giveUpAt = startedAt + FIRST_FOCUS_WAIT_MS;
     const tryFocus = () => {
-      if (document.activeElement && document.activeElement !== document.body) {
+      // The menu's link still has focus as the page it opened arrives, and
+      // the menu goes a moment later, taking focus with it: every page opened
+      // from the menu had nothing focused (the walk, 23 November).
+      const active = document.activeElement;
+      if (active && active !== document.body && !active.closest('[data-tv-nav-panel]')) {
         return;
       }
       const settle = Date.now() - startedAt > FALLBACK_AFTER_MS;

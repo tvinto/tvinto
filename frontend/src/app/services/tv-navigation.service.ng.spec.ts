@@ -164,6 +164,33 @@ describe('TvNavigationService', () => {
     }
   });
 
+  // Every page opened from the menu had nothing focused: the menu's link still
+  // had focus as the page arrived, and the menu closed a moment later.
+  it('on arrival, takes focus from the menu that opened the page', () => {
+    jest.useFakeTimers();
+    try {
+      const menu = document.createElement('nav');
+      menu.setAttribute('data-tv-nav-panel', '');
+      const link = document.createElement('a');
+      link.href = '/account';
+      menu.appendChild(link);
+      const main = document.createElement('main');
+      const first = document.createElement('button');
+      first.setAttribute('data-focus-key', 'first');
+      Object.defineProperty(first, 'offsetParent', { get: () => main });
+      main.appendChild(first);
+      document.body.append(menu, main);
+      link.focus();
+
+      service.isTelevision.set(true);
+      service.focusContentWhenReady();
+
+      expect(focused()).toBe(first);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   // Up and Down on a focused select change its value in Android's WebView, with
   // no list on screen: the subtitle language on Account changed and saved with
   // every press, and the remote could not get off it.

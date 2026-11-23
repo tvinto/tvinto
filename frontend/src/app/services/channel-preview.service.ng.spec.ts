@@ -124,6 +124,21 @@ describe('ChannelPreviewService', () => {
     expect(preview.showing(5)).toBe(true);
   });
 
+  // 23 November: a dead channel kept the preview black for ever, and OK only restarted it.
+  it('says a channel that gave up has failed, and does not open it again here', async () => {
+    mockNative.addListener.mockClear();
+    const preview = setup();
+    const heard = mockNative.addListener.mock.calls[0][0];
+    await preview.start(stream(6), box);
+    heard({ state: 'failed', detail: 'no picture in 20 s' });
+    expect(preview.failed(6)).toBe(true);
+    expect(preview.failed(7)).toBe(false);
+    expect(preview.showing(6)).toBe(false);
+    // The window has already let go; stopping asks nothing more of it.
+    await preview.stop();
+    expect(mockNative.hide).not.toHaveBeenCalled();
+  });
+
   describe('when the box moves', () => {
     beforeEach(() => jest.useFakeTimers());
     afterEach(() => jest.useRealTimers());

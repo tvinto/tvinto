@@ -2,6 +2,7 @@ import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { BackButtonService } from '../services/back-button.service';
+import { TvNavigationService } from '../services/tv-navigation.service';
 import { ChoiceChipsComponent, OrderChipsComponent, type Choice } from './choice-chips.component';
 import { ChoicePanelComponent } from './choice-panel.component';
 import { ChoicePanelService } from './choice-panel.service';
@@ -166,6 +167,21 @@ describe('the pieces', () => {
     one('[data-dialog-shell]').click();
     fixture.detectChanges();
     expect(host.asking()).toBe(false);
+  });
+
+  // A film TMDB could not open: the failure came as the page opened, with
+  // nothing focused, and closing it left the television's focus on nothing.
+  it('a dialog opened over nothing focused hands focus to the page when it goes', async () => {
+    const content = jest.spyOn(TestBed.inject(TvNavigationService), 'focusContentWhenReady').mockImplementation(() => undefined);
+    (document.activeElement as HTMLElement | null)?.blur();
+    host.asking.set(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    back.press();
+    fixture.detectChanges();
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    expect(content).toHaveBeenCalled();
   });
 });
 
