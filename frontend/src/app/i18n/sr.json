@@ -1717,5 +1717,14 @@
     "token": "Token za čitanje (API read access token)",
     "tokenShape": "dug, počinje sa eyJ",
     "notAKey": "To ne liči ni na jednu od te dve vrednosti. Kopirajte API ključ ili token za čitanje, ceo."
+  },
+  "errorReports": {
+    "heading": "Izveštaji o greškama",
+    "title": "Šalji izveštaje o greškama",
+    "body": "Kad nešto pođe naopako, Tvinto šalje šta nije uspelo, verziju aplikacije i vrstu uređaja. Nikad vašeg provajdera, kanale, šta gledate ni vaš nalog.",
+    "onboarding": "Kad nešto ne uspe, Tvinto šalje šta je pošlo naopako, nikad ko ste ni šta gledate. Možete to isključiti u podešavanjima.",
+    "noticeTitle": "Tvinto šalje izveštaje o greškama",
+    "noticeBody": "Kad nešto ne uspe: šta nije uspelo i vrstu uređaja, ništa lično. Možete to isključiti pod Nalog, Reprodukcija.",
+    "noticeAction": "Podešavanja"
   }
 }

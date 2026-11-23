@@ -1677,5 +1677,14 @@
     "token": "Token de leitura da API",
     "tokenShape": "longo, começa com eyJ",
     "notAKey": "Isso não parece nenhum dos dois valores. Copie a chave de API ou o token de leitura, inteiro."
+  },
+  "errorReports": {
+    "heading": "Relatórios de erros",
+    "title": "Enviar relatórios de erros",
+    "body": "Quando algo corre mal, a Tvinto envia o que falhou, a versão da app e o tipo de dispositivo. Nunca o seu fornecedor, canais, o que vê ou a sua conta.",
+    "onboarding": "Quando algo falha, a Tvinto envia o que correu mal, nunca quem é ou o que vê. Pode desativar isto nas definições.",
+    "noticeTitle": "A Tvinto envia relatórios de erros",
+    "noticeBody": "Quando algo falha: o que falhou e o tipo de dispositivo, nada pessoal. Pode desativar em Conta, Reprodução.",
+    "noticeAction": "Definições"
   }
 }

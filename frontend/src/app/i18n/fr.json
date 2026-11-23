@@ -1677,5 +1677,14 @@
     "token": "Jeton d'accès en lecture de l'API",
     "tokenShape": "long, commence par eyJ",
     "notAKey": "Cela ne ressemble à aucune des deux valeurs. Copie la clé API ou le jeton d'accès en lecture, en entier."
+  },
+  "errorReports": {
+    "heading": "Rapports d'erreur",
+    "title": "Envoyer les rapports d'erreur",
+    "body": "Quand quelque chose ne va pas, Tvinto envoie ce qui a échoué, la version de l'app et le type d'appareil. Jamais votre fournisseur, vos chaînes, ce que vous regardez ni votre compte.",
+    "onboarding": "Quand quelque chose échoue, Tvinto envoie ce qui n'a pas marché, jamais qui vous êtes ni ce que vous regardez. Vous pouvez le désactiver dans les réglages.",
+    "noticeTitle": "Tvinto envoie des rapports d'erreur",
+    "noticeBody": "Quand quelque chose échoue : ce qui a échoué et le type d'appareil, rien de personnel. Désactivable dans Compte, Lecture.",
+    "noticeAction": "Réglages"
   }
 }

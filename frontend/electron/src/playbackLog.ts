@@ -1,5 +1,7 @@
-import { appendFileSync, renameSync, statSync } from 'fs';
+import { appendFileSync, closeSync, openSync, readSync, renameSync, statSync } from 'fs';
 import { join } from 'path';
+
+import { cleanAddress } from './shared/errorReports';
 
 /**
  * A record of every time playback starts, stops or is reopened, in
@@ -24,17 +26,9 @@ export function redactUrl(url: unknown): string {
   if (typeof url !== 'string' || !url.trim()) {
     return '(none)';
   }
-  const scheme = /^([a-z][a-z0-9+.-]*):\/\//i.exec(url.trim())?.[1]?.toLowerCase();
-  if (!scheme) {
-    // A local file: a recording of the app's own.
-    return 'a local file';
-  }
-  const path = url.trim().replace(/^[a-z][a-z0-9+.-]*:\/\/[^/]*/i, '').split(/[?#]/)[0] ?? '';
-  const last = path.split('/').filter(Boolean).pop() ?? '';
-  // A channel number and an extension; anything else could be a name or a token.
-  return /^\d{1,12}(\.[A-Za-z0-9]{1,5})?$/.test(last)
-    ? `${scheme} …/${last}`
-    : `${scheme} …`;
+  // The same as an error report's (shared/errorReports.ts): a local file --
+  // a recording of the app's own -- is "a local file".
+  return cleanAddress(url);
 }
 
 /** Any address inside a message (mpv's errors can quote one), redacted the same way. */
@@ -47,6 +41,32 @@ let file: string | null = null;
 /** Where the log is written, once Electron can say. */
 export function setPlaybackLogFolder(folder: string): void {
   file = join(folder, 'playback.log');
+}
+
+/** Enough of the end of the log for its last 50 lines, which an error report carries. */
+const TAIL_BYTES = 16 * 1024;
+
+/** The end of playback.log, as written (already without addresses); '' when there is none. */
+export function playbackLogTail(): string {
+  if (!file) {
+    return '';
+  }
+  try {
+    const size = statSync(file).size;
+    const length = Math.min(size, TAIL_BYTES);
+    const buffer = Buffer.alloc(length);
+    const handle = openSync(file, 'r');
+    try {
+      readSync(handle, buffer, 0, length, size - length);
+    } finally {
+      closeSync(handle);
+    }
+    // The first line is likely cut in half.
+    const text = buffer.toString('utf8');
+    return size > length ? text.slice(text.indexOf('\n') + 1) : text;
+  } catch {
+    return '';
+  }
 }
 
 /** One line: on stdout as `[playback] …`, and in playback.log with the time. */

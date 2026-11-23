@@ -10,6 +10,7 @@ import { desktopRecorder } from './recorderIpc';
 import { CacheState, LivePause, LiveWords } from './livePause';
 import { LiveRecovery } from './liveRecovery';
 import { playbackLog, redactUrl, setPlaybackLogFolder } from './playbackLog';
+import { rememberPlayed, reportPlayerExit } from './errorReports';
 import { VideoFrames } from './videoFrames';
 import { VideoState } from './videoState';
 import { PipeOpening, playerPipeName } from './playerPipe';
@@ -1633,6 +1634,8 @@ export function registerNativePlayer(): void {
       }
 
       running = child;
+      // Its name, kept out of any error report this run (src/errorReports.ts).
+      rememberPlayed(request.title);
       // The screen stays on while anything plays, in either window: a film
       // watched without touching the mouse is not a machine left alone.
       const awake = powerSaveBlocker.start('prevent-display-sleep');
@@ -1739,9 +1742,11 @@ export function registerNativePlayer(): void {
         });
       });
 
-      child.on('exit', code => {
+      child.on('exit', (code, signal) => {
         done();
         playbackLog(`mpv exited with code ${code}`);
+        // A crash or an unexpected exit, as an error report (src/errorReports.ts).
+        reportPlayerExit(helper ? 'tvinto-player' : 'mpv', code, signal);
 
         // mpv exits zero when the viewer closes the window, which is the
         // ordinary way playback ends rather than a failure -- and with one of

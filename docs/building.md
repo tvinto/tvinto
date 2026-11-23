@@ -137,6 +137,10 @@ Each of these has cost someone hours.
   screen updates. Look at the screen.
 - **A file in `shared/` that nothing imports isn't type-checked.** Import it
   from real code or from a test.
+- **The desktop app's main process carries a copy of `shared/errorReports.ts`**
+  in `frontend/electron/src/shared/`, because its build can't reach
+  `shared/`. After changing the original, run
+  `node frontend/electron/scripts/copy-shared.js`. A test fails until you do.
 - **An Android device keeps the web bundle it downloaded.** Installing a new
   debug APK doesn't replace the web app the device already fetched from the
   update feed, unless `versionName` or `versionCode` changed. To test a

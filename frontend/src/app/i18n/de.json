@@ -1677,5 +1677,14 @@
     "token": "API-Lese-Zugriffstoken",
     "tokenShape": "lang, beginnt mit eyJ",
     "notAKey": "Das sieht nach keinem der beiden Werte aus. Kopier den API-Schlüssel oder das Lese-Zugriffstoken vollständig."
+  },
+  "errorReports": {
+    "heading": "Fehlerberichte",
+    "title": "Fehlerberichte senden",
+    "body": "Wenn etwas schiefgeht, sendet Tvinto, was fehlgeschlagen ist, die App-Version und die Art des Geräts. Nie deinen Anbieter, Sender, was du schaust oder dein Konto.",
+    "onboarding": "Wenn etwas fehlschlägt, sendet Tvinto, was schiefging, nie wer du bist oder was du schaust. Du kannst das in den Einstellungen ausschalten.",
+    "noticeTitle": "Tvinto sendet Fehlerberichte",
+    "noticeBody": "Wenn etwas fehlschlägt: was fehlschlug und die Art des Geräts, nichts Persönliches. Ausschalten unter Konto, Wiedergabe.",
+    "noticeAction": "Einstellungen"
   }
 }

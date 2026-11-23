@@ -22,6 +22,7 @@ import { PictureSettingsComponent } from '../picture-settings/picture-settings.c
 import { StartupSettingsComponent } from '../startup-settings/startup-settings.component';
 import { LanguageSettingsComponent } from '../language-settings/language-settings.component';
 import { PreviewSettingsComponent } from '../preview-settings/preview-settings.component';
+import { ErrorReportSettingsComponent } from '../error-report-settings/error-report-settings.component';
 import { OpenSubtitlesLinkComponent } from '../opensubtitles-link/opensubtitles-link.component';
 import { TPipe } from '../../pipes/t.pipe';
 import { DisplaySizeComponent } from '../display-size/display-size.component';
@@ -74,7 +75,7 @@ const SECTIONS_FOR = {
 @Component({
   selector: 'app-account',
   standalone: true,
-  imports: [PreviewSettingsComponent, LanguageSettingsComponent, 
+  imports: [PreviewSettingsComponent, ErrorReportSettingsComponent, LanguageSettingsComponent, 
     TPipe,
     RouterLink,
     FormsModule,

@@ -131,6 +131,20 @@ favourites and history, plus encrypted copies of your provider logins and
 guides that it can't read. [docs/architecture.md](docs/architecture.md)
 explains how.
 
+## What Tvinto sends
+
+When something goes wrong, the apps you download from this project send an
+error report: what failed, the app version, and the kind of device and
+system. Never your provider, its address, username or password, your
+channels, what you watch, your account or your IP address. Only errors:
+nothing about how you use the app.
+
+It's on from the start, and the first screen says so. Turn it off in the app
+under Account, Playback, "Send error reports", or with
+`tvinto error-reports off`. Off means nothing is sent. If you build Tvinto
+yourself, it sends nothing at all. [docs/error-reports.md](docs/error-reports.md)
+has the details.
+
 ## Command line and AI agents
 
 `tvinto` is a command line tool for changing your setup without opening the

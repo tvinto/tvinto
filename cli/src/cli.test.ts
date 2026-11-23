@@ -679,6 +679,9 @@ describe('changing more of the account', () => {
     await tvinto(`apply ${codeIn((await tvinto('last-channel on')).out)}`);
     await tvinto(`apply ${codeIn((await tvinto('preview off')).out)}`);
     expect(await settingNow(token, 'channelPreview')).toBe('off');
+    await tvinto(`apply ${codeIn((await tvinto('error-reports off')).out)}`);
+    expect(await settingNow(token, 'errorReports')).toBe('off');
+    expect((await tvinto('settings')).out).toContain('Error reports: off');
     expect((await tvinto('settings')).out).toContain('Channel preview on a television: off');
     expect(await settingNow(token, 'descriptionLanguage')).toBe('en');
     expect(await settingNow(token, 'openLastChannel')).toBe('on');

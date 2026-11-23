@@ -367,7 +367,13 @@ export const SETTING_KEYS = {
    * 'on' to have a television open into the last channel watched instead of
    * For You (shared/startup.ts). Account-wide, like the picture settings.
    */
-  openLastChannel: 'openLastChannel'
+  openLastChannel: 'openLastChannel',
+  /**
+   * 'off' to stop this account's devices sending error reports; on otherwise
+   * (shared/errorReports.ts). Account-wide: turned off once, it is off on
+   * the television and the phone as well, and the tvinto CLI can set it.
+   */
+  errorReports: 'errorReports'
 } as const;
 
 export type SettingKey = (typeof SETTING_KEYS)[keyof typeof SETTING_KEYS];

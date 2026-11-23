@@ -10,6 +10,7 @@ import { FamilyView, isFamilyRole } from '../../shared/family';
 import { DESKTOP_PLAYERS, PlayerPreferences, SUBTITLE_SCALES, readPlayerPreferences, writePlayerPreferences } from '../../shared/player';
 import { DESCRIPTION_LANGUAGES } from '../../shared/tmdb/describe';
 import { openLastChannelValue } from '../../shared/startup';
+import { errorReportsValue } from '../../shared/errorReports';
 import { LANGUAGES_MAX, LANGUAGE_CHOICES, writeLanguages } from '../../shared/languages';
 import { AGE_COUNTRIES, AGE_LIMITS, AgeLock, loosens, readAgeLock, writeAgeLock } from '../../shared/tmdb/age';
 import { categoryScope } from '../../shared/xtream/ordering';
@@ -292,6 +293,20 @@ export function lastChannelChange(pulled: PullResult, on: boolean): Change {
   return {
     lines: [[on ? 'Televisions open into the last channel watched.' : 'Televisions open on For You.']],
     ...withBefore(pulled, [{ kind: 'setting', key: SETTING_KEYS.openLastChannel, value: openLastChannelValue(on) }])
+  };
+}
+
+/** Whether this account's devices send error reports (shared/errorReports.ts). */
+export function errorReportsChange(pulled: PullResult, on: boolean): Change {
+  return {
+    lines: [
+      [
+        on
+          ? 'Your devices send a report when something goes wrong: the error, the app version and the device, nothing personal.'
+          : 'Your devices stop sending error reports.'
+      ]
+    ],
+    ...withBefore(pulled, [{ kind: 'setting', key: SETTING_KEYS.errorReports, value: errorReportsValue(on) }])
   };
 }
 
