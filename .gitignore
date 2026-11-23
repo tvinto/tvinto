@@ -1,6 +1,6 @@
 # Dependencies
-node_modules/
-*/node_modules/
+# No trailing slash: a worktree's node_modules can be a symlink, which a "/" pattern misses.
+node_modules
 
 # Environment variables
 .env
@@ -70,7 +70,7 @@ frontend/dist-updates/
 
 # mpv, fetched into the desktop build by frontend/electron/scripts/fetch-mpv.js.
 # 115 MB of somebody else, pinned and hash-checked there rather than committed.
-frontend/electron/resources/mpv/
+frontend/electron/resources/mpv
 
 # What tools/build-apk.cmd writes. The build itself is worth keeping around;
 # the log of the last one is not.
