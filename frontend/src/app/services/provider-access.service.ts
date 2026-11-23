@@ -13,6 +13,7 @@ import { PlatformService } from './platform.service';
 import { CapacitorCatalogueStore } from './native/capacitorCatalogueStore';
 import { IndexedDbCatalogueStore } from './native/indexedDbCatalogueStore';
 import { MemoryCatalogueStore } from './native/memoryCatalogueStore';
+import { notingTitles } from '../utils/held-titles';
 import { CapacitorTransport } from './native/capacitorTransport';
 import { FetchTransport } from './native/fetchTransport';
 import { AccountKeysService } from './account-keys.service';
@@ -543,7 +544,7 @@ export class ProviderAccessService {
    * is one request per category per launch, and the lazy policy above still
    * decides when that happens.
    */
-  private async store(providerUsername: string): Promise<CatalogueStore> {
+  private async openStore(providerUsername: string): Promise<CatalogueStore> {
     if (this.platform.platform === 'electron') {
       // IndexedDB rather than memory, because one thing in the catalogue is
       // not per category: the whole-library index behind search. In memory its
@@ -566,6 +567,11 @@ export class ProviderAccessService {
     const store = new CapacitorCatalogueStore(db, providerUsername);
     await store.initialise();
     return store;
+  }
+
+  /** The store, with every title it reads kept out of error reports from then on (utils/held-titles.ts). */
+  private async store(providerUsername: string): Promise<CatalogueStore> {
+    return notingTitles(await this.openStore(providerUsername), ['readStreams', 'findStreams', 'findStreamsWithAny', 'recentlyAdded']);
   }
 
   /**

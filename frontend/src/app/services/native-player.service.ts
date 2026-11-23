@@ -19,7 +19,9 @@ import { AheadEpisode, EpisodesAhead, FilmPresentation, ShowSeasons } from '../u
 import { currentLanguage, nativePlayerWords, t } from '../utils/i18n';
 import { PLAYING_KEY, ProgressEntry, readPlayingRecord, recoveredProgress } from '../utils/playback-checkpoint.utils';
 import { WatchProgressInput } from '@shared/types';
-import { rememberPlayedTitle } from '../utils/played-titles';
+import { rememberPlayedTitle } from '../utils/held-titles';
+import { reportFailure } from '../utils/failure-reports';
+import { streamContainer, streamFailure, streamKind } from '@shared/failureReports';
 
 /** What the Electron preload puts on the window, and nothing else. */
 interface DesktopBridge {
@@ -218,11 +220,37 @@ export class NativePlayerService {
     this.active.set(true);
     const stopCheckpoint = await this.beginCheckpoint(request);
     try {
-      return await this.playAndReturn(request);
+      const result = await this.playAndReturn(request);
+      this.reportFailure(request, result);
+      return result;
     } finally {
       stopCheckpoint();
       this.active.set(false);
     }
+  }
+
+  /** The player that ran last: Media3, VLC after it, or the desktop's. */
+  private lastEngine = '';
+
+  /**
+   * A stream that would not start or stopped and did not recover, as an
+   * error report: which player, its code, what kind of item, the container,
+   * the codec where the player named one, and how long it played. Nothing
+   * that says which stream (shared/failureReports.ts).
+   */
+  private reportFailure(request: PlayRequest, result: NativePlayResult | null): void {
+    if (!result?.errorCode || result.errorCode === RECORDING_HOLDS_CONNECTION) {
+      return;
+    }
+    const { code, codec, http } = streamFailure(result.errorCode);
+    reportFailure('stream', code, {
+      player: this.lastEngine,
+      kind: streamKind(request.item?.type, request.url),
+      container: streamContainer(request.url),
+      codec,
+      http,
+      playedSeconds: Math.max(0, Math.round((result.positionSeconds || 0) - (request.startAtSeconds || 0)))
+    });
   }
 
   /**
@@ -416,6 +444,7 @@ export class NativePlayerService {
     }
 
     const chosen = this.preferences.preferences();
+    this.lastEngine = chosen.desktopPlayer === 'app' ? 'tvinto-player' : 'mpv';
     const tracks = this.tracksWanted(request);
 
     // Switching inside mpv when the main process can (plan, stage 4); the
@@ -724,6 +753,7 @@ export class NativePlayerService {
     engine: 'media3' | 'vlc',
     openingLine?: string
   ): Promise<NativePlayResult | null> {
+    this.lastEngine = engine;
     const chosen = this.preferences.preferences();
     const tracks = this.tracksWanted(request);
 

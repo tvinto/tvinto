@@ -1,5 +1,5 @@
 import { DestroyRef, Injectable, effect, inject, signal, untracked } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import {
   Observable,
   Subject,
@@ -31,6 +31,21 @@ import { fnv1aHex } from '@shared/xtream/guideSourceId';
 import { syncCursorKey } from '../utils/sync-queue.utils';
 import { API_URL } from './api-url';
 import { technicalDetail } from '../utils/failure-messages.utils';
+import { reportFailure } from '../utils/failure-reports';
+
+/** A sync that failed, by endpoint and HTTP status; not while the device itself is offline. */
+function reportSync(error: unknown, endpoint: 'push' | 'pull'): void {
+  const status = syncStatus(error);
+  if (status !== 'offline') {
+    reportFailure('sync', status, { endpoint });
+  }
+}
+
+/** A sync's failure by its HTTP status: 0 for no answer, `timeout` for one too slow. */
+const syncStatus = (error: unknown): string | number =>
+  error instanceof HttpErrorResponse && error.status === 0 && typeof navigator !== 'undefined' && !navigator.onLine
+    ? 'offline'
+    : error instanceof HttpErrorResponse ? error.status : error instanceof Error && error.name === 'TimeoutError' ? 'timeout' : 'error';
 
 /*
  * What a pull brings back is `PullResult` from the shared module now. It used
@@ -349,6 +364,7 @@ export class DeviceSyncService {
       }),
       catchError((error: unknown) => {
         this.lastFailure = technicalDetail(error);
+        reportSync(error, 'push');
         return of(null);
       })
     );
@@ -470,7 +486,8 @@ export class DeviceSyncService {
 
           void this.auditGuides();
         }),
-        catchError(() => {
+        catchError((error: unknown) => {
+          reportSync(error, 'pull');
           this.syncing.set(false);
           this.firstSync.set(false);
           // Nothing to recover: the cursor is untouched, so the next attempt

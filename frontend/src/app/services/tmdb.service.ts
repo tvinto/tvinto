@@ -1,4 +1,5 @@
 import { HttpClient } from '@angular/common/http';
+import { reportingFetch } from '../utils/failure-reports';
 import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { TmdbClient, TmdbFetch, tmdbClient } from '@shared/tmdb/client';
@@ -37,7 +38,8 @@ export class TmdbService {
   private readonly localProfile = inject(LocalProfileService);
 
   /** A seam for tests. */
-  fetchImpl: TmdbFetch = (url, init) => fetch(url, init);
+  // Failing answers reported by status only (utils/failure-reports.ts).
+  fetchImpl: TmdbFetch = reportingFetch('tmdb', (url, init) => fetch(url, init));
 
   /** The key typed on this device, or ''. */
   readonly ownKey = signal(readOwnKey());

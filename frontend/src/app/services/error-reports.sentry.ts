@@ -5,7 +5,9 @@
  */
 export {
   browserApiErrorsIntegration,
+  captureEvent,
   captureException,
+  captureMessage,
   dedupeIntegration,
   globalHandlersIntegration,
   httpContextIntegration,

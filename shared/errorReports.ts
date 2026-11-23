@@ -241,7 +241,8 @@ export function cleanValue<T>(value: T, personal: readonly string[] = [], depth 
 /** `capacitor-electron://-/main-AB12.js?x=1` -> `app:///main-AB12.js`: where in the app, not whose. */
 export function appFile(path: string): string {
   const last = path.split(/[?#]/)[0]?.split(/[\\/]/).filter(Boolean).pop() ?? '';
-  return /^[A-Za-z0-9._<>-]{1,80}$/.test(last) ? `app:///${last}` : 'app:///?';
+  // $ for a Java class: Outer$Inner, a lambda's $$ExternalSyntheticLambda0.
+  return /^[A-Za-z0-9._<>$-]{1,120}$/.test(last) ? `app:///${last}` : 'app:///?';
 }
 
 /** The parts of a Sentry event the cleaning knows by shape. */

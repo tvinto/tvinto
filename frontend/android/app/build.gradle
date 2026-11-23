@@ -100,6 +100,13 @@ dependencies {
     implementation 'net.zetetic:sqlcipher-android:4.17.0@aar'
     implementation "androidx.sqlite:sqlite:2.4.0"
 
+    // Error reports of the app's own crashes (device/ErrorReports.java): the
+    // core and the native crash handler, not the session replay the
+    // sentry-android bundle also brings. 8.63.0 confirmed on Maven Central,
+    // 23 November 2026.
+    implementation "io.sentry:sentry-android-core:8.63.0"
+    implementation "io.sentry:sentry-android-ndk:8.63.0"
+
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
