@@ -121,6 +121,68 @@ After changing `worker/`, rebuild the copy used by the Deploy button with
 change the database schema, also add the next numbered file in
 `server/migrations/`.
 
+## Releasing
+
+Releases are built and published by `.github/workflows/release.yml` on
+GitHub's runners, with the same publish scripts a local release uses.
+
+1. **Bump** what is being released, in one commit: `version` in
+   `frontend/package.json` (web bundle), in `frontend/electron/package.json`
+   (Windows), `versionName` and `versionCode` in
+   `frontend/android/app/build.gradle` (APK; `versionName` equal to the web
+   version), `version` in `cli/package.json` (CLI).
+2. **Push** that commit.
+3. **Run the workflow**, choosing the parts:
+
+   ```bash
+   gh workflow run release.yml -f web=true
+   gh workflow run release.yml -f desktop=true -f apk=true
+   gh workflow run release.yml -f web=true -f min_native=1.0.140   # --min-native
+   gh run watch
+   ```
+
+   Or push a tag that names them: `release-1.0.143-web-desktop` (`-web`,
+   `-desktop`, `-apk`, `-cli`).
+
+What runs:
+
+- **What to release** refuses, before anything is built, a part whose release
+  (or npm version) already exists, an APK whose `versionName` is not the web
+  version, and a web bundle together with the APK of the same version (the APK
+  carries that code) unless `min_native` is given.
+- **Checks**: all of `ci.yml`. Nothing is built for release unless it passes.
+- **Web bundle** (ubuntu): `npm run build`, `publish:bundle`.
+- **Windows installer** (windows-latest): `npm run build`,
+  `cap copy electron`, `electron:make` (mpv from the `deps-mpv-*` release; Zig
+  for `tvinto-player.exe`, which `build:player` fetches and checks itself, so
+  the runner needs nothing installed for it), `electron:publish`.
+- **APK** (ubuntu, JDK 21, the runner's Android SDK): `npm run build`,
+  `cap sync android`, `gradlew assembleDebug -PforDevices` signed with the
+  key from secrets, `publish:apk`.
+- **CLI** (optional): `publish:cli -- --yes` through npm's trusted publishing,
+  with no token.
+
+The publish scripts refuse what they always have. The releases and the feed
+are written with the workflow's own `GITHUB_TOKEN`.
+
+Secrets (Settings, Secrets and variables, Actions), all set by the
+maintainer:
+
+| Secret | What |
+|---|---|
+| `TVINTO_ERROR_REPORTS_DSN` | Written into `frontend/config.local.json` as `errorReportsDsn`, so official builds report errors. The build fails without it. |
+| `TVINTO_KEYSTORE_BASE64` | The APK signing keystore, base64. |
+| `TVINTO_KEYSTORE_PASSWORD`, `TVINTO_KEY_ALIAS`, `TVINTO_KEY_PASSWORD` | Its password, the key's alias and the key's password. |
+
+`build.gradle` signs with that key when `TVINTO_KEYSTORE` names it, and with
+the machine's debug key otherwise. **Every published APK must carry the same
+key**: Android refuses an update signed with another, and the only way past
+that is uninstalling, which loses what the device kept.
+
+The CLI job needs `tvinto` on npmjs.com to trust this workflow once: the
+package's Settings, Trusted publishing, GitHub Actions, organisation `tvinto`,
+repository `tvinto`, workflow `release.yml`.
+
 ## Worth knowing before you start
 
 Each of these has cost someone hours.

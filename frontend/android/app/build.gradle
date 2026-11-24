@@ -54,6 +54,23 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    /*
+     * The key the published APK is signed with. The release workflow
+     * (.github/workflows/release.yml) unpacks it from secrets and names it in
+     * these variables; a local build has none of them and keeps the machine's
+     * own debug key. Every published APK must carry the same key, or it cannot
+     * update the one installed (docs/building.md, "Releasing").
+     */
+    signingConfigs {
+        debug {
+            if (System.getenv('TVINTO_KEYSTORE')) {
+                storeFile file(System.getenv('TVINTO_KEYSTORE'))
+                storePassword System.getenv('TVINTO_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('TVINTO_KEY_ALIAS')
+                keyPassword System.getenv('TVINTO_KEY_PASSWORD')
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
