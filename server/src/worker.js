@@ -2431,8 +2431,11 @@ var android = async (bucket) => {
 };
 var RELEASES = "https://github.com/tvinto/tvinto/releases";
 var FEED = `${RELEASES}/download/feed`;
-var fromFeed = async (which) => {
-  const response = await fetch(`${FEED}/${which === "android" ? ANDROID_MANIFEST : DESKTOP_MANIFEST}`);
+var fromFeed = async (which, feed = FEED) => {
+  const response = await fetch(`${feed}/${which === "android" ? ANDROID_MANIFEST : DESKTOP_MANIFEST}`, {
+    // Cloudflare's cache: a minute, like the redirect itself. Ignored elsewhere.
+    cf: { cacheTtl: 60, cacheEverything: true }
+  });
   if (!response.ok) {
     return null;
   }

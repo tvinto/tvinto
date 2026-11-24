@@ -1,0 +1,21 @@
+# Cloudflare Pages reads this file; it is not served.
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()
+  Strict-Transport-Security: max-age=31536000
+  # 'unsafe-inline' for the two one-line scripts in the head; the page takes no input, and no other host may run code.
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'none'
+
+# Not fingerprinted, so an hour, then served stale while it refreshes.
+/assets/*
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
+/img/*
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
+/share.jpg
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
+
+# This folder's README is served too; keep it out of search results.
+/README.md
+  X-Robots-Tag: noindex

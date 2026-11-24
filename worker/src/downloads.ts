@@ -117,15 +117,34 @@ const android = async (bucket: UpdateBucket): Promise<Download | null> => {
 const RELEASES = 'https://github.com/tvinto/tvinto/releases';
 const FEED = `${RELEASES}/download/feed`;
 
-/** A manifest out of the project's feed, and the file it names, by its full address. */
-const fromFeed = async (which: 'android' | 'desktop'): Promise<string | null> => {
-  const response = await fetch(`${FEED}/${which === 'android' ? ANDROID_MANIFEST : DESKTOP_MANIFEST}`);
+/**
+ * A manifest out of the project's feed, and the file it names, by its full address.
+ *
+ * `feed` is a stand-in's address in a test or a local preview of the website;
+ * the address is checked against the real releases all the same. The website's
+ * `/android` and `/windows` (functions/) use this too.
+ */
+export const fromFeed = async (which: 'android' | 'desktop', feed = FEED): Promise<string | null> => {
+  const response = await fetch(`${feed}/${which === 'android' ? ANDROID_MANIFEST : DESKTOP_MANIFEST}`, {
+    // Cloudflare's cache: a minute, like the redirect itself. Ignored elsewhere.
+    cf: { cacheTtl: 60, cacheEverything: true }
+  } as RequestInit);
   if (!response.ok) {
     return null;
   }
   const text = await response.text();
   const found = which === 'android' ? androidManifest(text) : desktopManifest(text);
   return found && found.file.startsWith(`${RELEASES}/download/`) ? found.file : null;
+};
+
+/**
+ * The website's `/android` and `/windows`: the current file, or the releases
+ * page when the feed cannot be read, so the address a Downloader code points at
+ * never answers with an error.
+ */
+export const websiteDownload = async (which: 'android' | 'desktop', feed?: string): Promise<Response> => {
+  const found = await fromFeed(which, feed || FEED).catch(() => null);
+  return redirect(found ?? RELEASES);
 };
 
 const redirect = (location: string): Response =>
