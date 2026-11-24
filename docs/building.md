@@ -173,3 +173,9 @@ Each of these has cost someone hours.
   `tools/qa/tv-walk.js` presses every direction from every focusable element
   on each screen of the TV emulator and reports where focus gets lost.
   `tools/qa/phone-walk.js` does the same on a phone.
+- **A sign-in answering 200 proves nothing on its own.** On the desktop,
+  Chromium drops Authorization when a request is redirected to another
+  origin (an `http://` address on an HSTS host, for one), so sign-in worked
+  and everything after it came back 401. `tools/qa/desktop-sign-in.js` signs
+  in on a development desktop copy and fails on any 401 after it;
+  `--through-redirect` puts such a redirect in front of the service.

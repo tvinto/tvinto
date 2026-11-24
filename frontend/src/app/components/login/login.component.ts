@@ -13,7 +13,7 @@ import { t } from '../../utils/i18n';
 import { SettingGroupComponent, SettingRowComponent } from '../../ui/setting-row.component';
 import { TPipe } from '../../pipes/t.pipe';
 import { takePageAfterRestart } from '../../services/family-profiles.service';
-import { API_URL, buildHasServer, chooseServer, chosenServer, hasServer } from '../../services/api-url';
+import { API_URL, buildHasServer, chooseServer, chosenServer, hasServer, movedApiUrl } from '../../services/api-url';
 import { ToastService } from '../../services/toast.service';
 import { SyncStartService } from '../../services/sync-start.service';
 import { OnboardingService } from '../../services/onboarding.service';
@@ -333,7 +333,7 @@ export class LoginComponent {
         return null;
       }
       this.registration.set(registrationOf(body));
-      return apiUrl;
+      return movedApiUrl(response) ?? apiUrl;
     }
     this.toasts.error(t('server.notReached'), t('server.notReachedBody', { name }), {
       detail: unreached.join('\n')
@@ -366,7 +366,15 @@ export class LoginComponent {
       return;
     }
     fetch(`${this.apiUrl()}/health`, { cache: 'no-store' })
-      .then(response => response.json())
+      .then(response => {
+        // A server kept before addresses were followed (movedApiUrl): put right here, before it is signed in to.
+        const moved = movedApiUrl(response);
+        if (moved && chosenServer() !== null) {
+          chooseServer(moved);
+          this.serverShown.set(serverName(moved));
+        }
+        return response.json();
+      })
       .then(body => this.registration.set(registrationOf(body)))
       .catch(() => undefined);
   }
