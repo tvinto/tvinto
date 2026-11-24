@@ -62,12 +62,9 @@ export const remember = (
 ): IdentityStore => {
   const next: IdentityStore = { ...store, [key]: { ...ids, at: now } };
   const keys = Object.keys(next);
-  if (keys.length <= IDENTITY_LIMIT) {
-    return next;
-  }
   keys
     .sort((a, b) => next[a].at - next[b].at)
-    .slice(0, keys.length - IDENTITY_LIMIT)
+    .slice(0, Math.max(0, keys.length - IDENTITY_LIMIT))
     .forEach(old => delete next[old]);
   return next;
 };

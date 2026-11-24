@@ -347,7 +347,7 @@ export class XtreamService {
       return Promise.resolve(new Set());
     }
 
-    const key = `${type}:${[...categories].sort().join(',')}`;
+    const key = `${type}:${[...categories].sort((a, b) => a.localeCompare(b)).join(',')}`;
     const held = this.lockedOutCache.get(key);
     if (held) {
       return held;

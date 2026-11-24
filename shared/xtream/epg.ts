@@ -169,16 +169,14 @@ interface RawListing {
 export const processEPGListings = <T>(epgData: T): T => {
   const data = epgData as { epg_listings?: RawListing[] } | null | undefined;
 
-  if (!data || !data.epg_listings) {
-    return epgData;
+  if (data?.epg_listings) {
+    data.epg_listings = data.epg_listings.map(listing => ({
+      ...listing,
+      title: decodeBase64Text(listing.title as string),
+      description: decodeBase64Text(listing.description as string),
+      lang: decodeBase64Text(listing.lang as string)
+    }));
   }
-
-  data.epg_listings = data.epg_listings.map(listing => ({
-    ...listing,
-    title: decodeBase64Text(listing.title as string),
-    description: decodeBase64Text(listing.description as string),
-    lang: decodeBase64Text(listing.lang as string)
-  }));
 
   return epgData;
 };

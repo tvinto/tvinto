@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, statSync } from 'fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'fs';
 import { createServer, get } from 'http';
 import type { Server, ServerResponse } from 'http';
 import { tmpdir } from 'os';
@@ -86,6 +86,15 @@ describe('the desktop recorder', () => {
     expect(done.state).toBe('done');
     expect(done.path).toBe(pathToFileURL(join(dir, 'Recordings', 'r1.ts')).toString());
     expect(statSync(join(dir, 'Recordings', 'r1.ts')).size).toBe(done.bytes);
+  });
+
+  it('refuses an id that could leave the recordings folder', async () => {
+    for (const id of ['../escape', '..\\escape', '/abs', 'a/b', '..']) {
+      expect(recorder.start({ id, url: `${provider.url}/live`, title: '', channel: '', channelId: '', endsAt: Date.now() + 60_000 })).toEqual({ id });
+    }
+    expect(recorder.runningIds()).toEqual([]);
+    expect(provider.open()).toBe(0);
+    expect(readdirSync(dir).sort()).toEqual(['Recordings']);
   });
 
   it('never writes the address beside the recording', async () => {

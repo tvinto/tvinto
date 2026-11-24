@@ -21,6 +21,7 @@
  */
 
 const API = 'https://api.github.com';
+const UPLOADS = 'https://uploads.github.com';
 
 const FEED_NOTES =
   'The update feed: the manifests installed copies of the app read to find new versions. ' +
@@ -39,6 +40,10 @@ const githubClient = ({ owner, repo, token, fetchImpl = fetch }) => {
   const base = `${API}/repos/${owner}/${repo}`;
 
   const call = async (method, url, body, extraHeaders = {}) => {
+    // The token goes to GitHub and nowhere else, whatever a response names as the next address.
+    if (!url.startsWith(`${API}/`) && !url.startsWith(`${UPLOADS}/`)) {
+      throw new ReleaseError(`Refusing to send the token outside GitHub (${new URL(url).host}).`);
+    }
     const response = await fetchImpl(url, {
       method,
       headers: { ...headers, ...extraHeaders },

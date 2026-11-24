@@ -168,7 +168,7 @@ export const searchParameters = (search: SubtitleQuery): string => {
   add('year', search.year);
   add('type', search.type);
   if (search.languages?.length) {
-    add('languages', [...new Set(search.languages.map(code => code.trim().toLowerCase()).filter(Boolean))].sort().join(','));
+    add('languages', [...new Set(search.languages.map(code => code.trim().toLowerCase()).filter(Boolean))].sort((a, b) => (a < b ? -1 : Number(a > b))).join(','));
   }
   if (search.hearingImpaired && search.hearingImpaired !== 'include') {
     add('hearing_impaired', search.hearingImpaired);

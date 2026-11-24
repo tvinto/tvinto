@@ -148,7 +148,7 @@ function content(op: Op): string {
     case 'guideSource':
       return JSON.stringify(op.payload);
     case 'arrangement':
-      return JSON.stringify(op.order && { itemIds: op.order.itemIds, names: Object.fromEntries(Object.entries(op.order.names).sort()) });
+      return JSON.stringify(op.order && { itemIds: op.order.itemIds, names: Object.fromEntries(Object.entries(op.order.names).sort(([a], [b]) => (a < b ? -1 : Number(a > b)))) });
     case 'channelMapping':
       return JSON.stringify(op.match && { sourceId: op.match.sourceId, channelId: op.match.channelId });
     case 'member':

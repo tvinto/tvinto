@@ -26,8 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: npm
@@ -37,18 +37,20 @@ jobs:
             worker/package-lock.json
             cli/package-lock.json
       # The root's one package is what shared/ imports (fast-xml-parser).
-      - run: npm ci
-      - run: npm ci
+      # No install scripts: nothing these jobs run needs one (esbuild finds its
+      # binary in its optional package; workerd is never started here).
+      - run: npm ci --ignore-scripts
+      - run: npm ci --ignore-scripts
         working-directory: backend
-      - run: npm ci
+      - run: npm ci --ignore-scripts
         working-directory: worker
-      - run: npm ci
+      - run: npm ci --ignore-scripts
         working-directory: cli
       - name: Lint
-        run: npx eslint . --max-warnings 0
+        run: ./node_modules/.bin/eslint . --max-warnings 0
         working-directory: backend
       - name: Tests
-        run: npx jest
+        run: ./node_modules/.bin/jest
         working-directory: backend
       - name: The CLI's types (esbuild checks none)
         run: backend/node_modules/.bin/tsc -p cli
@@ -60,8 +62,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: npm
@@ -69,20 +71,21 @@ jobs:
             package-lock.json
             frontend/package-lock.json
             frontend/electron/package-lock.json
-      - run: npm ci
+      - run: npm ci --ignore-scripts
+      # The Angular build keeps its install scripts (nx, lmdb, @parcel/watcher).
       - run: npm ci
         working-directory: frontend
       # The desktop app's tests type-check against Electron's types; its
       # binary is not needed for that.
-      - run: npm ci
+      - run: npm ci --ignore-scripts
         working-directory: frontend/electron
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
       - name: Lint
-        run: npx eslint . --max-warnings 0
+        run: ./node_modules/.bin/eslint . --max-warnings 0
         working-directory: frontend
       - name: Tests
-        run: npx jest
+        run: ./node_modules/.bin/jest
         working-directory: frontend
       - name: Build
         run: npm run build

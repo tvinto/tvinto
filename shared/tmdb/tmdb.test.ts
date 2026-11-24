@@ -1,7 +1,7 @@
 import { TmdbError, TmdbFetch, ageRating, listGenre, listRequest, tmdbClient, tmdbPoster } from './client';
 import { groupCopies, isVersionOf, plainTitle, versionsOf } from './popular';
 import { newsForRow, newsOrder, showNews } from './episodes';
-import { orderTrailers, trailersFrom, videoLanguages } from './trailers';
+import { orderTrailers, trailerEmbed, trailersFrom, videoLanguages } from './trailers';
 import { copyLanguage, copyQuality, copyQualityLabel, isCinemaRecording, orderCopies } from './copies';
 import { chooseDescription, findTmdbId, pickMatch, readDescriptionLanguage } from './describe';
 
@@ -438,6 +438,12 @@ describe('Trailers', () => {
     expect(found.map(trailer => trailer.key)).toEqual(['teaserHR01', 'trailerEN1', 'trailerHR1', 'fanEN0001']);
     expect(orderTrailers(found, ['hr', 'en']).map(trailer => trailer.key)).toEqual(['trailerHR1', 'trailerEN1', 'fanEN0001', 'teaserHR01']);
     expect(orderTrailers(found, ['en']).map(trailer => trailer.key)).toEqual(['trailerEN1', 'fanEN0001', 'trailerHR1', 'teaserHR01']);
+  });
+
+  it('embeds only a plain YouTube id, so the trusted address stays on youtube-nocookie.com', () => {
+    const odd = ['../../evil', 'abc/def?x', 'javascript:alert(1)', 'a b c d e f', 'x'.repeat(21)];
+    expect(trailersFrom({ results: odd.map(key => video(key, 'Trailer', 'en')) })).toEqual([]);
+    expect(trailerEmbed('dQw4w9WgXcQ')).toBe('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0&modestbranding=1');
   });
 
   it("asks for videos in the person's languages, English and none", () => {
