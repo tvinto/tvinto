@@ -1,5 +1,5 @@
-import { onRequestGet as android } from '../../functions/android';
-import { onRequestGet as windows } from '../../functions/windows';
+import { onRequest as android } from '../../functions/android';
+import { onRequest as windows } from '../../functions/windows';
 
 /** The website's download addresses (functions/), against a stand-in feed. */
 describe('the website’s /android and /windows', () => {
