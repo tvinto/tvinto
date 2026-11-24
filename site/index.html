@@ -56,7 +56,7 @@ and make og:image absolute (https://tvinto.app/share.jpg): some sites ignore a r
   .shot { border-radius: var(--r-md); overflow: hidden; box-shadow: 0 24px 60px -20px rgba(0,0,0,.6); border: 1px solid rgba(255,255,255,.08); background: #0b1628; }
   .shot img { display: block; width: 100%; height: auto; }
   .shot--note { left: var(--s-6); bottom: var(--s-6); width: 260px; }
-  .shot--profiles { aspect-ratio: 520 / 680; object-fit: cover; }
+  .shot--profiles { aspect-ratio: 780 / 1020; object-fit: cover; }
 
   /* the guide: the steps drawn as the app's own guide rows, the one on now marked as the app marks it */
   #guide .mo-pc__step { counter-increment: ch; position: relative; padding-left: 64px; }
@@ -65,7 +65,6 @@ and make og:image absolute (https://tvinto.app/share.jpg): some sites ignore a r
   #guide.is-live .mo-pc__step.is-on { border-left-color: #ff5a5f; }
   #guide.is-live .mo-pc__step.is-on::before { color: #ff5a5f; }
   #guide .mo-pc__visual img { object-fit: cover; }
-  #guide .mo-pc__visual img.v-profiles { object-fit: contain; background: #0b1628; }
 
   /* the three tiers and the server's three steps: plain lists, one 1px rule closing each row */
   .tier, .steps-list { list-style: none; margin: var(--s-5) 0 0; padding: 0; }
@@ -105,9 +104,10 @@ and make og:image absolute (https://tvinto.app/share.jpg): some sites ignore a r
     #guide:not(.is-live) .mo-pc__step::before { left: 0; }
     #guide:not(.is-live) .mo-pc__step h3, #guide:not(.is-live) .mo-pc__step p { align-self: start; }
     #guide:not(.is-live) .mo-pc__step .mo-pc__visual { grid-column: 1; grid-row: auto; margin-top: var(--s-3); }
-    #guide:not(.is-live) .mo-pc__visual > img { max-height: none; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: contain; }
+    #guide:not(.is-live) .mo-pc__visual > img { max-height: none; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; }
   }
-  @media (min-width: 640px) and (max-width: 1023px) { #free .tier-shot img { aspect-ratio: 16 / 7; object-fit: cover; object-position: 0 0; } }
+  /* the guide's pictures are taken 4:3, the shape of the moment's frame: a phone shows them whole too */
+  @media (max-width: 639px) { #guide:not(.is-live) .mo-pc__visual > img { aspect-ratio: 4 / 3; max-height: none; } }
 
   .close__word { padding-block: 0.08em; }
   @media (min-width: 640px) and (max-width: 1023px) { .footer .footer__col { grid-column: auto / span 4; } }
@@ -155,8 +155,8 @@ and make og:image absolute (https://tvinto.app/share.jpg): some sites ignore a r
         <p class="hero__proof">Android TV, Android phones and Windows. Free under GPL v3.</p>
       </div>
       <div class="hero__art span-6 start-7" role="img" aria-label="A film playing in Tvinto on Windows, with Who's watching beside it">
-        <div class="ly-piece ly-piece--main shot" aria-hidden="true"><img src="img/desktop-player.webp" alt="" width="1440" height="810" fetchpriority="high" data-source="client" data-subject="a film playing in the Windows app"></div>
-        <div class="ly-piece ly-piece--note shot shot--note" aria-hidden="true"><img class="shot--profiles" src="img/profiles.webp" alt="" width="520" height="680" data-source="client" data-subject="the app's profile picker"></div>
+        <div class="ly-piece ly-piece--main shot" aria-hidden="true"><img src="img/desktop-player.webp" alt="" width="1600" height="900" fetchpriority="high" data-source="client" data-subject="a film playing in the Windows app"></div>
+        <div class="ly-piece ly-piece--note shot shot--note" aria-hidden="true"><img class="shot--profiles" src="img/profiles.webp" alt="" width="780" height="1020" data-source="client" data-subject="the app's profile picker"></div>
       </div>
     </div></div>
   </section>
@@ -169,22 +169,22 @@ and make og:image absolute (https://tvinto.app/share.jpg): some sites ignore a r
           <li class="mo-pc__step">
             <h3>A programme guide in the app</h3>
             <p>A TV-style grid with what's on now, a mini guide inside the player, reminders and catch-up.</p>
-            <figure class="mo-pc__visual"><img src="img/tv-guide.webp" alt="The Sport guide on Android TV, with eight channels and what is on now" width="960" height="540" data-source="client" data-subject="the app's programme guide"></figure>
+            <figure class="mo-pc__visual"><img src="img/tv-guide.webp" alt="The Sport guide on Android TV, with a channel's preview playing above what is on now" width="1440" height="1080" data-source="client" data-subject="the app's programme guide"></figure>
           </li>
           <li class="mo-pc__step">
             <h3>Every copy of a film on one page</h3>
             <p>Providers list a film once per language and quality. Tvinto groups them and plays yours first.</p>
-            <figure class="mo-pc__visual"><img src="img/film-copies.webp" alt="The Last Lighthouse with four copies: English 4K, German HD, Croatian and one with no language given" width="1600" height="726" data-source="client" data-subject="a film page with its copies"></figure>
+            <figure class="mo-pc__visual"><img src="img/film-copies.webp" alt="The Last Lighthouse with four copies: English 4K, German HD, Croatian and one with no language given" width="1440" height="1080" data-source="client" data-subject="a film page with its copies"></figure>
           </li>
           <li class="mo-pc__step">
             <h3>Channels change inside the player</h3>
             <p>Up and down switch channel. Left opens the mini guide with what's on everywhere else.</p>
-            <figure class="mo-pc__visual"><img src="img/tv-player-guide.webp" alt="The mini guide over a playing channel, listing the Sport channels" width="1920" height="1080" data-source="client" data-subject="the player's mini guide"></figure>
+            <figure class="mo-pc__visual"><img src="img/tv-player-guide.webp" alt="The mini guide over a playing channel, listing the Sport channels" width="1440" height="1080" data-source="client" data-subject="the player's mini guide"></figure>
           </li>
           <li class="mo-pc__step">
             <h3>A profile for everyone at home</h3>
             <p>Who's watching? with a picture each. You set up the kids' accounts and their PIN.</p>
-            <figure class="mo-pc__visual"><img class="v-profiles" src="img/profiles.webp" alt="Who's watching? with three profiles, each with an animal picture" width="520" height="680" data-source="client" data-subject="the app's profile picker"></figure>
+            <figure class="mo-pc__visual"><img src="img/profiles-row.webp" alt="Who's watching? with three profiles, each with an animal picture" width="1440" height="1080" data-source="client" data-subject="the app's profile picker"></figure>
           </li>
         </ol>
       </div>
@@ -200,7 +200,7 @@ and make og:image absolute (https://tvinto.app/share.jpg): some sites ignore a r
       </div>
       <div class="grid grid--top">
         <article class="card card--open span-4">
-          <figure class="tier-shot"><img src="img/desktop-movies.webp" width="960" height="540" alt="Movies on Windows: Continue watching, then each category in a row" loading="lazy" data-source="client"></figure>
+          <figure class="tier-shot"><img src="img/desktop-movies.webp" width="1600" height="900" alt="Movies on Windows, each category in a row of posters" loading="lazy" data-source="client"></figure>
           <h3>In the app straight away</h3>
           <ul class="tier">
             <li>Live TV, guides and catch-up</li>
@@ -210,7 +210,7 @@ and make og:image absolute (https://tvinto.app/share.jpg): some sites ignore a r
           </ul>
         </article>
         <article class="card card--open span-4">
-          <figure class="tier-shot"><img src="img/tier-family.webp" width="960" height="540" alt="Family settings with a kid profile chosen" loading="lazy" data-source="client"></figure>
+          <figure class="tier-shot"><img src="img/tier-family.webp" width="1600" height="900" alt="Family settings with a kid profile chosen" loading="lazy" data-source="client"></figure>
           <h3>With your own server</h3>
           <ul class="tier">
             <li>Sync between TV, phone and PC</li>
@@ -219,7 +219,7 @@ and make og:image absolute (https://tvinto.app/share.jpg): some sites ignore a r
           </ul>
         </article>
         <article class="card card--open span-4">
-          <figure class="tier-shot"><img src="img/tier-show.webp" width="960" height="540" alt="A show page with its description, rating and Subtitles button" loading="lazy" data-source="client"></figure>
+          <figure class="tier-shot"><img src="img/tier-show.webp" width="1600" height="900" alt="A show page with its description, rating and Subtitles button" loading="lazy" data-source="client"></figure>
           <h3>Film details and subtitles with free keys</h3>
           <ul class="tier">
             <li>TMDB descriptions in your language, and trailers</li>
