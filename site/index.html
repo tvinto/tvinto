@@ -56,7 +56,7 @@ and make og:image absolute (https://tvinto.app/share.jpg): some sites ignore a r
   .shot { border-radius: var(--r-md); overflow: hidden; box-shadow: 0 24px 60px -20px rgba(0,0,0,.6); border: 1px solid rgba(255,255,255,.08); background: #0b1628; }
   .shot img { display: block; width: 100%; height: auto; }
   .shot--note { left: var(--s-6); bottom: var(--s-6); width: 260px; }
-  .shot--profiles { aspect-ratio: 780 / 1020; object-fit: cover; }
+  .shot--profiles { aspect-ratio: 826 / 1080; object-fit: cover; }
 
   /* the guide: the steps drawn as the app's own guide rows, the one on now marked as the app marks it */
   #guide .mo-pc__step { counter-increment: ch; position: relative; padding-left: 64px; }
@@ -136,7 +136,7 @@ and make og:image absolute (https://tvinto.app/share.jpg): some sites ignore a r
       <div class="nav__item"><a class="nav__link" href="#cli">Terminal</a></div>
     </nav>
     <div class="nav__actions">
-      <a class="nav__link" href="https://github.com/tvinto/tvinto">GitHub</a>
+      <a class="nav__link" href="https://github.com/tvinto/tvinto" target="_blank" rel="noopener">GitHub</a>
       <a class="btn btn--primary" href="#contact">Download Tvinto</a>
     </div>
     <button class="nav__toggle" type="button" aria-expanded="false" aria-label="Menu">
@@ -151,12 +151,12 @@ and make og:image absolute (https://tvinto.app/share.jpg): some sites ignore a r
       <div class="hero__text span-5">
         <h1 id="hero-h">Open source IPTV player for TV, phone and PC</h1>
         <p class="hero__lead">Tvinto plays the Xtream or M3U subscription you already have, with a real programme guide and a player built for the remote. No account needed.</p>
-        <div class="btn-row"><a class="btn btn--primary" href="#contact">Download Tvinto</a><a class="btn btn--secondary" href="https://github.com/tvinto/tvinto">View the source</a></div>
+        <div class="btn-row"><a class="btn btn--primary" href="#contact">Download Tvinto</a><a class="btn btn--secondary" href="https://github.com/tvinto/tvinto" target="_blank" rel="noopener">View the source</a></div>
         <p class="hero__proof">Android TV, Android phones and Windows. Free under GPL v3.</p>
       </div>
-      <div class="hero__art span-6 start-7" role="img" aria-label="A film playing in Tvinto on Windows, with Who's watching beside it">
-        <div class="ly-piece ly-piece--main shot" aria-hidden="true"><img src="img/desktop-player.webp" alt="" width="1600" height="900" fetchpriority="high" data-source="client" data-subject="a film playing in the Windows app"></div>
-        <div class="ly-piece ly-piece--note shot shot--note" aria-hidden="true"><img class="shot--profiles" src="img/profiles.webp" alt="" width="780" height="1020" data-source="client" data-subject="the app's profile picker"></div>
+      <div class="hero__art span-6 start-7" role="img" aria-label="A shelf of films in Tvinto on Windows, with the live channel list from the TV player beside it">
+        <div class="ly-piece ly-piece--main shot" aria-hidden="true"><img src="img/desktop-films.webp" alt="" width="1400" height="1104" fetchpriority="high" data-source="client" data-subject="the films in the Windows app"></div>
+        <div class="ly-piece ly-piece--note shot shot--note" aria-hidden="true"><img class="shot--profiles" src="img/tv-mini-note.webp" alt="" width="826" height="1080" data-source="client" data-subject="the TV player's channel list"></div>
       </div>
     </div></div>
   </section>
@@ -242,7 +242,7 @@ and make og:image absolute (https://tvinto.app/share.jpg): some sites ignore a r
             <li>Enter its address in the app</li>
             <li>Invite your household</li>
           </ol>
-          <a class="link" href="https://github.com/tvinto/tvinto/blob/main/server/README.md">Set up your server</a>
+          <a class="link" href="https://github.com/tvinto/tvinto/blob/main/server/README.md" target="_blank" rel="noopener">Set up your server</a>
         </div>
         <div class="panel span-6 start-7"><div class="dg" data-diagram><script type="application/json">{"layout": "hub", "alt": "Your Cloudflare sync server keeps Android TV, a phone, Windows and the tvinto command line in sync.", "center": {"label": "Your server", "icon": "logos:cloudflare-icon"}, "spokes": [{"label": "Android TV", "icon": "logos:android-icon"}, {"label": "Phone", "icon": "ui:phone"}, {"label": "Windows", "icon": "logos:microsoft-windows-icon"}, {"label": "tvinto CLI", "icon": "ui:terminal"}]}</script></div></div>
       </div>
@@ -257,7 +257,7 @@ and make og:image absolute (https://tvinto.app/share.jpg): some sites ignore a r
           <p>The tvinto command changes what the app can: categories, sorting, guide matches, the player. It also runs as an MCP server for AI agents like Claude.</p>
           <p>Every change shows first with a code and only happens when you apply it.</p>
           <p>Install it with <code>npm i -g tvinto</code>, or run it once with <code>npx tvinto</code>. It needs Node.js 20 or newer.</p>
-          <a class="link" href="https://github.com/tvinto/tvinto/blob/main/cli/README.md">Read the CLI guide</a>
+          <a class="link" href="https://github.com/tvinto/tvinto/blob/main/cli/README.md" target="_blank" rel="noopener">Read the CLI guide</a>
         </div>
         <div class="panel span-6 start-7"><div class="stage"><div class="at-rise fit" style="--fit-max:520px;--ax:max(24px, 50% - 260px);--ay:150px;--ay-sm:24px" data-ui-loop>
             <div class="ui ui-panel ui-term" data-ui="terminal-run">
@@ -310,11 +310,11 @@ and make og:image absolute (https://tvinto.app/share.jpg): some sites ignore a r
         </div>
         <div class="span-2 start-7 footer__col"><h3>App</h3><ul><li><a href="#guide">Features</a></li><li><a href="#free">What's free</a></li></ul></div>
         <div class="span-2 footer__col"><h3>Server</h3><ul><li><a href="#server">Your own server</a></li><li><a href="#cli">Terminal</a></li></ul></div>
-        <div class="span-2 footer__col"><h3>Project</h3><ul><li><a href="https://github.com/tvinto/tvinto">Source code</a></li><li><a href="https://github.com/tvinto/tvinto/blob/main/NAME-POLICY.md">Name and logo</a></li></ul></div>
+        <div class="span-2 footer__col"><h3>Project</h3><ul><li><a href="https://github.com/tvinto/tvinto" target="_blank" rel="noopener">Source code</a></li><li><a href="https://github.com/tvinto/tvinto/blob/main/NAME-POLICY.md" target="_blank" rel="noopener">Name and logo</a></li></ul></div>
       </div>
       <div class="footer__legal">
         <span>&copy; 2026 Tvinto &nbsp; GPL v3</span>
-        <a href="https://github.com/tvinto/tvinto/blob/main/SECURITY.md">Security</a>
+        <a href="https://github.com/tvinto/tvinto/blob/main/SECURITY.md" target="_blank" rel="noopener">Security</a>
       </div>
     </div>
   </div>
