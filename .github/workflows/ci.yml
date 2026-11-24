@@ -10,12 +10,16 @@ name: CI
 on:
   push:
   pull_request:
+  # release.yml runs these checks before it builds anything.
+  workflow_call:
 
 permissions:
   contents: read
 
+# The workflow's name keeps a release's checks out of the push runs' group:
+# called from release.yml it is "Release", and a push would otherwise cancel them.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
