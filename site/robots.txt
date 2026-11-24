@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-# Once the domain exists, add: Sitemap: https://tvinto.app/sitemap.xml
+Sitemap: https://tvinto.app/sitemap.xml
