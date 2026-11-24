@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClient } from '@angular/common/http';
 import { of } from 'rxjs';
-import { chooseServer } from './api-url';
+import { chooseServer, movedApiUrl } from './api-url';
 import { ServiceKindService } from './service-kind.service';
 
 /**
@@ -43,5 +43,21 @@ describe('the server address, read at each use', () => {
     await kind.isSyncService();
 
     expect(asked).toEqual(['https://first.example/api/health', 'https://second.example/api/health']);
+  });
+});
+
+// Chromium drops Authorization on a redirect to another origin: a server kept
+// as http:// that answers from https:// signed in, then refused everything (24 November).
+describe('a server answering from another address', () => {
+  it('is kept at the address it answered from', () => {
+    expect(movedApiUrl({ redirected: true, url: 'https://sync.example.app/api/health' })).toBe('https://sync.example.app/api');
+  });
+
+  it('is left alone when it answered where it was asked', () => {
+    expect(movedApiUrl({ redirected: false, url: 'https://sync.example.app/api/health' })).toBeNull();
+  });
+
+  it('is left alone when the redirect went somewhere that is not its health', () => {
+    expect(movedApiUrl({ redirected: true, url: 'https://sync.example.app/login' })).toBeNull();
   });
 });

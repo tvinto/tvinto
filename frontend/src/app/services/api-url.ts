@@ -75,6 +75,20 @@ export function chooseServer(apiUrl: string | null): void {
 }
 
 /**
+ * The API address a `/health` answer was really given from, when it got there
+ * through a redirect (http to https, an HSTS host, a moved service); null when
+ * it was answered where it was asked.
+ *
+ * Kept instead of the typed one because Chromium drops Authorization on a
+ * redirect to another origin (seen on Electron 45; the Electron 26 desktop
+ * signed in to the same server): signing in
+ * worked, and every request after it came back 401 (24 November).
+ */
+export function movedApiUrl(response: Pick<Response, 'redirected' | 'url'>): string | null {
+  return response.redirected && /\/health$/.test(response.url) ? response.url.replace(/\/health$/, '') : null;
+}
+
+/**
  * Where updates come from: the feed this build was made for (config.js,
  * written from frontend/scripts/feed.js), whichever server the account is on.
  * A server somebody runs for themselves is the sync service and nothing else
