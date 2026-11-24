@@ -68,9 +68,16 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             frontend/package-lock.json
+            frontend/electron/package-lock.json
       - run: npm ci
       - run: npm ci
         working-directory: frontend
+      # The desktop app's tests type-check against Electron's types; its
+      # binary is not needed for that.
+      - run: npm ci
+        working-directory: frontend/electron
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
       - name: Lint
         run: npx eslint . --max-warnings 0
         working-directory: frontend
