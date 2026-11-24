@@ -48,6 +48,10 @@ describe('legacyAccountKeys', () => {
     ]);
   });
 
+  it('orders them by account id as a number, not as text', () => {
+    expect(legacyAccountKeys(PREFIX, [`${PREFIX}:10`, `${PREFIX}:2`])).toEqual([`${PREFIX}:2`, `${PREFIX}:10`]);
+  });
+
   it('finds nothing when there is nothing to find', () => {
     expect(legacyAccountKeys(PREFIX, ['unrelated'])).toEqual([]);
   });

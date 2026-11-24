@@ -154,7 +154,7 @@ export class MergedCatalogue {
     if (times.some(time => !time)) {
       return null;
     }
-    return times.sort()[0] ?? null;
+    return (times as string[]).reduce((oldest, time) => (Date.parse(time) < Date.parse(oldest) ? time : oldest), times[0] as string) ?? null;
   }
 
   /** Every slot indexed, one after another: they may well share a line. */

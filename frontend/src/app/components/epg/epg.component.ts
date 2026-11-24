@@ -156,7 +156,7 @@ export class EpgComponent implements OnDestroy {
   readonly selectedDay = signal<string>(dayKey(Date.now()));
 
   private readonly days = computed(() =>
-    [...new Set(this.store.programs().map(program => dayKey(millisecondsOf(program.start_timestamp))))].sort()
+    [...new Set(this.store.programs().map(program => dayKey(millisecondsOf(program.start_timestamp))))].sort((a, b) => a.localeCompare(b))
   );
 
   readonly dayPrograms = computed(() =>

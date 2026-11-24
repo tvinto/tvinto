@@ -144,6 +144,21 @@ describe('publishing a release on GitHub', () => {
     expect(github.calls).toEqual(['GET /releases/tags/web-1.0.140']);
   });
 
+  it('never sends the token to an upload address outside GitHub', async () => {
+    const github = fakeGitHub();
+    const fetchImpl = github.fetchImpl;
+    github.fetchImpl = async (url, init) => {
+      const answer = await fetchImpl(url, init);
+      if (init.method === 'POST' && url.endsWith('/releases')) {
+        const body = await answer.json();
+        return { ...answer, json: async () => ({ ...body, upload_url: 'https://evil.example/upload{?name}' }) };
+      }
+      return answer;
+    };
+    await expect(release(github)).rejects.toThrow('outside GitHub');
+    expect(github.calls).toEqual(['GET /releases/tags/web-1.0.140', 'POST /releases']);
+  });
+
   it('refuses without a token', async () => {
     await expect(release(fakeGitHub(), { token: undefined })).rejects.toThrow('GITHUB_TOKEN');
   });

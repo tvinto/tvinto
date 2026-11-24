@@ -34,10 +34,12 @@ export const accountStorageKey = (prefix: string, username: string | null | unde
  * something. Only the caller knows what "holds something" means for what it
  * keeps.
  */
+const idOf = (key: string): number => Number(key.slice(key.lastIndexOf(':') + 1));
+
 export const legacyAccountKeys = (prefix: string, keys: readonly string[]): string[] => {
   const pattern = new RegExp(`^${escapeForPattern(prefix)}:\\d+$`);
 
-  return keys.filter(key => pattern.test(key)).sort();
+  return keys.filter(key => pattern.test(key)).sort((a, b) => idOf(a) - idOf(b));
 };
 
 /**

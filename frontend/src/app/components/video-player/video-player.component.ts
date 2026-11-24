@@ -12,7 +12,6 @@ import {
   computed
 } from '@angular/core';
 
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import type Hls from 'hls.js';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { HlmButton } from '@spartan-ng/helm/button';
@@ -77,8 +76,6 @@ export class VideoPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
 
   /** "1:02:15", for the badge. */
   readonly resumedFromLabel = computed(() => formatTimecode(this.resumedFrom()));
-
-  constructor(private sanitizer: DomSanitizer) {}
 
   readonly isFullscreen = signal(false);
 
@@ -385,10 +382,6 @@ export class VideoPlayerComponent implements OnInit, AfterViewInit, OnDestroy {
       this.hls.destroy();
       this.hls = null;
     }
-  }
-
-  getSafeUrl(): SafeResourceUrl {
-    return this.sanitizer.bypassSecurityTrustResourceUrl(this.streamUrl());
   }
 
   onClose() {
