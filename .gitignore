@@ -62,6 +62,8 @@ xtream.tar.gz
 
 # Wrangler's local state, and the local-only variables it reads.
 worker/.wrangler/
+# wrangler pages dev site, run from the root (site/README.md)
+/.wrangler/
 worker/.dev.vars
 
 # What a release is built into before it is uploaded: the desktop installer
