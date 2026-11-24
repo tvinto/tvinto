@@ -1369,6 +1369,7 @@
       "xtream": "Tu proveedor (códigos Xtream)",
       "m3u": "Tu lista M3U",
       "signin": "Iniciar sesión para sincronizar",
+      "serverSignin": "Inicia sesión en tu servicio de sincronización",
       "tmdb": "Tu clave de TMDB"
     },
     "field": {

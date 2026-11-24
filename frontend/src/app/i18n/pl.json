@@ -1437,6 +1437,7 @@
       "xtream": "Twój dostawca (kody Xtream)",
       "m3u": "Twoja lista M3U",
       "signin": "Zaloguj się, aby synchronizować",
+      "serverSignin": "Zaloguj się do swojej usługi synchronizacji",
       "tmdb": "Twój klucz TMDB"
     },
     "field": {

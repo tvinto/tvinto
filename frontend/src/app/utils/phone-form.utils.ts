@@ -19,8 +19,12 @@ import { TMDB_KEY_ADDRESS } from '@shared/tmdb/key';
  * message is refused rather than misread.
  */
 
-/** What is being typed: a provider, signing in to a sync service, that service's address, a guide's, or a TMDB key. */
-export type PhoneFormKind = 'xtream' | 'm3u' | 'stalker' | 'signin' | 'server' | 'guide' | 'tmdb';
+/**
+ * What is being typed: a provider, signing in to a sync service, that
+ * service's address, both at once (a device with no server yet), a guide's,
+ * or a TMDB key.
+ */
+export type PhoneFormKind = 'xtream' | 'm3u' | 'stalker' | 'signin' | 'server' | 'serverSignin' | 'guide' | 'tmdb';
 
 export interface PhoneField {
   name: string;
@@ -59,12 +63,18 @@ export const PHONE_FIELDS: Record<PhoneFormKind, readonly { name: string; type: 
     { name: 'server', type: 'url' },
     { name: 'mac', type: 'text' }
   ],
-  // The server is changed on its own, before signing in: changing it starts the app again.
   signin: [
     { name: 'name', type: 'text' },
     { name: 'password', type: 'password' }
   ],
+  // Changing a server already in use is asked on its own.
   server: [{ name: 'server', type: 'url' }],
+  // No server yet: everything Sign in needs, like adding a provider.
+  serverSignin: [
+    { name: 'server', type: 'url' },
+    { name: 'name', type: 'text' },
+    { name: 'password', type: 'password' }
+  ],
   // A guide by address (XMLTV), and the name it is listed under.
   guide: [
     { name: 'guide', type: 'url' },
@@ -73,6 +83,11 @@ export const PHONE_FIELDS: Record<PhoneFormKind, readonly { name: string; type: 
   // A TMDB key: the API key or the read access token, pasted on the phone.
   tmdb: [{ name: 'key', type: 'password' }]
 };
+
+/** The sign-in screen's phone form: the server alone while changing one, all three when there is none yet. */
+export function signInPhoneKind(noServer: boolean, changingServer: boolean): PhoneFormKind {
+  return noServer ? 'serverSignin' : changingServer ? 'server' : 'signin';
+}
 
 /** A page to open on the phone first, for the forms whose value comes from somewhere else. */
 export const PHONE_LINKS: Partial<Record<PhoneFormKind, string>> = {

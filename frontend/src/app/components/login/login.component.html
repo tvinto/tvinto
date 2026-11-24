@@ -241,10 +241,9 @@
       }
     </ng-template>
 
-    <!-- On a television: the name and password, or the server's address while
-         it is being changed, typed on a phone. -->
+    <!-- On a television: typed on a phone (signInPhoneKind). -->
     <div class="mt-4 block">
-      <app-phone-form-offer [kind]="askingServer() ? 'server' : 'signin'" [compact]="true" (arrived)="fromPhone($event)" />
+      <app-phone-form-offer [kind]="phoneKind()" [compact]="true" (arrived)="fromPhone($event)" />
     </div>
 
     <p class="mt-4 text-center text-xs text-muted-foreground">

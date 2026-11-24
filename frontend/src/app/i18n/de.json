@@ -1369,6 +1369,7 @@
       "xtream": "Dein Anbieter (Xtream-Codes)",
       "m3u": "Deine M3U-Playlist",
       "signin": "Zum Synchronisieren anmelden",
+      "serverSignin": "Bei deinem Sync-Dienst anmelden",
       "tmdb": "Dein TMDB-Schlüssel"
     },
     "field": {

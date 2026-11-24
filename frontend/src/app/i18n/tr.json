@@ -1369,6 +1369,7 @@
       "xtream": "Sağlayıcınız (Xtream kodları)",
       "m3u": "M3U çalma listeniz",
       "signin": "Eşitlemek için giriş yapın",
+      "serverSignin": "Eşitleme hizmetinize giriş yapın",
       "tmdb": "TMDB anahtarınız"
     },
     "field": {
