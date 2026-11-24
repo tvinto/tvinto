@@ -22,8 +22,8 @@ android {
          * is what makes a freshly installed APK win over a bundle downloaded
          * before it.
          */
-        versionCode 41
-        versionName "1.0.135"
+        versionCode 42
+        versionName "1.0.140"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         /*
