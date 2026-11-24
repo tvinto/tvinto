@@ -21,6 +21,14 @@ The code itself is written once, in `index.html` (`close__code`).
 
 `_headers` sets caching and security headers.
 
+`404.html` matters more than it looks: without it Pages treats the site as a
+single-page app and answers every address, `/robots.txt` and typos included,
+with the home page and a 200. `robots.txt` allows everything.
+
+Once the domain exists: uncomment the canonical link and `og:url` in
+`index.html`, make `og:image` absolute, and add a one-line `sitemap.xml` and
+its `Sitemap:` line in `robots.txt` (both need the full address).
+
 ## Previewing it
 
 From the repository root:
