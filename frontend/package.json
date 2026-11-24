@@ -1,6 +1,6 @@
 {
   "name": "iptv-xtream-frontend",
-  "version": "1.0.140",
+  "version": "1.0.141",
   "license": "GPL-3.0-only",
   "scripts": {
     "ng": "ng",
