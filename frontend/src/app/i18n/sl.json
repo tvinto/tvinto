@@ -1437,6 +1437,7 @@
       "xtream": "Vaš ponudnik (kode Xtream)",
       "m3u": "Vaš seznam M3U",
       "signin": "Prijava za sinhronizacijo",
+      "serverSignin": "Prijava v vašo storitev za sinhronizacijo",
       "tmdb": "Vaš ključ TMDB"
     },
     "field": {

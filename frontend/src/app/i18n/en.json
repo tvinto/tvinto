@@ -1351,6 +1351,7 @@
       "xtream": "Your provider (Xtream codes)",
       "m3u": "Your M3U playlist",
       "signin": "Sign in to sync",
+      "serverSignin": "Sign in to your sync service",
       "tmdb": "Your TMDB key"
     },
     "field": {

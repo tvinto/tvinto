@@ -10,6 +10,7 @@ import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmLabel } from '@spartan-ng/helm/label';
 import { AccountService } from '../../services/account.service';
 import { t } from '../../utils/i18n';
+import { signInPhoneKind } from '../../utils/phone-form.utils';
 import { SettingGroupComponent, SettingRowComponent } from '../../ui/setting-row.component';
 import { TPipe } from '../../pipes/t.pipe';
 import { takePageAfterRestart } from '../../services/family-profiles.service';
@@ -192,8 +193,8 @@ export class LoginComponent {
 
   /** The address form open in place of the Server row: "Change", with a server already in use. */
   readonly changingServer = signal(false);
-  /** The address is being asked for, on either form. */
-  readonly askingServer = computed(() => this.noServer() || this.changingServer());
+  /** What the phone page asks for (signInPhoneKind). */
+  readonly phoneKind = computed(() => signInPhoneKind(this.noServer(), this.changingServer()));
 
   /**
    * The guide to running a sync service of one's own (server/README.md). A
@@ -219,11 +220,11 @@ export class LoginComponent {
 
   /** What was typed on a phone (PhoneFormOfferComponent): into the fields, used only when the person goes on here. */
   fromPhone(fields: Record<string, string>): void {
-    if (this.askingServer() && fields['server'] !== undefined) {
-      this.serverInput.set(fields['server']);
-      this.clearFieldError('server');
-    } else {
-      this.form.patchValue({ username: fields['name'] ?? '', password: fields['password'] ?? '' });
+    if (fields['server'] !== undefined) {
+      this.typedServer(fields['server']);
+    }
+    if (fields['name'] !== undefined) {
+      this.form.patchValue({ username: fields['name'], password: fields['password'] ?? '' });
     }
   }
 
@@ -465,6 +466,8 @@ export class LoginComponent {
       error: (err: unknown) => {
         this.loading.set(false);
         this.error.set(this.accounts.describeError(err));
+        // The pressed button was disabled while waiting, which left a remote with nothing focused.
+        this.focusField('password');
       }
     });
   }

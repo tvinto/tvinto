@@ -63,11 +63,15 @@ module.exports = {
       ],
       setupFilesAfterEnv: ['<rootDir>/src/test-setup.ts'],
       transform: {
+        // @noble/ciphers, ES modules only, for the screens that offer the phone form (as above). First: the first match wins.
+        '[\\\\/]@noble[\\\\/].+\\.js$': ['ts-jest', { tsconfig: { allowJs: true, module: 'commonjs' } }],
         '^.+\\.(ts|mjs|js|html)$': [
           'jest-preset-angular',
           { tsconfig: '<rootDir>/tsconfig.spec.json', stringifyContentPathRegex: '\\.(html|svg)$' }
         ]
       },
+      // The preset's own, and @noble.
+      transformIgnorePatterns: ['node_modules/(?!(.*\\.mjs$|@angular/common/locales/.*\\.js$|@noble/))'],
       moduleNameMapper: {
         '^@shared/(.*)$': '<rootDir>/../shared/$1',
         // The UI kit lives in the app (libs/ui), as tsconfig.json maps it.

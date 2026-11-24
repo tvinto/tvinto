@@ -1,7 +1,20 @@
 import { TMDB_KEY_ADDRESS, TMDB_KEY_EXAMPLES } from '@shared/tmdb/key';
-import { PHONE_LINKS, fromBase64Url, keyFromFragment, newPhoneKey, openForm, phoneFormAddress, sealForm, toBase64Url } from './phone-form.utils';
+import { PHONE_LINKS, fromBase64Url, signInPhoneKind, keyFromFragment, newPhoneKey, openForm, phoneFormAddress, sealForm, toBase64Url } from './phone-form.utils';
 
 describe('typing on the TV from a phone', () => {
+  it('asks the sign-in screen for everything with no server yet, the server alone while changing it, and the account otherwise', () => {
+    expect(signInPhoneKind(true, false)).toBe('serverSignin');
+    expect(signInPhoneKind(false, true)).toBe('server');
+    expect(signInPhoneKind(false, false)).toBe('signin');
+  });
+
+  it('opens the server, name and password together when there is no server yet', () => {
+    const key = newPhoneKey();
+    const sealed = sealForm(key, { server: 'sync.example', name: 'ana', password: 'secret' });
+
+    expect(openForm(key, sealed, 'serverSignin')).toEqual({ server: 'sync.example', name: 'ana', password: 'secret' });
+  });
+
   it('puts the key in the address after the #, where the browser never sends it', () => {
     const key = newPhoneKey();
     const address = phoneFormAddress('http://192.168.1.20:8790/', key);
