@@ -20,6 +20,12 @@ export interface PopularPage {
   found: Popular[];
   checked: number;
   pages: number;
+  /**
+   * Matched against a library this device does not hold whole yet (it could
+   * not be downloaded just now): what was found is real, but "none" is not
+   * believable, and the page is never kept.
+   */
+  incomplete?: boolean;
 }
 
 /** How far down TMDB's list a full list goes: the first 500, past which matches get rare and slow (TV-26). */
@@ -92,9 +98,11 @@ const KEPT_PAGES = 3;
  * this week, films and shows apart, as far as this library has them.
  *
  * TMDB's list comes a page of twenty at a time, once a day. Each title is
- * then looked for in what this device's catalogue already holds -- never a
- * download, never a request to the provider -- and kept only if some copy of
- * it is there. Titles are in English, which is what most providers name
+ * then looked for in what this device's catalogue holds, and kept only if
+ * some copy of it is there. A library never held whole is downloaded first,
+ * once, as a search would: matched against only the categories opened so far,
+ * a new device's Top rated said none of it was in the library, and kept
+ * saying so for the day (24 November). Titles are in English, which is what most providers name
  * their films in; a film a provider names in its own language is found by
  * its original title.
  */
@@ -163,7 +171,8 @@ export class PopularService {
     }
     const [films, shows] = [await this.popular('movie', limit), await this.popular('tv', limit)];
     const found = [...films, ...shows].sort((a, b) => a.rank - b.rank || (a.type === 'vod' ? -1 : 1)).slice(0, limit);
-    if (found.length) {
+    const whole = (await this.xtream.libraryHeld('vod')) && (await this.xtream.libraryHeld('series'));
+    if (found.length && whole) {
       this.keepRow({ at: Date.now(), library, limit, found });
     }
     return found;
@@ -221,6 +230,7 @@ export class PopularService {
       return { found: [], checked: 0, pages: 0 };
     }
     const type = kind === 'movie' ? 'vod' : 'series';
+    const whole = (await this.xtream.libraryHeld(type)) || (await this.xtream.fetchLibraryIfNeverHeld(type));
     // The whole page in one lookup (XtreamService.findHeldTitles): a search
     // per name was over a minute for For You's row on a user's TV.
     const held = await this.copiesIn(type, list.items);
@@ -231,8 +241,8 @@ export class PopularService {
         found.push({ item, type, versions, rank: (page - 1) * 20 + index });
       }
     }
-    const matched = { found, checked: list.items.length, pages: list.pages };
-    if (remember) {
+    const matched: PopularPage = { found, checked: list.items.length, pages: list.pages, ...(whole ? {} : { incomplete: true }) };
+    if (remember && whole) {
       this.keepPage({ key: pageKey(kind, which, page), at: Date.now(), library, page: matched });
     }
     return matched;

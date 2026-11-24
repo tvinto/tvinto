@@ -1,6 +1,8 @@
 <!-- A landmark, because this page is outside the shell and so outside its
      `<main>`. An audit found the sign-in screen to be the one page in the app
      with no main region at all. -->
+<!-- Updates, which a device that cannot get past this page needs most (24 November). -->
+<div class="sticky top-0 z-50" data-update-bars><app-update-bars /></div>
 <main class="flex min-h-dvh items-center justify-center bg-background p-5" data-login-page>
   @if (!passingThrough) {
   <!-- One column on a phone and a desktop. On a television, two: who and

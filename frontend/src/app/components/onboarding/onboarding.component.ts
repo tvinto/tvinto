@@ -1,3 +1,4 @@
+import { UpdateBarsComponent } from '../update-bars/update-bars.component';
 import { normaliseMac } from '@shared/stalker/client';
 import { recordAddress } from '@shared/providers/providerRecord';
 import { PhoneFormOfferComponent } from '../phone-form-offer/phone-form-offer.component';
@@ -57,7 +58,7 @@ const CHECK_TIMEOUT_MS = 30_000;
 @Component({
   selector: 'app-onboarding',
   standalone: true,
-  imports: [TPipe, NgIcon, HlmButton, HlmInput, HlmLabel, StartupSettingsComponent, TvintoMarkComponent, PhoneFormOfferComponent, LanguagePickerComponent, TmdbKeyComponent, SettingRowComponent],
+  imports: [UpdateBarsComponent, TPipe, NgIcon, HlmButton, HlmInput, HlmLabel, StartupSettingsComponent, TvintoMarkComponent, PhoneFormOfferComponent, LanguagePickerComponent, TmdbKeyComponent, SettingRowComponent],
   providers: [provideIcons({ lucideArrowLeft, lucideCheck, lucideEye, lucideEyeOff, lucideGlobe, lucideLoaderCircle, lucidePlus })],
   templateUrl: './onboarding.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush

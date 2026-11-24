@@ -1,3 +1,4 @@
+import { UpdateBarsComponent } from '../update-bars/update-bars.component';
 import { NgTemplateOutlet } from '@angular/common';
 import { PhoneFormOfferComponent } from '../phone-form-offer/phone-form-offer.component';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
@@ -50,7 +51,7 @@ type Field = 'server' | 'username' | 'password' | 'invite';
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [NgTemplateOutlet, PhoneFormOfferComponent, TPipe, ReactiveFormsModule, NgIcon, HlmButton, HlmInput, HlmLabel, SettingGroupComponent, SettingRowComponent, TvintoMarkComponent, LanguagePickerComponent],
+  imports: [UpdateBarsComponent, NgTemplateOutlet, PhoneFormOfferComponent, TPipe, ReactiveFormsModule, NgIcon, HlmButton, HlmInput, HlmLabel, SettingGroupComponent, SettingRowComponent, TvintoMarkComponent, LanguagePickerComponent],
   providers: [provideIcons({ lucideEye, lucideEyeOff, lucideLoaderCircle })],
   templateUrl: './login.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush

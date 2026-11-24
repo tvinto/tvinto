@@ -32,11 +32,15 @@ const stream = (id: number, name: string): Stream => ({ stream_id: String(id), n
 describe('PopularService', () => {
   let tmdbAsked: string[];
   let searched: string[];
+  let fetched: string[];
 
   /** TMDB's list, films and shows apart, twenty -- here two -- to a page. */
-  const setup = (options: { trending?: TmdbTrending[]; held?: Record<string, Stream[]>; key?: boolean; perPage?: number; failFrom?: number; locked?: string[] } = {}) => {
+  const setup = (options: { trending?: TmdbTrending[]; held?: Record<string, Stream[]>; key?: boolean; perPage?: number; failFrom?: number; locked?: string[]; whole?: boolean; arrives?: boolean } = {}) => {
     tmdbAsked = [];
     searched = [];
+    fetched = [];
+    // A library held whole unless a test says otherwise; `arrives` when downloading it works.
+    let whole = options.whole ?? true;
     const perPage = options.perPage ?? 20;
     const client = {
       list: async (kind: 'movie' | 'tv', list: string, _language: string, page: number) => {
@@ -67,6 +71,12 @@ describe('PopularService', () => {
                 })
               ),
             libraryOwner: async () => 'owner',
+            libraryHeld: async () => whole,
+            fetchLibraryIfNeverHeld: async (type: string) => {
+              fetched.push(type);
+              whole = options.arrives ?? false;
+              return whole;
+            },
             allowed: (_type: string, held: Stream) => !(options.locked ?? []).includes(held.stream_id)
           }
         }
@@ -190,6 +200,37 @@ describe('PopularService', () => {
     expect((await tomorrow.lastPopular('movie', 12, 'top'))?.map(entry => entry.item.title)).toEqual(['Hope', 'Dune']);
     expect(searched).toEqual([]);
     expect(await tomorrow.lastPopular('movie', 12, 'trending')).toBeNull();
+  });
+
+  it('downloads a library never held whole before matching against it (24 November)', async () => {
+    const titles = [trend('movie', 1, 'Dune', '2021')];
+    const service = setup({ trending: titles, held: { 'vod:Dune': [stream(2, 'Dune')] }, whole: false, arrives: true });
+    const page = await service.page('movie', 1, 'top');
+    expect(fetched).toEqual(['vod']);
+    expect(page.found.map(entry => entry.item.title)).toEqual(['Dune']);
+    expect(page.incomplete).toBeUndefined();
+  });
+
+  it('never keeps a page or a row matched against a library not held whole', async () => {
+    const titles = [trend('movie', 1, 'Hope', '2026'), trend('tv', 2, 'Severance', '2022')];
+    const held = { 'vod:Hope': [stream(1, 'Hope')], 'series:Severance': [stream(3, 'Severance')] };
+    // Only what the categories opened so far hold: nothing.
+    const early = setup({ trending: titles, whole: false });
+    const page = await early.page('movie', 1, 'top');
+    expect(page).toEqual(expect.objectContaining({ found: [], incomplete: true }));
+    expect(await early.mixed()).toEqual([]);
+    expect(localStorage.getItem('xtream_popular_pages')).toBeNull();
+    expect(localStorage.getItem('xtream_popular_row')).toBeNull();
+
+    // A partial answer is not kept either.
+    const partial = setup({ trending: titles, held: { 'vod:Hope': held['vod:Hope'] }, whole: false });
+    expect((await partial.mixed()).map(entry => entry.item.title)).toEqual(['Hope']);
+    expect(localStorage.getItem('xtream_popular_row')).toBeNull();
+
+    // Once the library is there, the same day, the list is matched again and found.
+    const later = setup({ trending: titles, held });
+    expect((await later.page('movie', 1, 'top')).found.map(entry => entry.item.title)).toEqual(['Hope']);
+    expect((await later.mixed()).map(entry => entry.item.title)).toEqual(['Hope', 'Severance']);
   });
 
   it('looks up a list of titles in one go, each with its own copies', async () => {
