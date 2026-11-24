@@ -1,0 +1,125 @@
+<!--
+  A bar and not a dialog: nobody opened the app to be asked about updates.
+  "Later" hides it for this run; the update still installs itself once the
+  machine is left alone, which is what gets a PC nobody closes updated.
+-->
+@if (update.ready() && !update.dismissed()) {
+  <div
+    role="status"
+    class="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-border bg-card-2 px-4 py-2 text-sm sm:px-6"
+  >
+    <p class="min-w-0 flex-1">
+      <span class="font-medium">{{ 'update.versionReady' | t: { version: update.ready() } }}</span>
+      <span class="text-muted-foreground">
+        {{ 'update.desktopHow' | t }}
+      </span>
+    </p>
+    <div class="flex shrink-0 items-center gap-2">
+      <button
+        hlmBtn
+ variant="primary"
+        size="sm"
+        type="button"
+        [disabled]="update.installing()"
+        (click)="update.restart()"
+      >
+        {{ (update.installing() ? 'update.restarting' : 'update.restartNow') | t }}
+      </button>
+      <button hlmBtn variant="quiet" size="sm" type="button" (click)="update.later()">
+        {{ 'common.later' | t }}
+      </button>
+    </div>
+  </div>
+}
+
+<!--
+  Android and the TV: the web app updating itself over the air.
+
+  It always has, and silently -- a bundle fetched in the background and used
+  from the next start -- so nobody could tell whether an update was
+  happening, had happened, or was waiting (22 September). Now it
+  says so while it downloads, and once it is ready offers the restart that
+  brings it in, which on a television is otherwise a trip through the system
+  settings.
+-->
+@if (webUpdate.downloading(); as coming) {
+  @if (!appUpdate.holdsBackWebUpdate()) {
+  <div
+    role="status"
+    data-web-update
+    class="flex shrink-0 items-center gap-2 border-b border-border bg-card-2 px-4 py-2 text-sm sm:px-6"
+  >
+    <span class="font-medium">{{ 'update.downloading' | t: { version: coming } }}</span>
+    <span class="text-muted-foreground">{{ 'update.keepWatching' | t }}</span>
+  </div>
+  }
+} @else if (webUpdate.waiting() && !webUpdate.dismissed() && !appUpdate.holdsBackWebUpdate()) {
+  <div
+    role="status"
+    data-web-update
+    class="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-border bg-card-2 px-4 py-2 text-sm sm:px-6"
+  >
+    <p class="min-w-0 flex-1">
+      <span class="font-medium">{{ 'update.updateReady' | t: { version: webUpdate.waiting() } }}</span>
+      <span class="text-muted-foreground">
+        {{ 'update.webHow' | t }}
+      </span>
+    </p>
+    <div class="flex shrink-0 items-center gap-2">
+      <button hlmBtn variant="primary" size="sm" type="button" [disabled]="webUpdate.restarting()" (click)="webUpdate.restart()">
+        {{ (webUpdate.restarting() ? 'update.restarting' : 'update.restartNow') | t }}
+      </button>
+      <button hlmBtn variant="quiet" size="sm" type="button" (click)="webUpdate.later()">{{ 'common.later' | t }}</button>
+    </div>
+  </div>
+}
+
+<!--
+  Android: a newer app is out. Web code updates itself, but native code --
+  the player, its subtitle button -- only arrives with the APK, so this says
+  so and fetches it -- by itself on a television, where only Install is left
+  to press. Android's installer still asks before anything changes.
+-->
+@if (appUpdate.showing()) {
+  @if (appUpdate.available(); as app) {
+    <div
+      role="status"
+      data-app-update
+      class="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-border bg-card-2 px-4 py-2 text-sm sm:px-6"
+    >
+      <p class="min-w-0 flex-1">
+        <span class="font-medium">{{ 'update.appOut' | t: { version: app.version } }}</span>
+        <span class="text-muted-foreground">
+          @switch (appUpdate.phase()) {
+            @case ("downloading") {
+              {{ 'update.appDownloading' | t: { percent: appUpdate.percent() } }}
+            }
+            @case ("ready") {
+              {{ 'update.appReady' | t }}
+            }
+            @case ("manual") {
+              {{ 'update.appManual' | t: { link: appUpdate.shortLink() } }}
+            }
+            @case ("browser") {
+              {{ 'update.appBrowser' | t }}
+            }
+            @default {
+              {{ (appUpdate.size() ? 'update.appSized' : 'update.appPlain') | t: { size: appUpdate.size() } }}
+            }
+          }
+          {{ appUpdate.message() }}
+        </span>
+      </p>
+      <div class="flex shrink-0 items-center gap-2">
+        @if (appUpdate.phase() === "ready") {
+          <button hlmBtn variant="primary" size="sm" type="button" (click)="appUpdate.install()">{{ 'update.install' | t }}</button>
+        } @else {
+          <button hlmBtn variant="primary" size="sm" type="button" [disabled]="appUpdate.phase() === 'downloading'" (click)="appUpdate.download()">
+            {{ (appUpdate.phase() === 'downloading' ? 'update.downloadingShort' : 'update.download') | t }}
+          </button>
+        }
+        <button hlmBtn variant="quiet" size="sm" type="button" (click)="appUpdate.later()">{{ 'common.later' | t }}</button>
+      </div>
+    </div>
+  }
+}

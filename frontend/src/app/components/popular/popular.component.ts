@@ -94,6 +94,14 @@ export class PopularComponent implements AfterViewInit, OnDestroy {
   private readonly read = signal(0);
   /** TMDB did not answer; nothing more is asked until Try again. */
   private readonly failed = signal(false);
+  /** A page was matched against a library not held whole yet: "none" would not be true, so it waits for the library. */
+  readonly incomplete = signal(false);
+  /** The library this list is matched against, while it downloads, and how far it has got. */
+  readonly libraryLoading = computed(() => this.xtream.indexing() === (this.kind() === 'tv' ? 'series' : 'vod'));
+  readonly libraryProgress = computed(() => {
+    const progress = this.xtream.indexProgress();
+    return progress?.total ? progress : null;
+  });
   readonly finished = computed(() => {
     const pages = this.pages();
     return pages !== null && this.read() >= Math.min(pages, LIST_PAGES);
@@ -123,8 +131,18 @@ export class PopularComponent implements AfterViewInit, OnDestroy {
         this.read.set(0);
         this.checked.set(0);
         this.failed.set(false);
+        this.incomplete.set(false);
         void this.loadOn();
       });
+    // A library that has just loaded, wherever it was asked for, is what an incomplete list was waiting for.
+    let indexing = this.xtream.indexing();
+    effect(() => {
+      const now = this.xtream.indexing();
+      if (indexing !== null && now === null && untracked(this.incomplete)) {
+        untracked(() => this.tryAgain());
+      }
+      indexing = now;
+    });
   }
 
   ngAfterViewInit(): void {
@@ -168,7 +186,7 @@ export class PopularComponent implements AfterViewInit, OnDestroy {
    * the grid is still in sight.
    */
   async loadOn(): Promise<void> {
-    if (this.working() || this.finished() || this.failed()) {
+    if (this.working() || this.finished() || this.failed() || this.incomplete()) {
       return;
     }
     this.working.set(true);
@@ -189,6 +207,11 @@ export class PopularComponent implements AfterViewInit, OnDestroy {
         if (before === 0 && fresh.length && !this.landed && this.tv.isTelevision()) {
           this.landed = true;
           this.focusFirstIfUnmoved();
+        }
+        if (next.incomplete) {
+          // Read again, from this page, once the library is there.
+          this.incomplete.set(true);
+          break;
         }
         this.pages.set(next.pages);
         this.checked.update(checked => checked + next.checked);
@@ -232,8 +255,9 @@ export class PopularComponent implements AfterViewInit, OnDestroy {
     }, 50);
   }
 
-  private tryAgain(): void {
+  tryAgain(): void {
     this.failed.set(false);
+    this.incomplete.set(false);
     void this.loadOn();
   }
 

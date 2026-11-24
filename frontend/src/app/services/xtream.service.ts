@@ -829,6 +829,18 @@ export class XtreamService {
    * for the page to look for its copies again.
    */
   async fetchLibraryIfNeverHeld(type: StreamType): Promise<boolean> {
+    // One download however many rows and pages ask at once.
+    let fetching = this.fetchingLibrary.get(type);
+    if (!fetching) {
+      fetching = this.fetchNeverHeld(type).finally(() => this.fetchingLibrary.delete(type));
+      this.fetchingLibrary.set(type, fetching);
+    }
+    return fetching;
+  }
+
+  private readonly fetchingLibrary = new Map<StreamType, Promise<boolean>>();
+
+  private async fetchNeverHeld(type: StreamType): Promise<boolean> {
     const direct = await this.provider.direct().catch(() => null);
     if (!direct || this.nativePlayer.active() || (await direct.catalogue.indexedAt(type))) {
       return false;
@@ -839,6 +851,16 @@ export class XtreamService {
       console.warn(`Could not download the ${type} library for a page's copies`);
     });
     return Boolean(await direct.catalogue.indexedAt(type).catch(() => null));
+  }
+
+  /**
+   * Whether this device holds a library whole (indexed at least once), not
+   * only the categories opened so far: what an answer of "not in your
+   * library" needs before it can be believed.
+   */
+  async libraryHeld(type: StreamType): Promise<boolean> {
+    const direct = await this.provider.direct().catch(() => null);
+    return Boolean(direct && (await direct.catalogue.indexedAt(type).catch(() => null)));
   }
 
   /**
@@ -1016,12 +1038,6 @@ export class XtreamService {
     return refreshed;
   }
 
-  /**
-   * What this device's catalogue already holds for a search, without indexing
-   * anything first -- for "Popular now" (PopularService), which must never be
-   * the reason a whole library is downloaded. Empty where nothing is held;
-   * a locked or hidden category's titles are left out, as in any search.
-   */
   /** Whose library this device reads, for caches of what was found in it; '' without one. */
   async libraryOwner(): Promise<string> {
     return (await this.provider.direct().catch(() => null))?.providerUsername ?? '';

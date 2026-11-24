@@ -1,4 +1,5 @@
 import { ActivityComponent } from '../activity/activity.component';
+import { UpdateBarsComponent } from '../update-bars/update-bars.component';
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, inject, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map } from 'rxjs/operators';
@@ -22,8 +23,6 @@ import { ThemeService } from '../../services/theme.service';
 import { AccountService } from '../../services/account.service';
 import { GuideSourcesService } from '../../services/guide-sources.service';
 import { GuideReloadService } from '../../services/guide-reload.service';
-import { DesktopUpdateService } from '../../services/desktop-update.service';
-import { AppUpdateService } from '../../services/app-update.service';
 import { WebUpdateService } from '../../services/web-update.service';
 
 import { DESTINATIONS, SECTIONS } from '../../utils/navigation.utils';
@@ -53,7 +52,7 @@ import { TvintoMarkComponent } from '../../ui/tvinto-mark.component';
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [TPipe, RouterOutlet, RouterLink, RouterLinkActive, NgIcon, HlmButton, HlmInput, NgTemplateOutlet, TvintoMarkComponent, ActivityComponent],
+  imports: [TPipe, RouterOutlet, RouterLink, RouterLinkActive, NgIcon, HlmButton, HlmInput, NgTemplateOutlet, TvintoMarkComponent, ActivityComponent, UpdateBarsComponent],
   providers: [
     provideIcons({
       lucideClapperboard,
@@ -85,8 +84,6 @@ export class ShellComponent {
     // Here because the shell exists exactly while somebody is signed in, which
     // is when there are guides to keep from running out.
     inject(GuideReloadService).start();
-    this.update.start();
-    this.appUpdate.start();
 
     // The family's background work: this device saying it is in use, for
     // "Who's watching?"; and, a little after start so it does not compete
@@ -113,8 +110,6 @@ export class ShellComponent {
     document.addEventListener('keydown', this.onSearchKey);
     inject(DestroyRef).onDestroy(() => document.removeEventListener('keydown', this.onSearchKey));
   }
-
-  readonly update = inject(DesktopUpdateService);
 
   readonly profiles = inject(FamilyProfilesService);
   private readonly panel = inject(ChoicePanelService);
@@ -160,9 +155,6 @@ export class ShellComponent {
     }
   }
   private readonly family = inject(FamilyService);
-
-  /** A newer Android app, offered for download. */
-  readonly appUpdate = inject(AppUpdateService);
 
   /** This app's own code updating over the air, and restarting into it. */
   readonly webUpdate = inject(WebUpdateService);

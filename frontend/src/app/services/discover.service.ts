@@ -86,7 +86,12 @@ export class DiscoverService {
         continue;
       }
       try {
-        fresh.counts[genre.id] = (await this.popular.page(kind, 1, `genre-${genre.id}`, false)).found.length;
+        const page = await this.popular.page(kind, 1, `genre-${genre.id}`, false);
+        if (page.incomplete) {
+          // Counted against a library not held whole: not a count to keep for the week.
+          break;
+        }
+        fresh.counts[genre.id] = page.found.length;
         changed = true;
         write(countsKey(kind), fresh);
       } catch {
