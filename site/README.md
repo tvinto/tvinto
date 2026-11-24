@@ -17,7 +17,7 @@ Cloudflare Pages, connected to the GitHub repository:
 the `feed` release (`android-apk.json`, `latest.yml`) and cached for a minute.
 If the feed cannot be read they send people to the releases page instead. The
 TV's Downloader code points at `/android`, so that address must not change.
-The code itself is written once, in `index.html` (the `close__code` element, a placeholder `00000` until it is registered).
+The code is 4827240 (aftv.news/4827240, registered 24 November 2026, pointing at https://tvinto.app/android; it cannot be changed), written once in `index.html` (the `close__code` element).
 
 `_headers` sets caching and security headers.
 
