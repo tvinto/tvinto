@@ -424,8 +424,25 @@ const series = [
   youtube_trailer: '', episode_run_time: '50', category_id: i === 2 ? '22' : '21'
 }));
 
+/**
+ * --pad <films>: that many made-up films more, and a fifth as many shows, in
+ * a hundred categories of each, so a library as large as a real
+ * subscription's can be timed (25 November).
+ */
+const PAD = process.argv.includes('--pad') ? Number(process.argv[process.argv.indexOf('--pad') + 1]) : 0;
+for (let c = 0; PAD && c < 100; c++) {
+  vodCategories.push({ category_id: String(5000 + c), category_name: `Filler films ${c + 1}`, parent_id: 0 });
+  seriesCategories.push({ category_id: String(6000 + c), category_name: `Filler shows ${c + 1}`, parent_id: 0 });
+}
+for (let i = 0; i < PAD; i++) {
+  vod.push({ num: vod.length + 1, name: `Filler Film ${i + 1} (${1950 + (i % 76)})`, stream_type: 'movie', stream_id: 100000 + i, stream_icon: ART, rating: '6', added, category_id: String(5000 + (i % 100)), container_extension: 'mkv' });
+}
+for (let i = 0; i < PAD / 5; i++) {
+  series.push({ name: `Filler Show ${i + 1}`, seasons: 1, episodes: 2, num: series.length + 1, series_id: 500000 + i, cover: ART, plot: '', cast: '', director: '', genre: 'Drama', releaseDate: '2020-01-01', last_modified: added, rating: '6', rating_5based: 3, backdrop_path: [], youtube_trailer: '', episode_run_time: '50', category_id: String(6000 + (i % 100)) });
+}
+
 const DEMO = process.argv.includes('--demo') ? require('./demo-catalogue') : null;
-const data = DEMO ?? { liveCategories, live, vodCategories, vod, seriesCategories, series };
+const data =DEMO ?? { liveCategories, live, vodCategories, vod, seriesCategories, series };
 
 const seriesInfo = id => {
   const show = data.series.find(entry => String(entry.series_id) === String(id));

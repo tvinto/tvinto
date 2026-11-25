@@ -78,7 +78,7 @@ interface KeptPage {
   key: string;
   at: number;
   library: string;
-  /** When the library it was matched against was downloaded (XtreamService.libraryAt): a later download makes it stale. */
+  /** When the library it was matched against was downloaded (XtreamService.libraryAt); one without it was not matched against the library held whole, and is never used. */
   libraryAt?: string;
   page: PopularPage;
 }
@@ -209,9 +209,10 @@ export class PopularService {
    */
   async mixed(limit = 10): Promise<Popular[]> {
     const library = await this.xtream.libraryOwner();
+    // Kept, before anything is read from the database: a read waits its
+    // turn behind a library download's writes (card 35, 25 November).
     const last = this.lastRow(library, limit);
-    const libraries = await this.rowLibraries();
-    if (last && Date.now() - last.at < KEEP_MS && libraries && last.libraryAt === libraries) {
+    if (last && Date.now() - last.at < KEEP_MS) {
       return this.stillAllowed(last.found);
     }
     const [films, shows] = [await this.popular('movie', limit), await this.popular('tv', limit)];
@@ -268,11 +269,13 @@ export class PopularService {
    */
   async page(kind: TmdbKind, page: number, which: TmdbList = 'trending', remember = true): Promise<PopularPage> {
     const library = await this.xtream.libraryOwner();
-    let libraryAt = await this.libraryAt(kind);
-    const kept = this.keptPage(library, kind, which, page, { maxAge: KEEP_MS, libraryAt });
+    // Kept, before anything is read from the database: Movies and Back
+    // waited behind a library download's writes for pages already matched (card 35).
+    const kept = this.keptPage(library, kind, which, page, KEEP_MS);
     if (kept) {
       return kept;
     }
+    let libraryAt = await this.libraryAt(kind);
     const list = await this.listPage(kind, which, page);
     if (!list) {
       return { found: [], checked: 0, pages: 0 };
@@ -320,16 +323,18 @@ export class PopularService {
 
   /**
    * A page matched before for this library, with what the parental lock
-   * still lets through. Only one matched against the library held whole;
-   * `fresh`, no older than its `maxAge` and against the very download held now.
+   * still lets through. Only one matched against the library held whole,
+   * no older than `maxAge`. A later download does not make it stale: that
+   * made every page match again after the daily refresh, and Back to Movies
+   * waited for all of them (card 35, 25 November).
    */
-  private keptPage(library: string, kind: TmdbKind, list: TmdbList, page: number, fresh?: { maxAge: number; libraryAt: string | null }): PopularPage | null {
+  private keptPage(library: string, kind: TmdbKind, list: TmdbList, page: number, maxAge = Infinity): PopularPage | null {
     const key = pageKey(kind, list, page);
     const kept = this.matched.get(key) ?? this.onDevice().find(entry => entry.key === key);
     if (!kept?.libraryAt || kept.library !== library) {
       return null;
     }
-    if (fresh && (Date.now() - kept.at >= fresh.maxAge || kept.libraryAt !== fresh.libraryAt)) {
+    if (Date.now() - kept.at >= maxAge) {
       return null;
     }
     return { ...kept.page, found: this.stillAllowed(kept.page.found) };

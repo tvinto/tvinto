@@ -62,7 +62,7 @@ describe('DiscoverService', () => {
     expect(asked.genres).toBe(1);
   });
 
-  it("counts made before the library was last downloaded count for nothing, an empty library's above all (24 November)", async () => {
+  it("counts made without the library held whole count for nothing, an empty library's above all (24 November)", async () => {
     // What 1.0.130 kept: counted on an empty library, no library time, fresh for a week.
     localStorage.setItem('xtream_tmdb_genre_counts_movie', JSON.stringify({ at: Date.now(), counts: { 28: 0, 35: 1, 80: 0 } }));
     const { discover } = setup({ 28: 9, 35: 2, 80: 6 });
@@ -70,10 +70,10 @@ describe('DiscoverService', () => {
     expect(await discover.countGenres('movie', () => false)).toBe(true);
     expect((await discover.offered('movie')).map(genre => genre.name)).toEqual(['Action', 'Crime']);
 
-    // The library downloaded again: the counts are of the one before, so every genre until counted anew.
+    // The library downloaded again: the week's counts stand, with nothing counted again (card 35).
     libraryAt = '2026-11-26T10:00:00Z';
-    expect((await discover.offered('movie')).map(genre => genre.name)).toEqual(['Action', 'Comedy', 'Crime']);
-    expect(await discover.countGenres('movie', () => false)).toBe(true);
+    expect((await discover.offered('movie')).map(genre => genre.name)).toEqual(['Action', 'Crime']);
+    expect(await discover.countGenres('movie', () => false)).toBe(false);
 
     // And none kept while the library is not held whole.
     libraryAt = null;

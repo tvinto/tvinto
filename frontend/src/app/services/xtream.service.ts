@@ -842,9 +842,10 @@ export class XtreamService {
 
   private async fetchNeverHeld(type: StreamType): Promise<boolean> {
     const direct = await this.provider.direct().catch(() => null);
-    // One already on its way (the start-up download, say) is waited for, not begun again.
-    const running = this.indexRunning.get(type);
-    if (!direct || this.nativePlayer.active() || (!running && (await direct.catalogue.indexedAt(type)))) {
+    // A library held at all is not waited for, even while a refresh of it is
+    // on its way: a film page joined the start-up refresh and opened again
+    // only once it ended (card 35, 25 November).
+    if (!direct || this.nativePlayer.active() || (await direct.catalogue.indexedAt(type))) {
       return false;
     }
     await this.runIndex(direct, type).catch(() => {
@@ -896,7 +897,8 @@ export class XtreamService {
     if (running) {
       return running;
     }
-    const turn = this.indexLane.then(() => this.guideQuiet()).then(() => this.downloadIndex(direct, type, force, onlyTag));
+    // Not behind a guide download: a page waiting on one waited minutes (card 35).
+    const turn = this.indexLane.then(() => this.downloadIndex(direct, type, force, onlyTag));
     this.indexLane = turn.catch(() => undefined);
     if (plain) {
       this.indexRunning.set(type, turn);
@@ -908,20 +910,6 @@ export class XtreamService {
 
   private indexLane: Promise<unknown> = Promise.resolve();
 
-  /**
-   * Until no guide has been downloading for a moment: a guide is a whole
-   * download from the provider too. Adding a provider starts its guide and
-   * For You's request for the film library in the same few milliseconds, so
-   * a single look raced it (25 November).
-   */
-  private async guideQuiet(): Promise<void> {
-    do {
-      await new Promise(resolve => setTimeout(resolve, this.guideSettleMs));
-    } while (this.guide.isLoading());
-  }
-
-  /** How long the guide must have been quiet; a field so a test need not wait. */
-  guideSettleMs = 2_000;
   private readonly indexRunning = new Map<StreamType, Promise<number>>();
 
   private async downloadIndex(direct: DirectProvider, type: StreamType, force: boolean, onlyTag?: string): Promise<number> {

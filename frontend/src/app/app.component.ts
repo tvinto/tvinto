@@ -136,8 +136,11 @@ export class AppComponent {
 
     // The film and show libraries from the start, not when Movies is first
     // opened: TMDB's rows, the genre pills and For You all match against
-    // them (utils/library-refresh.utils.ts). Fifteen seconds in and five
-    // after the last press, never beside a stream or a guide download.
+    // them (utils/library-refresh.utils.ts). A minute in and half a minute
+    // after the last press, never beside a stream or a guide download: while
+    // a library is written every database read waits longer, and fifteen
+    // seconds in it fell on the person opening Movies (card 35, 25 November).
+    // A page that needs a library never held downloads it itself.
     const nativePlayer = inject(NativePlayerService);
     const guide = inject(GuideService);
     const recordings = inject(RecordingsService);
@@ -151,7 +154,7 @@ export class AppComponent {
       recordings.running().length > 0 ||
       Array.from(document.querySelectorAll('video')).some(video => !!video.currentSrc && !video.ended);
     void keepLibrariesFresh({
-      quiet: () => whenQuiet({ afterStartMs: 15_000, idleMs: 5_000, checkEveryMs: 5_000, now: () => performance.now(), lastInput, stopped: () => false, wait }),
+      quiet: () => whenQuiet({ afterStartMs: 60_000, idleMs: 30_000, checkEveryMs: 5_000, now: () => performance.now(), lastInput, stopped: () => false, wait }),
       busy,
       refresh: async () => {
         if (!(await provider.direct())) {

@@ -32,12 +32,14 @@ const stream = (id: number, name: string): Stream => ({ stream_id: String(id), n
 describe('PopularService', () => {
   let tmdbAsked: string[];
   let searched: string[];
+  let libraryLooks = 0;
   let fetched: string[];
 
   /** TMDB's list, films and shows apart, twenty -- here two -- to a page. */
   const setup = (options: { trending?: TmdbTrending[]; held?: Record<string, Stream[]>; key?: boolean; perPage?: number; failFrom?: number; locked?: string[]; whole?: boolean; arrives?: boolean; libraryAt?: string } = {}) => {
     tmdbAsked = [];
     searched = [];
+    libraryLooks = 0;
     fetched = [];
     // A library held whole unless a test says otherwise; `arrives` when downloading it works.
     let whole = options.whole ?? true;
@@ -71,7 +73,7 @@ describe('PopularService', () => {
                 })
               ),
             libraryOwner: async () => 'owner',
-            libraryAt: async () => (whole ? (options.libraryAt ?? 'T1') : null),
+            libraryAt: async () => (libraryLooks++, whole ? (options.libraryAt ?? 'T1') : null),
             fetchLibraryIfNeverHeld: async (type: string) => {
               fetched.push(type);
               whole = options.arrives ?? false;
@@ -233,18 +235,19 @@ describe('PopularService', () => {
     expect((await later.mixed()).map(entry => entry.item.title)).toEqual(['Hope', 'Severance']);
   });
 
-  it('takes a page or a row matched before the last library download as stale, while still showing it as the last', async () => {
+  it('keeps a page or a row matched against the library held whole across a later download, read with no database look (card 35)', async () => {
     const titles = [trend('movie', 1, 'Hope', '2026'), trend('tv', 2, 'Severance', '2022')];
     const held = { 'vod:Hope': [stream(1, 'Hope')], 'series:Severance': [stream(3, 'Severance')] };
-    await setup({ trending: titles, held, libraryAt: 'T1' }).mixed();
+    const first = setup({ trending: titles, held, libraryAt: 'T1' });
+    await first.mixed();
+    await first.page('movie', 1);
 
-    // The libraries downloaded again within the day: worked out anew.
+    // The libraries downloaded again within the day: Back to Movies matched every page again behind it.
     const after = setup({ trending: titles, held, libraryAt: 'T2' });
-    expect((await after.lastMixed())?.map(entry => entry.item.title)).toEqual(['Hope', 'Severance']);
-    expect((await after.lastPopular('movie'))?.map(entry => entry.item.title)).toEqual(['Hope']);
     expect((await after.mixed()).map(entry => entry.item.title)).toEqual(['Hope', 'Severance']);
-    expect(searched).toEqual(['vod:Hope', 'series:Severance']);
-    expect(JSON.parse(localStorage.getItem('xtream_popular_row')!).libraryAt).toBe('T2|T2');
+    expect((await after.page('movie', 1)).found.map(entry => entry.item.title)).toEqual(['Hope']);
+    expect(searched).toEqual([]);
+    expect(libraryLooks).toBe(0);
   });
 
   it('throws away once what versions before 25 November kept, the "none" of an empty library among it', async () => {

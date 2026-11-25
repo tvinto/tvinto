@@ -105,12 +105,14 @@ export class DiscoverService {
   }
 
   /**
-   * The counts made against the library held now; none from before its last
-   * download, which is what an empty library's counts were (24 November).
+   * The counts made against the library held whole; none made without it,
+   * and none while it is not, which is what an empty library's counts were
+   * (24 November). Kept across the daily refresh: recounting after every
+   * download kept Movies matching behind it (card 35, 25 November).
    */
   private countsFor(kind: TmdbKind, libraryAt: string | null): Counts | null {
     const kept = read<Counts>(countsKey(kind));
-    return kept && libraryAt && kept.libraryAt === libraryAt ? kept : null;
+    return kept?.libraryAt && libraryAt ? kept : null;
   }
 
   /**

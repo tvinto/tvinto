@@ -29,7 +29,7 @@ describe('XtreamService library downloads', () => {
     let most = 0;
     const catalogue = {
       indexedAt: async (type: StreamType) => indexed.get(type) ?? null,
-      indexIsFresh: async (type: StreamType) => indexed.has(type),
+      indexIsFresh: async (type: StreamType) => Date.now() - Date.parse(indexed.get(type) ?? '') < 86_400_000,
       index: async (type: StreamType) => {
         open++;
         most = Math.max(most, open);
@@ -58,8 +58,7 @@ describe('XtreamService library downloads', () => {
       ]
     });
     const xtream = TestBed.inject(XtreamService);
-    xtream.guideSettleMs = 1;
-    return { xtream, log, most: () => most };
+    return { xtream, log, most: () => most, indexed };
   };
 
   it('downloads each library once and never two at once, whoever asks', async () => {
@@ -75,14 +74,20 @@ describe('XtreamService library downloads', () => {
     expect(await xtream.libraryAt('vod')).toEqual(expect.any(String));
   });
 
-  it('waits for a guide download to end first: the provider allows one connection', async () => {
+  it('does not wait for a guide download: what a page needs never waits on one (card 35)', async () => {
     const { xtream, log } = setup();
     guideLoading = true;
-    const films = xtream.fetchLibraryIfNeverHeld('vod');
-    await new Promise(resolve => setTimeout(resolve, 30));
-    expect(log).toEqual([]);
+    expect(await xtream.fetchLibraryIfNeverHeld('vod')).toBe(true);
+    expect(log).toEqual(['vod']);
     guideLoading = false;
-    expect(await films).toBe(true);
+  });
+
+  it('leaves a library held at all to its refresh: a film page does not wait for it (card 35)', async () => {
+    const { xtream, log, indexed } = setup();
+    indexed.set('vod', '2026-11-20T10:00:00.000Z');
+    const refresh = xtream.refreshLibrariesIfStale(['vod']);
+    expect(await xtream.fetchLibraryIfNeverHeld('vod')).toBe(false);
+    await refresh;
     expect(log).toEqual(['vod']);
   });
 });
