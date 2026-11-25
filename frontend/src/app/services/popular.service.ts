@@ -144,9 +144,28 @@ export class PopularService {
   /** Every page matched this launch; the device keeps the first few of each list (PAGES_KEY). */
   private readonly matched = new Map<string, KeptPage>();
   private keptPages: KeptPage[] | null = null;
+  /**
+   * What each page of TMDB rows last showed, by page ('discover:movie',
+   * 'for-you', 'list:movie:top'), and whose library. A page is made afresh
+   * when Back returns to it, and showed nothing until it had read the
+   * categories from the database -- behind the film page's searches of the
+   * library, 11 to 14 s on the owner's TV (card 39).
+   */
+  private readonly shown = new Map<string, { library: string; value: unknown }>();
 
   constructor() {
     discardAnswersFromBefore();
+  }
+
+  /** Keeps what a page shows now, for this launch. */
+  keepShown(page: string, library: string, value: unknown): void {
+    this.shown.set(page, { library, value });
+  }
+
+  /** What a page last showed for this library; null if nothing, or another library's. */
+  lastShown<T>(page: string, library: string): T | null {
+    const kept = this.shown.get(page);
+    return kept?.library === library ? (kept.value as T) : null;
   }
 
   /** When this kind's library was last downloaded whole; null while it is not held whole. */

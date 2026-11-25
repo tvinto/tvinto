@@ -18,7 +18,7 @@ import { TPipe } from '../../pipes/t.pipe';
 import { t } from '../../utils/i18n';
 import { AgeCoverComponent } from '../age-cover/age-cover.component';
 import { ItemActionsComponent } from '../item-actions/item-actions.component';
-import { CategoryNames, PopularCard, categoryNames, openFilm, openShow, openVersion, popularCard, versionActions } from '../for-you/popular-cards';
+import { CategoryNames, PopularCard, categoryNames, openFilm, openShow, openVersion, popularCard, sameCards, stillAllowed, versionActions } from '../for-you/popular-cards';
 
 /** A row of titles from one of TMDB's lists, with where its full list is. */
 interface DiscoverRow {
@@ -72,6 +72,8 @@ export class DiscoverComponent {
   private names: CategoryNames | null = null;
   /** The lists in the order their rows stand, whichever is matched first. */
   private order: string[] = [];
+  /** Whose library the rows are from (XtreamService.libraryOwner). */
+  private library = '';
   private gone = false;
 
   constructor() {
@@ -102,12 +104,29 @@ export class DiscoverComponent {
   }
 
   private async load(kind: TmdbKind): Promise<void> {
-    this.rows.set([]);
+    // The rows as this page last showed them, at once (card 39); then each
+    // is worked out again below and replaced only where it changed.
+    const library = await this.xtream.libraryOwner();
+    if (this.gone || this.kind() !== kind) {
+      return;
+    }
+    this.library = library;
+    const kept = this.popular.lastShown<{ rows: DiscoverRow[]; order: string[] }>(`discover:${kind}`, this.library);
+    this.order = kept?.order ?? [];
+    this.rows.set((kept?.rows ?? []).map(row => ({ ...row, cards: stillAllowed(this.xtream, row.cards) })).filter(row => row.cards.length));
+    if (this.rows().length) {
+      this.state.emit('rows');
+    }
     if (!(await this.tmdb.client())) {
+      this.rows.set([]);
       this.state.emit('none');
       return;
     }
-    this.names ??= await categoryNames(this.xtream);
+    // Which category each copy is in, read from the database, waits behind
+    // any search of the library still running there: on the owner's TV, after
+    // a few film pages, over a minute (card 39). The rows go up first with the
+    // names kept from earlier in the launch, and are put right in place after.
+    this.names = this.popular.lastShown<CategoryNames>('category-names', library) ?? { vod: new Map(), series: new Map() };
     const lists: [string, string][] = [
       ['popular', t('discover.popular')],
       ['trending', t('discover.trending')],
@@ -119,6 +138,8 @@ export class DiscoverComponent {
     for (const [list, title] of lists) {
       await this.showLast(kind, list, title, '');
     }
+    this.names = await categoryNames(this.xtream);
+    this.popular.keepShown('category-names', library, this.names);
     for (const [list, title] of lists) {
       if (this.gone || this.kind() !== kind) {
         return;
@@ -135,7 +156,10 @@ export class DiscoverComponent {
       .filter(genre => genre !== undefined);
     this.order = [...lists.map(([list]) => list), ...watched.map(genre => `genre-${genre.id}`)];
     // Rows for genres no longer watched most go, now that it is known which are.
-    this.rows.update(rows => rows.filter(row => this.order.includes(row.list)));
+    if (this.rows().some(row => !this.order.includes(row.list))) {
+      this.rows.update(rows => rows.filter(row => this.order.includes(row.list)));
+    }
+    this.keep(kind);
     for (const genre of watched) {
       if (this.gone || this.kind() !== kind) {
         return;
@@ -173,9 +197,17 @@ export class DiscoverComponent {
 
   /** In its place among the others, whichever was matched first; the page hears that there are rows. */
   private place(row: DiscoverRow): void {
-    const at = (one: DiscoverRow) => this.order.indexOf(one.list);
-    this.rows.update(rows => [...rows.filter(one => one.list !== row.list), row].sort((a, b) => at(a) - at(b)));
+    const had = this.rows().find(one => one.list === row.list);
+    if (!had || had.title !== row.title || had.note !== row.note || !sameCards(had.cards, row.cards)) {
+      const at = (one: DiscoverRow) => this.order.indexOf(one.list);
+      this.rows.update(rows => [...rows.filter(one => one.list !== row.list), row].sort((a, b) => at(a) - at(b)));
+      this.keep(this.kind());
+    }
     this.state.emit('rows');
+  }
+
+  private keep(kind: TmdbKind): void {
+    this.popular.keepShown(`discover:${kind}`, this.library, { rows: this.rows(), order: this.order });
   }
 
   /** What the spotlight looks the card up by: the copy Play would choose, which is what a film's or show's own page reads. */

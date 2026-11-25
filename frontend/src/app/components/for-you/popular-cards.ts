@@ -40,6 +40,21 @@ export async function categoryNames(xtream: XtreamService): Promise<CategoryName
   return { vod, series };
 }
 
+/** Cards kept from earlier (PopularService.lastShown), with only the copies the parental lock still lets through. */
+export function stillAllowed(xtream: XtreamService, cards: readonly PopularCard[]): PopularCard[] {
+  return cards.flatMap(card => {
+    const keep = card.versions.map(stream => xtream.allowed(card.type, stream));
+    const versions = card.versions.filter((_, index) => keep[index]);
+    return versions.length ? [{ ...card, versions, categories: card.categories.filter((_, index) => keep[index]) }] : [];
+  });
+}
+
+/** Whether two rows show the same cards, copies and all: then nothing on screen needs to change. */
+export function sameCards(a: readonly PopularCard[], b: readonly PopularCard[]): boolean {
+  const sign = (cards: readonly PopularCard[]) => cards.map(card => `${card.item.id}:${card.poster}:${card.categories.join('|')}:${card.versions.map(stream => stream.stream_id).join(',')}`).join(';');
+  return a.length === b.length && sign(a) === sign(b);
+}
+
 /** A card, its copies in the order Play tries them (TV-28): your languages, the best picture, cinema recordings last. */
 export function popularCard(entry: Popular, names: CategoryNames): PopularCard {
   const copies = orderCopies(

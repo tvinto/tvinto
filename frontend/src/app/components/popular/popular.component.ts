@@ -20,7 +20,7 @@ import { AgeLockService } from '../../services/age-lock.service';
 import { ParentalLockService } from '../../services/parental-lock.service';
 import { AgeCoverComponent } from '../age-cover/age-cover.component';
 import { TMDB_LOGO } from '../description-settings/description-settings.component';
-import { CategoryNames, PopularCard, categoryNames, openFilm, openShow, openVersion, popularCard, versionActions } from '../for-you/popular-cards';
+import { CategoryNames, PopularCard, categoryNames, openFilm, openShow, openVersion, popularCard, stillAllowed, versionActions } from '../for-you/popular-cards';
 import { ShowService } from '../../services/show.service';
 
 /** What one round of reading looks for before it stops to show it: about a row. */
@@ -132,7 +132,7 @@ export class PopularComponent implements AfterViewInit, OnDestroy {
         this.checked.set(0);
         this.failed.set(false);
         this.incomplete.set(false);
-        void this.loadOn();
+        void this.openList(this.kind(), this.list());
       });
     // A library that has just loaded, wherever it was asked for, is what an incomplete list was waiting for.
     let indexing = this.xtream.indexing();
@@ -160,6 +160,33 @@ export class PopularComponent implements AfterViewInit, OnDestroy {
   }
 
   private observer: IntersectionObserver | null = null;
+  /** Whose library the cards are from (XtreamService.libraryOwner). */
+  private library = '';
+
+  /**
+   * The list as this page last showed it, at once, when Back returns to it
+   * (card 39): the page is made afresh, and its first cards waited for the
+   * categories from the database, behind the film page's searches.
+   */
+  private async openList(kind: TmdbKind, list: string): Promise<void> {
+    const library = await this.xtream.libraryOwner();
+    if (this.gone || kind !== this.kind() || list !== this.list()) {
+      return;
+    }
+    this.library = library;
+    const kept = this.popular.lastShown<{ cards: PopularCard[]; pages: number | null; read: number; checked: number }>(`list:${kind}:${list}`, library);
+    if (!kept) {
+      return this.loadOn();
+    }
+    this.cards.set(stillAllowed(this.xtream, kept.cards));
+    this.pages.set(kept.pages);
+    this.read.set(kept.read);
+    this.checked.set(kept.checked);
+    if (this.cards().length && this.tv.isTelevision()) {
+      this.landed = true;
+      this.focusFirstIfUnmoved();
+    }
+  }
 
   ngOnDestroy(): void {
     this.observer?.disconnect();
@@ -225,6 +252,9 @@ export class PopularComponent implements AfterViewInit, OnDestroy {
       });
     } finally {
       this.working.set(false);
+    }
+    if (!this.failed() && !this.incomplete() && kind === this.kind() && list === this.list()) {
+      this.popular.keepShown(`list:${kind}:${list}`, this.library, { cards: this.cards(), pages: this.pages(), read: this.read(), checked: this.checked() });
     }
     if (!this.gone && this.footInSight()) {
       setTimeout(() => void this.loadOn());

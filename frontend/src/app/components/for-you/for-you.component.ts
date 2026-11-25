@@ -35,7 +35,7 @@ import { TPipe } from '../../pipes/t.pipe';
 import { ChannelMonogramPipe, ChannelTagsPipe, ChannelTitlePipe, PosterTitlePipe } from '../../pipes/format.pipes';
 import { PopularService } from '../../services/popular.service';
 import { TmdbService } from '../../services/tmdb.service';
-import { PopularCard, categoryNames, openFilm, openShow, openVersion, popularCard, versionActions } from './popular-cards';
+import { PopularCard, categoryNames, openFilm, openShow, openVersion, popularCard, sameCards, stillAllowed, versionActions } from './popular-cards';
 import { ShowService, localToday } from '../../services/show.service';
 import { AgeLockService } from '../../services/age-lock.service';
 import { ParentalLockService } from '../../services/parental-lock.service';
@@ -289,18 +289,31 @@ export class ForYouComponent {
     try {
       // A first visit with a key holds the row's place too: on a new device
       // the libraries are still downloading, and the row waits for them.
+      // The row as this page last showed it, at once: For You is made afresh
+      // on Back, and the categories below are read from the database (card 39).
+      const library = await this.xtream.libraryOwner();
+      const shown = this.popularService.lastShown<PopularCard[]>('for-you', library);
+      if (shown && !this.popular().length) {
+        this.popular.set(stillAllowed(this.xtream, shown));
+      }
       if (!this.popular().length && (await this.tmdbKeys.client())) {
         this.popularLoading.set(true);
       }
+      const show = (cards: PopularCard[]) => {
+        if (!sameCards(this.popular(), cards)) {
+          this.popular.set(cards);
+        }
+        this.popularService.keepShown('for-you', library, cards);
+      };
       const names = await categoryNames(this.xtream);
       // Yesterday's row at once, while today's is worked out.
-      const last = await this.popularService.lastMixed(10);
+      const last = shown ? null : await this.popularService.lastMixed(10);
       if (last?.length) {
-        this.popular.set(last.map(entry => popularCard(entry, names)));
+        show(last.map(entry => popularCard(entry, names)));
         this.popularLoading.set(false);
       }
       const found = await this.popularService.mixed(10);
-      this.popular.set(found.map(entry => popularCard(entry, names)));
+      show(found.map(entry => popularCard(entry, names)));
     } finally {
       this.popularLoading.set(false);
     }
