@@ -7,11 +7,7 @@ import { BackButtonService } from './services/back-button.service';
 import { PlaceMemoryService } from './services/place-memory.service';
 import { ToolRequestsService } from './services/tool-requests.service';
 import { LocalToolService } from './services/local-tool.service';
-import { lastInput, whenQuiet } from './utils/quiet.utils';
-import { keepLibrariesFresh } from './utils/library-refresh.utils';
-import { GuideService } from './services/guide.service';
-import { RecordingsService } from './services/recordings.service';
-import { ProviderAccessService } from './services/provider-access.service';
+import { lastInput } from './utils/quiet.utils';
 import { DisplaySizeService } from './services/display-size.service';
 import { LanguageService } from './services/language.service';
 import { LanguagesService } from './services/languages.service';
@@ -113,7 +109,7 @@ export class AppComponent {
 
     // From the start, so a stream the full player hands back always finds
     // someone listening, and one left on the screen by a reload is closed.
-    const preview = inject(ChannelPreviewService);
+    inject(ChannelPreviewService);
 
     // Back arrives on the card it left from, where it was on screen.
     inject(PlaceMemoryService).install();
@@ -133,36 +129,6 @@ export class AppComponent {
     // Heard from the start, so work waiting for a quiet moment knows when the
     // remote was last used (utils/quiet.utils.ts).
     lastInput();
-
-    // The film and show libraries from the start, not when Movies is first
-    // opened: TMDB's rows, the genre pills and For You all match against
-    // them (utils/library-refresh.utils.ts). Fifteen seconds in and five
-    // after the last press, never beside a stream or a guide download.
-    const nativePlayer = inject(NativePlayerService);
-    const guide = inject(GuideService);
-    const recordings = inject(RecordingsService);
-    const provider = inject(ProviderAccessService);
-    const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
-    const busy = () =>
-      nativePlayer.active() ||
-      preview.state() === 'opening' ||
-      preview.state() === 'playing' ||
-      guide.isLoading() ||
-      recordings.running().length > 0 ||
-      Array.from(document.querySelectorAll('video')).some(video => !!video.currentSrc && !video.ended);
-    void keepLibrariesFresh({
-      quiet: () => whenQuiet({ afterStartMs: 15_000, idleMs: 5_000, checkEveryMs: 5_000, now: () => performance.now(), lastInput, stopped: () => false, wait }),
-      busy,
-      refresh: async () => {
-        if (!(await provider.direct())) {
-          return false;
-        }
-        await xtream.refreshLibrariesIfStale(['vod', 'series'], busy);
-        return !busy();
-      },
-      wait,
-      stopped: () => false
-    });
 
     // A new screen on a television starts with something focused, or the
     // first press of the D-pad has nothing to move from.

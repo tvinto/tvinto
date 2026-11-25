@@ -1,3 +1,4 @@
+import { lastInput, whenQuiet } from '../../utils/quiet.utils';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal, effect, untracked } from '@angular/core';
 import { Router } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
@@ -253,7 +254,28 @@ export class ForYouComponent {
 
     // The minutes left and the meters move; a minute is as fine as they read.
     const tick = setInterval(() => this.now.set(Date.now()), 60_000);
-    inject(DestroyRef).onDestroy(() => clearInterval(tick));
+    let gone = false;
+    inject(DestroyRef).onDestroy(() => {
+      clearInterval(tick);
+      gone = true;
+    });
+
+    // "Recently added" kept new: the film and show libraries refreshed once a
+    // day here, in a quiet moment -- a minute after start and fifteen seconds
+    // after the last press -- so the remote is not kept waiting by it.
+    void whenQuiet({
+      afterStartMs: 60_000,
+      idleMs: 15_000,
+      checkEveryMs: 5_000,
+      now: () => performance.now(),
+      lastInput,
+      stopped: () => gone,
+      wait: ms => new Promise(resolve => setTimeout(resolve, ms))
+    }).then(async quiet => {
+      if (quiet && (await this.xtream.refreshLibrariesIfStale(['vod', 'series'])) && !gone) {
+        this.loadRecentlyAdded();
+      }
+    });
   }
 
   private load(): void {
@@ -287,11 +309,6 @@ export class ForYouComponent {
   /** "Popular this week", each copy with its category for the panel. */
   private async loadPopular(): Promise<void> {
     try {
-      // A first visit with a key holds the row's place too: on a new device
-      // the libraries are still downloading, and the row waits for them.
-      if (!this.popular().length && (await this.tmdbKeys.client())) {
-        this.popularLoading.set(true);
-      }
       const names = await categoryNames(this.xtream);
       // Yesterday's row at once, while today's is worked out.
       const last = await this.popularService.lastMixed(10);
