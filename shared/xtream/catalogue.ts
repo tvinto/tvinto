@@ -257,11 +257,14 @@ export class Catalogue {
    *
    * `onFiled` hears how many categories are written of how many there are,
    * once the download is in: the one part of an index whose length is known.
+   *
+   * `pause` is awaited before each category is written: a background refresh
+   * yields the database to someone using the app (card 38).
    */
-  index(type: StreamType, timeoutMs = INDEX_TIMEOUT_MS, onFiled?: FiledProgress): Promise<number> {
+  index(type: StreamType, timeoutMs = INDEX_TIMEOUT_MS, onFiled?: FiledProgress, pause?: () => Promise<void>): Promise<number> {
     return this.once(type, async () => {
       const all = await this.client.getStreams(type, undefined, timeoutMs);
-      return this.fileLibrary(type, all.map(slim), onFiled);
+      return this.fileLibrary(type, all.map(slim), onFiled, pause);
     });
   }
 
@@ -300,12 +303,14 @@ export class Catalogue {
   indexWith(
     type: StreamType,
     read: (file: (categoryId: string, streams: Stream[]) => Promise<void>) => Promise<number>,
-    onFiled?: FiledProgress
+    onFiled?: FiledProgress,
+    pause?: () => Promise<void>
   ): Promise<number> {
     return this.once(type, async () => {
       const at = this.policy.now().toISOString();
       let filed = 0;
       const count = await read(async (categoryId, streams) => {
+        await pause?.();
         await this.store.writeStreams(type, categoryId, streams);
         await this.store.markFetched(type, categoryId, at);
         onFiled?.(++filed, null);
@@ -325,7 +330,7 @@ export class Catalogue {
     return started;
   }
 
-  private async fileLibrary(type: StreamType, all: Stream[], onFiled?: FiledProgress): Promise<number> {
+  private async fileLibrary(type: StreamType, all: Stream[], onFiled?: FiledProgress, pause?: () => Promise<void>): Promise<number> {
     const at = this.policy.now().toISOString();
 
     const byCategory = new Map<string, Stream[]>();
@@ -343,6 +348,7 @@ export class Catalogue {
     let filed = 0;
     onFiled?.(0, byCategory.size);
     for (const [categoryId, streams] of byCategory) {
+      await pause?.();
       await this.store.writeStreams(type, categoryId, streams);
       await this.store.markFetched(type, categoryId, at);
       onFiled?.(++filed, byCategory.size);

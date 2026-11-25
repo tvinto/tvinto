@@ -30,7 +30,10 @@ describe('XtreamService library downloads', () => {
     const catalogue = {
       indexedAt: async (type: StreamType) => indexed.get(type) ?? null,
       indexIsFresh: async (type: StreamType) => Date.now() - Date.parse(indexed.get(type) ?? '') < 86_400_000,
-      index: async (type: StreamType) => {
+      index: async (type: StreamType, _timeout?: number, _onFiled?: unknown, pause?: () => Promise<void>) => {
+        if (pause) {
+          log.push(`${type} pauses`);
+        }
         open++;
         most = Math.max(most, open);
         log.push(type);
@@ -89,5 +92,12 @@ describe('XtreamService library downloads', () => {
     expect(await xtream.fetchLibraryIfNeverHeld('vod')).toBe(false);
     await refresh;
     expect(log).toEqual(['vod']);
+  });
+
+  it('pauses a refresh only of a library held already: one never held is what a page waits for (card 38)', async () => {
+    const { xtream, log, indexed } = setup();
+    indexed.set('vod', '2026-11-20T10:00:00.000Z');
+    await xtream.refreshLibrariesIfStale(['vod', 'series'], () => false, async () => undefined);
+    expect(log).toEqual(['vod pauses', 'vod', 'series']);
   });
 });

@@ -891,14 +891,14 @@ export class XtreamService {
    * all ask at once (25 November). A plain download of a library already on
    * its way is that same download, not a second one after it.
    */
-  private runIndex(direct: DirectProvider, type: StreamType, force = false, onlyTag?: string): Promise<number> {
+  private runIndex(direct: DirectProvider, type: StreamType, force = false, onlyTag?: string, pause?: () => Promise<void>): Promise<number> {
     const plain = !force && onlyTag === undefined;
     const running = plain ? this.indexRunning.get(type) : undefined;
     if (running) {
       return running;
     }
     // Not behind a guide download: a page waiting on one waited minutes (card 35).
-    const turn = this.indexLane.then(() => this.downloadIndex(direct, type, force, onlyTag));
+    const turn = this.indexLane.then(() => this.downloadIndex(direct, type, force, onlyTag, pause));
     this.indexLane = turn.catch(() => undefined);
     if (plain) {
       this.indexRunning.set(type, turn);
@@ -912,7 +912,8 @@ export class XtreamService {
 
   private readonly indexRunning = new Map<StreamType, Promise<number>>();
 
-  private async downloadIndex(direct: DirectProvider, type: StreamType, force: boolean, onlyTag?: string): Promise<number> {
+  /** `pause`, awaited before each category is written: a background refresh yielding the database to someone using the app. */
+  private async downloadIndex(direct: DirectProvider, type: StreamType, force: boolean, onlyTag?: string, pause?: () => Promise<void>): Promise<number> {
     this.indexing.set(type);
     this.indexProgress.set(null);
     // Shown twice a second at most, as a guide's is: a redraw per category
@@ -951,9 +952,9 @@ export class XtreamService {
             } finally {
               await plugin.discard({ id: downloaded.id }).catch(() => undefined);
             }
-          }, onFiled);
+          }, onFiled, pause);
         } else {
-          count += await slot.catalogue.index(type, undefined, onFiled);
+          count += await slot.catalogue.index(type, undefined, onFiled, pause);
         }
         this.indexProgress.set(null);
       }
@@ -1054,7 +1055,7 @@ export class XtreamService {
    * something plays; a failed try waits an hour. True when anything was
    * indexed, for the caller to read the list again.
    */
-  async refreshLibrariesIfStale(types: StreamType[], busy: () => boolean = () => false): Promise<boolean> {
+  async refreshLibrariesIfStale(types: StreamType[], busy: () => boolean = () => false, pause?: () => Promise<void>): Promise<boolean> {
     const direct = await this.provider.direct().catch(() => null);
     if (!direct) {
       return false;
@@ -1068,7 +1069,10 @@ export class XtreamService {
       }
       this.refreshTried.set(type, Date.now());
       try {
-        refreshed = (await this.runIndex(direct, type)) > 0 || refreshed;
+        // Only a library held already yields: one never held is what a page
+        // joins and waits for (fetchLibraryIfNeverHeld), so it never pauses.
+        const held = Boolean(await direct.catalogue.indexedAt(type));
+        refreshed = (await this.runIndex(direct, type, false, undefined, held ? pause : undefined)) > 0 || refreshed;
       } catch {
         // Without the error: a transport failure can carry the request's
         // address, and for Xtream the address is the credential.

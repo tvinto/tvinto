@@ -8,7 +8,7 @@ import { PlaceMemoryService } from './services/place-memory.service';
 import { ToolRequestsService } from './services/tool-requests.service';
 import { LocalToolService } from './services/local-tool.service';
 import { lastInput, whenQuiet } from './utils/quiet.utils';
-import { keepLibrariesFresh } from './utils/library-refresh.utils';
+import { keepLibrariesFresh, untilIdle } from './utils/library-refresh.utils';
 import { GuideService } from './services/guide.service';
 import { RecordingsService } from './services/recordings.service';
 import { ProviderAccessService } from './services/provider-access.service';
@@ -134,13 +134,14 @@ export class AppComponent {
     // remote was last used (utils/quiet.utils.ts).
     lastInput();
 
-    // The film and show libraries from the start, not when Movies is first
-    // opened: TMDB's rows, the genre pills and For You all match against
+    // The film and show libraries from the start on a device that has never
+    // held them: TMDB's rows, the genre pills and For You all match against
     // them (utils/library-refresh.utils.ts). A minute in and half a minute
-    // after the last press, never beside a stream or a guide download: while
-    // a library is written every database read waits longer, and fifteen
-    // seconds in it fell on the person opening Movies (card 35, 25 November).
-    // A page that needs a library never held downloads it itself.
+    // after the last press, never beside a stream or a guide download. A page
+    // that needs a library never held downloads it itself.
+    // Once held, a library is refreshed only while nobody uses the app, and
+    // stops between writes at the next press: on the owner's TV a refresh
+    // beside someone browsing made every page wait (cards 35 and 38).
     const nativePlayer = inject(NativePlayerService);
     const guide = inject(GuideService);
     const recordings = inject(RecordingsService);
@@ -153,14 +154,19 @@ export class AppComponent {
       guide.isLoading() ||
       recordings.running().length > 0 ||
       Array.from(document.querySelectorAll('video')).some(video => !!video.currentSrc && !video.ended);
+    const idle = () => untilIdle({ hidden: () => document.hidden, now: () => performance.now(), lastInput, busy, wait });
+    const held = async () => (await xtream.libraryHeld('vod')) && (await xtream.libraryHeld('series'));
     void keepLibrariesFresh({
-      quiet: () => whenQuiet({ afterStartMs: 60_000, idleMs: 30_000, checkEveryMs: 5_000, now: () => performance.now(), lastInput, stopped: () => false, wait }),
+      quiet: async () =>
+        (await held().catch(() => false))
+          ? idle().then(() => true)
+          : whenQuiet({ afterStartMs: 60_000, idleMs: 30_000, checkEveryMs: 5_000, now: () => performance.now(), lastInput, stopped: () => false, wait }),
       busy,
       refresh: async () => {
         if (!(await provider.direct())) {
           return false;
         }
-        await xtream.refreshLibrariesIfStale(['vod', 'series'], busy);
+        await xtream.refreshLibrariesIfStale(['vod', 'series'], busy, idle);
         return !busy();
       },
       wait,

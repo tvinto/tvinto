@@ -1,4 +1,4 @@
-import { BUSY_RETRY_MS, LibraryRefreshOptions, RECHECK_MS, SETTLE_MS, keepLibrariesFresh } from './library-refresh.utils';
+import { BUSY_RETRY_MS, IDLE_CHECK_MS, IDLE_MS, LibraryRefreshOptions, RECHECK_MS, SETTLE_MS, idleNow, keepLibrariesFresh, untilIdle } from './library-refresh.utils';
 
 /**
  * The libraries downloaded from the start, at a quiet moment, never beside
@@ -44,5 +44,57 @@ describe('keepLibrariesFresh', () => {
     const events: string[] = [];
     await keepLibrariesFresh({ quiet: async () => false, busy: () => false, refresh: async () => Boolean(events.push('refresh')), wait: async () => undefined, stopped: () => false });
     expect(events).toEqual([]);
+  });
+});
+
+describe('untilIdle', () => {
+  const clock = (inputs: number[], options: { hidden?: boolean[]; busy?: boolean[] } = {}) => {
+    let now = 0;
+    const waits: number[] = [];
+    return {
+      waits,
+      at: () => now,
+      options: {
+        hidden: () => options.hidden?.shift() ?? false,
+        now: () => now,
+        lastInput: () => Math.max(0, ...inputs.filter(at => at <= now)),
+        busy: () => options.busy?.shift() ?? false,
+        wait: async (ms: number) => {
+          waits.push(ms);
+          now += ms;
+        }
+      }
+    };
+  };
+
+  it('goes on at once when nothing has been pressed for the idle time', async () => {
+    const c = clock([0]);
+    c.options.now = () => IDLE_MS;
+    await untilIdle(c.options);
+    expect(c.waits).toEqual([]);
+  });
+
+  it('waits for the idle time after the last press', async () => {
+    const c = clock([0, 10_000]);
+    await untilIdle(c.options);
+    expect(c.at()).toBe(10_000 + IDLE_MS);
+  });
+
+  it('counts the app in the background as idle', async () => {
+    const c = clock([0], { hidden: [true] });
+    await untilIdle(c.options);
+    expect(c.waits).toEqual([]);
+  });
+
+  it('never goes on beside a stream or a guide download, idle or not', async () => {
+    const c = clock([0], { hidden: [true, true, true], busy: [true, true] });
+    await untilIdle(c.options);
+    expect(c.waits).toEqual([IDLE_CHECK_MS, IDLE_CHECK_MS]);
+  });
+
+  it('is idle only past the threshold', () => {
+    const c = clock([0]);
+    c.options.now = () => IDLE_MS - 1;
+    expect(idleNow(c.options)).toBe(false);
   });
 });

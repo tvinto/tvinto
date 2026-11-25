@@ -47,3 +47,43 @@ export async function keepLibrariesFresh(options: LibraryRefreshOptions): Promis
     await options.wait(looked ? RECHECK_MS : BUSY_RETRY_MS);
   }
 }
+
+/**
+ * A library already held is refreshed only while the television is left
+ * alone: on the owner's TV a refresh beside someone browsing made pages wait
+ * on the database (cards 35 and 38). Measured there (25 November): its screen
+ * saver comes after 10 minutes without a press and sends the app to the
+ * background, where Android freezes it about a minute later; the film
+ * refresh needs about 6 minutes. Three minutes leaves room for it, and is
+ * still far longer than anyone reads a page without pressing -- a press
+ * stops it at once anyway. A frozen refresh carries on once the app is back.
+ */
+export const IDLE_MS = 3 * 60_000;
+/** How often a waiting refresh looks whether the person has gone. */
+export const IDLE_CHECK_MS = 1_000;
+
+export interface IdleOptions {
+  /** The app is in the background, minimised or closed behind another. */
+  hidden(): boolean;
+  /** Milliseconds on the same clock as `lastInput`. */
+  now(): number;
+  lastInput(): number;
+  busy(): boolean;
+  wait(ms: number): Promise<void>;
+}
+
+/** Nobody is using the app: hidden, or no press for IDLE_MS; and nothing is playing or downloading a guide. */
+export function idleNow(options: IdleOptions): boolean {
+  return (options.hidden() || options.now() - options.lastInput() >= IDLE_MS) && !options.busy();
+}
+
+/**
+ * Resolves once nobody is using the app. What a refresh awaits before each
+ * write, so a press stops it within one category and it carries on only
+ * once the person has gone again.
+ */
+export async function untilIdle(options: IdleOptions): Promise<void> {
+  while (!idleNow(options)) {
+    await options.wait(IDLE_CHECK_MS);
+  }
+}

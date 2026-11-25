@@ -643,6 +643,33 @@ describe('index', () => {
     expect(await catalogue.indexIsFresh('series')).toBe(true);
   });
 
+  it('writes nothing while paused, and goes on where it stopped (card 38)', async () => {
+    const { store, catalogue } = build();
+    let release: () => void = () => undefined;
+    let paused = 0;
+    const pause = () => {
+      paused++;
+      return paused === 2 ? new Promise<void>(resolve => (release = resolve)) : Promise.resolve();
+    };
+    const indexing = catalogue.indexWith(
+      'series',
+      async file => {
+        await file('30', [{ stream_id: 7, name: 'Taskmaster', category_id: '30' } as never]);
+        await file('31', [{ stream_id: 8, name: 'Novine', category_id: '31' } as never]);
+        return 2;
+      },
+      undefined,
+      pause
+    );
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect((await store.readStreams('series', '30')).map(s => s.name)).toEqual(['Taskmaster']);
+    expect(await store.readStreams('series', '31')).toEqual([]);
+    release();
+    expect(await indexing).toBe(2);
+    expect((await store.readStreams('series', '31')).map(s => s.name)).toEqual(['Novine']);
+    expect(await catalogue.indexIsFresh('series')).toBe(true);
+  });
+
   it('does not count an index that failed as done', async () => {
     const failing = new Catalogue(
       new XtreamClient(
