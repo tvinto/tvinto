@@ -35,7 +35,7 @@ describe('PopularService', () => {
   let fetched: string[];
 
   /** TMDB's list, films and shows apart, twenty -- here two -- to a page. */
-  const setup = (options: { trending?: TmdbTrending[]; held?: Record<string, Stream[]>; key?: boolean; perPage?: number; failFrom?: number; locked?: string[]; whole?: boolean; arrives?: boolean } = {}) => {
+  const setup = (options: { trending?: TmdbTrending[]; held?: Record<string, Stream[]>; key?: boolean; perPage?: number; failFrom?: number; locked?: string[]; whole?: boolean; arrives?: boolean; libraryAt?: string } = {}) => {
     tmdbAsked = [];
     searched = [];
     fetched = [];
@@ -71,7 +71,7 @@ describe('PopularService', () => {
                 })
               ),
             libraryOwner: async () => 'owner',
-            libraryHeld: async () => whole,
+            libraryAt: async () => (whole ? (options.libraryAt ?? 'T1') : null),
             fetchLibraryIfNeverHeld: async (type: string) => {
               fetched.push(type);
               whole = options.arrives ?? false;
@@ -231,6 +231,42 @@ describe('PopularService', () => {
     const later = setup({ trending: titles, held });
     expect((await later.page('movie', 1, 'top')).found.map(entry => entry.item.title)).toEqual(['Hope']);
     expect((await later.mixed()).map(entry => entry.item.title)).toEqual(['Hope', 'Severance']);
+  });
+
+  it('takes a page or a row matched before the last library download as stale, while still showing it as the last', async () => {
+    const titles = [trend('movie', 1, 'Hope', '2026'), trend('tv', 2, 'Severance', '2022')];
+    const held = { 'vod:Hope': [stream(1, 'Hope')], 'series:Severance': [stream(3, 'Severance')] };
+    await setup({ trending: titles, held, libraryAt: 'T1' }).mixed();
+
+    // The libraries downloaded again within the day: worked out anew.
+    const after = setup({ trending: titles, held, libraryAt: 'T2' });
+    expect((await after.lastMixed())?.map(entry => entry.item.title)).toEqual(['Hope', 'Severance']);
+    expect((await after.lastPopular('movie'))?.map(entry => entry.item.title)).toEqual(['Hope']);
+    expect((await after.mixed()).map(entry => entry.item.title)).toEqual(['Hope', 'Severance']);
+    expect(searched).toEqual(['vod:Hope', 'series:Severance']);
+    expect(JSON.parse(localStorage.getItem('xtream_popular_row')!).libraryAt).toBe('T2|T2');
+  });
+
+  it('throws away once what versions before 25 November kept, the "none" of an empty library among it', async () => {
+    const titles = [trend('movie', 1, 'Hope', '2026')];
+    const held = { 'vod:Hope': [stream(1, 'Hope')] };
+    // The shapes 1.0.130 left: every page found=0, fresh, with no library time.
+    const empty = { found: [], checked: 20, pages: 25 };
+    localStorage.setItem('xtream_popular_pages', JSON.stringify([{ key: 'movie:trending:1', at: Date.now(), library: 'owner', page: empty }]));
+    localStorage.setItem('xtream_popular_row', JSON.stringify({ at: Date.now(), library: 'owner', limit: 10, found: [] }));
+    localStorage.setItem('xtream_tmdb_genre_counts_movie', JSON.stringify({ at: Date.now(), counts: { 28: 0 } }));
+    localStorage.setItem('xtream_tmdb_genre_counts_tv', JSON.stringify({ at: Date.now(), counts: { 18: 1 } }));
+
+    const service = setup({ trending: titles, held });
+    for (const key of ['xtream_popular_pages', 'xtream_popular_row', 'xtream_tmdb_genre_counts_movie', 'xtream_tmdb_genre_counts_tv']) {
+      expect(localStorage.getItem(key)).toBeNull();
+    }
+    expect((await service.popular('movie')).map(entry => entry.item.title)).toEqual(['Hope']);
+
+    // Once only: what this version keeps stays.
+    const kept = localStorage.getItem('xtream_popular_pages');
+    setup({ trending: titles, held });
+    expect(localStorage.getItem('xtream_popular_pages')).toBe(kept);
   });
 
   it('looks up a list of titles in one go, each with its own copies', async () => {

@@ -81,6 +81,17 @@ export class DiscoverComponent {
       const kind = this.kind();
       untracked(() => void this.load(kind));
     });
+    // A library that has just arrived is what an empty answer was waiting
+    // for: one worked out while it downloaded (a stream playing, say) is
+    // worked out again, rather than leaving the categories in its place.
+    let indexing = this.xtream.indexing();
+    effect(() => {
+      const now = this.xtream.indexing();
+      if (indexing !== null && now === null && untracked(() => !this.rows().length)) {
+        untracked(() => void this.load(this.kind()));
+      }
+      indexing = now;
+    });
     // Locked posters covered, as on Popular.
     effect(() => {
       const rows = this.rows();
