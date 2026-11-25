@@ -8,7 +8,7 @@ import { PlaceMemoryService } from './services/place-memory.service';
 import { ToolRequestsService } from './services/tool-requests.service';
 import { LocalToolService } from './services/local-tool.service';
 import { lastInput, whenQuiet } from './utils/quiet.utils';
-import { keepLibrariesFresh, untilIdle } from './utils/library-refresh.utils';
+import { idleWork, keepLibrariesFresh, untilIdle } from './utils/library-refresh.utils';
 import { GuideService } from './services/guide.service';
 import { RecordingsService } from './services/recordings.service';
 import { ProviderAccessService } from './services/provider-access.service';
@@ -155,6 +155,8 @@ export class AppComponent {
       recordings.running().length > 0 ||
       Array.from(document.querySelectorAll('video')).some(video => !!video.currentSrc && !video.ended);
     const idle = () => untilIdle({ hidden: () => document.hidden, now: () => performance.now(), lastInput, busy, wait });
+    // And the word index of a library already held (CapacitorCatalogueStore.indexNames).
+    idleWork.until = idle;
     const held = async () => (await xtream.libraryHeld('vod')) && (await xtream.libraryHeld('series'));
     void keepLibrariesFresh({
       quiet: async () =>

@@ -87,3 +87,17 @@ export async function untilIdle(options: IdleOptions): Promise<void> {
     await options.wait(IDLE_CHECK_MS);
   }
 }
+
+/**
+ * `untilIdle` for one-off database work that starts before the app is up --
+ * filling the word index of a library already held (CapacitorCatalogueStore).
+ * AppComponent sets `until`; until then it waits as though somebody were there.
+ */
+export const idleWork: { until?: () => Promise<void> } = {};
+
+export async function untilIdleWork(): Promise<void> {
+  while (!idleWork.until) {
+    await new Promise(resolve => setTimeout(resolve, IDLE_CHECK_MS));
+  }
+  await idleWork.until();
+}

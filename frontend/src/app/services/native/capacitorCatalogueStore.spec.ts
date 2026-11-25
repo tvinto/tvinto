@@ -1,5 +1,6 @@
 import { Stream } from '@shared/types';
 import { CapacitorCatalogueStore } from './capacitorCatalogueStore';
+import { idleWork } from '../../utils/library-refresh.utils';
 
 describe('CapacitorCatalogueStore.writeStreams', () => {
   const stream = (id: number) => ({ stream_id: String(id), name: `Film ${id}` }) as unknown as Stream;
@@ -53,40 +54,61 @@ describe('CapacitorCatalogueStore searches', () => {
 
   const film = (id: number, name: string) => ({ stream_id: String(id), name }) as unknown as Stream;
 
-  it('finds a word in any case, through the name index rather than a seek per film', async () => {
+  it('finds a word in any case, and reads a category through its own index', async () => {
     const { store, query } = await open();
     await store.writeStreams('vod', '1', [film(1, 'EN| The MATRIX (1999)'), film(2, 'Heat (1995)')]);
 
     expect((await store.findStreams('vod', ['matrix'], 10)).map(found => found.stream_id)).toEqual(['1']);
     expect((await store.findStreamsWithAny!('vod', ['heat', 'matrix'], 10)).map(found => found.stream_id)).toEqual(['1', '2']);
 
-    const plan = await query(
-      "EXPLAIN QUERY PLAN SELECT stream_id FROM streams WHERE provider = ? AND type = ? AND name LIKE ? ORDER BY name LIMIT 10",
-      ['provider', 'vod', '%matrix%']
-    );
-    const steps = plan.values.map(step => String(step['detail'])).join(' | ');
-    expect(steps).toContain('idx_streams_name');
-    expect(steps).not.toContain('TEMP B-TREE');
+    const sent: [string, unknown[]][] = [];
+    (store as unknown as { db: { query: typeof query } }).db.query = async (sql, params = []) => (sent.push([sql, params]), query(sql, params));
+    await store.readStreams('vod', '1');
+    const plan = (await query('EXPLAIN QUERY PLAN ' + sent[0][0], sent[0][1])).values.map(step => String(step['detail'])).join(' | ');
+
+    // Not every film of the type walked in name order, as with a name index.
+    expect(plan).toContain('idx_streams_category (provider=? AND type=? AND category_id=?)');
   });
 });
 
 describe('CapacitorCatalogueStore name index', () => {
+  afterEach(() => delete idleWork.until);
+
+  const store = (ran: unknown[][]) =>
+    new CapacitorCatalogueStore(
+      {
+        execute: async () => ({ changes: { changes: 0 } }),
+        query: async (sql: string) => ({
+          values: sql.includes('stream_names_filled')
+            ? []
+            : sql.includes('MAX(rowid)')
+              ? [{ last: 2500 }]
+              : ['tv_archive', 'tv_archive_duration', 'extra'].map(name => ({ name }))
+        }),
+        run: async (_sql: string, values: unknown[]) => (ran.push(values), { changes: { changes: 0 } })
+      } as never,
+      'provider'
+    );
+
   it('indexes a library already held a piece a call, then marks it done', async () => {
     const ran: unknown[][] = [];
-    const db = {
-      execute: async () => ({ changes: { changes: 0 } }),
-      query: async (sql: string) => ({
-        values: sql.includes('stream_names_filled')
-          ? []
-          : sql.includes('MAX(rowid)')
-            ? [{ last: 2500 }]
-            : ['tv_archive', 'tv_archive_duration', 'extra'].map(name => ({ name }))
-      }),
-      run: async (_sql: string, values: unknown[]) => (ran.push(values), { changes: { changes: 0 } })
-    };
-    await new CapacitorCatalogueStore(db as never, 'provider').initialise();
+    idleWork.until = async () => undefined;
+    await store(ran).initialise();
     await new Promise(resolve => setTimeout(resolve, 0));
 
     expect(ran).toEqual([[0, 1000], [1000, 0], [1000, 2000], [2000, 0], [2000, 3000], [3000, 0], [3000, 1]]);
+  });
+
+  it('writes a piece only once nobody is using the app', async () => {
+    const ran: unknown[][] = [];
+    let gone!: () => void;
+    idleWork.until = () => new Promise(resolve => (gone = resolve));
+    await store(ran).initialise();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(ran).toEqual([]);
+
+    gone();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(ran).toEqual([[0, 1000], [1000, 0]]);
   });
 });

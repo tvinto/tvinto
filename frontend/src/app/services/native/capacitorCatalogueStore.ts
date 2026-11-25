@@ -11,6 +11,7 @@ import {
   STREAMS_NAMED,
   UPSERT_STREAM
 } from '@shared/xtream/streamNames';
+import { untilIdleWork } from '../../utils/library-refresh.utils';
 import { ensureColumns } from './capacitorGuideStore';
 
 /** Rows per write of a category's streams (`writeStreams`). */
@@ -72,13 +73,11 @@ export class CapacitorCatalogueStore implements CatalogueStore {
       CREATE INDEX IF NOT EXISTS idx_streams_category
         ON streams(provider, type, category_id);
 
-      -- For the name searches (findWhere): a LIKE '%word%' still reads every
-      -- name, but here in name order, so with no sort and no seek into the
-      -- table for a name that does not match. Without it SQLite went through
-      -- idx_streams_category, a seek per row: a search of 200,000 films was
-      -- 450 ms on a PC and 16 s on a user's TV; with it, 40 ms (26 November).
-      CREATE INDEX IF NOT EXISTS idx_streams_name
-        ON streams(provider, type, name);
+      -- No index on (provider, type, name). On a user's TV (200,979 films)
+      -- building it held the database 6.7 to 7.7 s on the first start, and
+      -- it saved little: a typed word 530 to 400 ms, twenty words (More like
+      -- this before stream_names is filled) 4.8 to 4.6 s. SQLite also read
+      -- each category through it, in name order (26 November).
 
       -- Which categories have been asked about, separately from what came
       -- back. Without it an empty category is indistinguishable from one never
@@ -113,6 +112,11 @@ export class CapacitorCatalogueStore implements CatalogueStore {
    * Indexes the names held before the index existed, a piece per call, so
    * every other read waits for one piece at most. 200,000 films are two
    * hundred pieces; the triggers index whatever is written meanwhile.
+   *
+   * Only while nobody uses the app, as a library refresh: on a user's TV
+   * the fill took about 25 s, and two to five of its calls held the
+   * database 1.3 to 2.6 s each -- SQLite copying its log into the database
+   * (about 1.5 s whatever the size there) and FTS5 merging (26 November).
    */
   private async indexNames(): Promise<void> {
     const filled = (await this.db.query('SELECT upto, done FROM stream_names_filled WHERE id = 1')).values?.[0];
@@ -122,6 +126,7 @@ export class CapacitorCatalogueStore implements CatalogueStore {
       // `run`, not executeSet: given rows of values, executeSet writes them
       // into a VALUES list, which an INSERT ... SELECT has not got.
       for (; upto < last; upto += STREAM_NAMES_PIECE) {
+        await untilIdleWork();
         await this.db.run(STREAM_NAMES_FILL, [upto, upto + STREAM_NAMES_PIECE]);
         await this.db.run(STREAM_NAMES_PROGRESS, [upto + STREAM_NAMES_PIECE, 0]);
       }
