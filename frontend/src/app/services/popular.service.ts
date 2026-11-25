@@ -56,6 +56,8 @@ const ROW_KEY = 'xtream_popular_row';
 interface Row {
   at: number;
   library: string;
+  /** The film and show libraries it was matched against (rowLibraries); a row without it is from before 25 November. */
+  libraryAt?: string;
   limit: number;
   found: Popular[];
 }
@@ -76,7 +78,34 @@ interface KeptPage {
   key: string;
   at: number;
   library: string;
+  /** When the library it was matched against was downloaded (XtreamService.libraryAt): a later download makes it stale. */
+  libraryAt?: string;
   page: PopularPage;
+}
+
+/** Where the library's genre counts are kept (DiscoverService.countGenres). */
+export const countsKey = (kind: TmdbKind) => `xtream_tmdb_genre_counts_${kind}`;
+
+/**
+ * Set once the answers older versions worked out are gone. 1.0.130 matched
+ * TMDB's lists against a library not downloaded yet and kept "none of it is
+ * here" for a day, the genre counts for a week (24 November). Those carry no
+ * library time, so nothing would use them now anyway; this frees the space.
+ */
+const DISCARDED_KEY = 'xtream_library_answers_discarded_v1';
+
+export function discardAnswersFromBefore(): void {
+  try {
+    if (localStorage.getItem(DISCARDED_KEY)) {
+      return;
+    }
+    for (const key of [ROW_KEY, PAGES_KEY, countsKey('movie'), countsKey('tv')]) {
+      localStorage.removeItem(key);
+    }
+    localStorage.setItem(DISCARDED_KEY, '1');
+  } catch {
+    // Storage unavailable: nothing kept to discard.
+  }
 }
 
 /** The names a title is looked for by: English, and its own where that differs. */
@@ -116,6 +145,21 @@ export class PopularService {
   private readonly matched = new Map<string, KeptPage>();
   private keptPages: KeptPage[] | null = null;
 
+  constructor() {
+    discardAnswersFromBefore();
+  }
+
+  /** When this kind's library was last downloaded whole; null while it is not held whole. */
+  libraryAt(kind: TmdbKind): Promise<string | null> {
+    return this.xtream.libraryAt(kind === 'movie' ? 'vod' : 'series');
+  }
+
+  /** Both libraries' download times, which For You's row was matched against; null unless both are held whole. */
+  private async rowLibraries(): Promise<string | null> {
+    const [films, shows] = [await this.libraryAt('movie'), await this.libraryAt('tv')];
+    return films && shows ? `${films}|${shows}` : null;
+  }
+
   /**
    * For You's row: the first this library has, most popular first, from the
    * first few pages. Empty without a TMDB key, or when TMDB does not answer.
@@ -130,11 +174,11 @@ export class PopularService {
    */
   async lastPopular(kind: TmdbKind, limit = 12, list: TmdbList = 'trending'): Promise<Popular[] | null> {
     const library = await this.xtream.libraryOwner();
-    if (!this.keptPage(library, kind, list, 1, Infinity)) {
+    if (!this.keptPage(library, kind, list, 1)) {
       return null;
     }
     return this.firstFound(kind, limit, list, async page => {
-      const kept = this.keptPage(library, kind, list, page, Infinity);
+      const kept = this.keptPage(library, kind, list, page);
       if (!kept) {
         throw new Error('not kept');
       }
@@ -166,14 +210,16 @@ export class PopularService {
   async mixed(limit = 10): Promise<Popular[]> {
     const library = await this.xtream.libraryOwner();
     const last = this.lastRow(library, limit);
-    if (last && Date.now() - last.at < KEEP_MS) {
+    const libraries = await this.rowLibraries();
+    if (last && Date.now() - last.at < KEEP_MS && libraries && last.libraryAt === libraries) {
       return this.stillAllowed(last.found);
     }
     const [films, shows] = [await this.popular('movie', limit), await this.popular('tv', limit)];
     const found = [...films, ...shows].sort((a, b) => a.rank - b.rank || (a.type === 'vod' ? -1 : 1)).slice(0, limit);
-    const whole = (await this.xtream.libraryHeld('vod')) && (await this.xtream.libraryHeld('series'));
-    if (found.length && whole) {
-      this.keepRow({ at: Date.now(), library, limit, found });
+    // Read again: either library may have arrived while it was matched.
+    const matchedIn = await this.rowLibraries();
+    if (found.length && matchedIn) {
+      this.keepRow({ at: Date.now(), library, libraryAt: matchedIn, limit, found });
     }
     return found;
   }
@@ -200,7 +246,8 @@ export class PopularService {
         this.row = null;
       }
     }
-    return this.row && this.row.library === library && this.row.limit === limit ? this.row : null;
+    // A row matched without both libraries whole is never shown again, however recent.
+    return this.row && this.row.libraryAt && this.row.library === library && this.row.limit === limit ? this.row : null;
   }
 
   private keepRow(row: Row): void {
@@ -221,7 +268,8 @@ export class PopularService {
    */
   async page(kind: TmdbKind, page: number, which: TmdbList = 'trending', remember = true): Promise<PopularPage> {
     const library = await this.xtream.libraryOwner();
-    const kept = this.keptPage(library, kind, which, page, KEEP_MS);
+    let libraryAt = await this.libraryAt(kind);
+    const kept = this.keptPage(library, kind, which, page, { maxAge: KEEP_MS, libraryAt });
     if (kept) {
       return kept;
     }
@@ -230,7 +278,9 @@ export class PopularService {
       return { found: [], checked: 0, pages: 0 };
     }
     const type = kind === 'movie' ? 'vod' : 'series';
-    const whole = (await this.xtream.libraryHeld(type)) || (await this.xtream.fetchLibraryIfNeverHeld(type));
+    if (!libraryAt && (await this.xtream.fetchLibraryIfNeverHeld(type))) {
+      libraryAt = await this.libraryAt(kind);
+    }
     // The whole page in one lookup (XtreamService.findHeldTitles): a search
     // per name was over a minute for For You's row on a user's TV.
     const held = await this.copiesIn(type, list.items);
@@ -241,9 +291,9 @@ export class PopularService {
         found.push({ item, type, versions, rank: (page - 1) * 20 + index });
       }
     }
-    const matched: PopularPage = { found, checked: list.items.length, pages: list.pages, ...(whole ? {} : { incomplete: true }) };
-    if (remember && whole) {
-      this.keepPage({ key: pageKey(kind, which, page), at: Date.now(), library, page: matched });
+    const matched: PopularPage = { found, checked: list.items.length, pages: list.pages, ...(libraryAt ? {} : { incomplete: true }) };
+    if (remember && libraryAt) {
+      this.keepPage({ key: pageKey(kind, which, page), at: Date.now(), library, libraryAt, page: matched });
     }
     return matched;
   }
@@ -268,11 +318,18 @@ export class PopularService {
     return copies;
   }
 
-  /** A page matched before for this library, no older than `maxAge`, with what the parental lock still lets through. */
-  private keptPage(library: string, kind: TmdbKind, list: TmdbList, page: number, maxAge: number): PopularPage | null {
+  /**
+   * A page matched before for this library, with what the parental lock
+   * still lets through. Only one matched against the library held whole;
+   * `fresh`, no older than its `maxAge` and against the very download held now.
+   */
+  private keptPage(library: string, kind: TmdbKind, list: TmdbList, page: number, fresh?: { maxAge: number; libraryAt: string | null }): PopularPage | null {
     const key = pageKey(kind, list, page);
     const kept = this.matched.get(key) ?? this.onDevice().find(entry => entry.key === key);
-    if (!kept || kept.library !== library || Date.now() - kept.at >= maxAge) {
+    if (!kept?.libraryAt || kept.library !== library) {
+      return null;
+    }
+    if (fresh && (Date.now() - kept.at >= fresh.maxAge || kept.libraryAt !== fresh.libraryAt)) {
       return null;
     }
     return { ...kept.page, found: this.stillAllowed(kept.page.found) };

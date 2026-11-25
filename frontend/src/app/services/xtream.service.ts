@@ -842,7 +842,9 @@ export class XtreamService {
 
   private async fetchNeverHeld(type: StreamType): Promise<boolean> {
     const direct = await this.provider.direct().catch(() => null);
-    if (!direct || this.nativePlayer.active() || (await direct.catalogue.indexedAt(type))) {
+    // One already on its way (the start-up download, say) is waited for, not begun again.
+    const running = this.indexRunning.get(type);
+    if (!direct || this.nativePlayer.active() || (!running && (await direct.catalogue.indexedAt(type)))) {
       return false;
     }
     await this.runIndex(direct, type).catch(() => {
@@ -859,8 +861,17 @@ export class XtreamService {
    * library" needs before it can be believed.
    */
   async libraryHeld(type: StreamType): Promise<boolean> {
+    return Boolean(await this.libraryAt(type));
+  }
+
+  /**
+   * When the library this device holds whole was last downloaded; null when
+   * it does not hold it whole. What an answer worked out from the library is
+   * kept against, so a download makes it stale by itself (25 November).
+   */
+  async libraryAt(type: StreamType): Promise<string | null> {
     const direct = await this.provider.direct().catch(() => null);
-    return Boolean(direct && (await direct.catalogue.indexedAt(type).catch(() => null)));
+    return (direct && (await direct.catalogue.indexedAt(type).catch(() => null))) || null;
   }
 
   /**
@@ -873,7 +884,47 @@ export class XtreamService {
     return direct ? this.runIndex(direct, type, true, tag) : null;
   }
 
-  private async runIndex(direct: DirectProvider, type: StreamType, force = false, onlyTag?: string): Promise<number> {
+  /**
+   * Every library download in turn, one at a time: a provider usually allows
+   * one connection, and the start-up download, a search and a TMDB page can
+   * all ask at once (25 November). A plain download of a library already on
+   * its way is that same download, not a second one after it.
+   */
+  private runIndex(direct: DirectProvider, type: StreamType, force = false, onlyTag?: string): Promise<number> {
+    const plain = !force && onlyTag === undefined;
+    const running = plain ? this.indexRunning.get(type) : undefined;
+    if (running) {
+      return running;
+    }
+    const turn = this.indexLane.then(() => this.guideQuiet()).then(() => this.downloadIndex(direct, type, force, onlyTag));
+    this.indexLane = turn.catch(() => undefined);
+    if (plain) {
+      this.indexRunning.set(type, turn);
+      const done = () => this.indexRunning.delete(type);
+      turn.then(done, done);
+    }
+    return turn;
+  }
+
+  private indexLane: Promise<unknown> = Promise.resolve();
+
+  /**
+   * Until no guide has been downloading for a moment: a guide is a whole
+   * download from the provider too. Adding a provider starts its guide and
+   * For You's request for the film library in the same few milliseconds, so
+   * a single look raced it (25 November).
+   */
+  private async guideQuiet(): Promise<void> {
+    do {
+      await new Promise(resolve => setTimeout(resolve, this.guideSettleMs));
+    } while (this.guide.isLoading());
+  }
+
+  /** How long the guide must have been quiet; a field so a test need not wait. */
+  guideSettleMs = 2_000;
+  private readonly indexRunning = new Map<StreamType, Promise<number>>();
+
+  private async downloadIndex(direct: DirectProvider, type: StreamType, force: boolean, onlyTag?: string): Promise<number> {
     this.indexing.set(type);
     this.indexProgress.set(null);
     // Shown twice a second at most, as a guide's is: a redraw per category
@@ -1015,7 +1066,7 @@ export class XtreamService {
    * something plays; a failed try waits an hour. True when anything was
    * indexed, for the caller to read the list again.
    */
-  async refreshLibrariesIfStale(types: StreamType[]): Promise<boolean> {
+  async refreshLibrariesIfStale(types: StreamType[], busy: () => boolean = () => false): Promise<boolean> {
     const direct = await this.provider.direct().catch(() => null);
     if (!direct) {
       return false;
@@ -1023,7 +1074,8 @@ export class XtreamService {
     let refreshed = false;
     for (const type of types) {
       const tried = this.refreshTried.get(type) ?? 0;
-      if (this.nativePlayer.active() || Date.now() - tried < 60 * 60 * 1000 || (await direct.catalogue.indexIsFresh(type))) {
+      // `busy`: something else needs the provider's connection (a preview, a guide download).
+      if (this.nativePlayer.active() || busy() || Date.now() - tried < 60 * 60 * 1000 || (await direct.catalogue.indexIsFresh(type))) {
         continue;
       }
       this.refreshTried.set(type, Date.now());

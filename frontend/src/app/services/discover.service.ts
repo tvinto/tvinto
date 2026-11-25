@@ -4,7 +4,7 @@ import { TmdbGenre, TmdbKind } from '@shared/tmdb/client';
 import { tmdbLanguage } from '@shared/tmdb/describe';
 import { HR_GENRE_NAMES } from '@shared/tmdb/genres';
 import { DescriptionsService } from './descriptions.service';
-import { PopularService } from './popular.service';
+import { PopularService, countsKey } from './popular.service';
 import { TmdbService } from './tmdb.service';
 import { currentLanguage } from '../utils/i18n';
 
@@ -65,7 +65,7 @@ export class DiscoverService {
 
   /** The genres to offer: those not yet counted, and those the library has enough of. */
   async offered(kind: TmdbKind): Promise<TmdbGenre[]> {
-    const counts = read<Counts>(countsKey(kind))?.counts ?? {};
+    const counts = this.countsFor(kind, await this.popular.libraryAt(kind))?.counts ?? {};
     return (await this.genres(kind)).filter(genre => (counts[genre.id] ?? GENRE_MIN) >= GENRE_MIN);
   }
 
@@ -75,8 +75,9 @@ export class DiscoverService {
    * a time, stopping when `stopped` says so.
    */
   async countGenres(kind: TmdbKind, stopped: () => boolean): Promise<boolean> {
-    const kept = read<Counts>(countsKey(kind));
-    const fresh = kept && Date.now() - kept.at < COUNTS_KEEP_MS ? kept : { at: Date.now(), counts: {} };
+    const libraryAt = await this.popular.libraryAt(kind);
+    const kept = this.countsFor(kind, libraryAt);
+    const fresh: Counts = kept && Date.now() - kept.at < COUNTS_KEEP_MS ? kept : { at: Date.now(), libraryAt: libraryAt ?? '', counts: {} };
     let changed = false;
     for (const genre of await this.genres(kind)) {
       if (stopped()) {
@@ -91,6 +92,8 @@ export class DiscoverService {
           // Counted against a library not held whole: not a count to keep for the week.
           break;
         }
+        // The library may have arrived for this very page.
+        fresh.libraryAt ||= (await this.popular.libraryAt(kind)) ?? '';
         fresh.counts[genre.id] = page.found.length;
         changed = true;
         write(countsKey(kind), fresh);
@@ -99,6 +102,15 @@ export class DiscoverService {
       }
     }
     return changed;
+  }
+
+  /**
+   * The counts made against the library held now; none from before its last
+   * download, which is what an empty library's counts were (24 November).
+   */
+  private countsFor(kind: TmdbKind, libraryAt: string | null): Counts | null {
+    const kept = read<Counts>(countsKey(kind));
+    return kept && libraryAt && kept.libraryAt === libraryAt ? kept : null;
   }
 
   /**
@@ -153,10 +165,10 @@ export class DiscoverService {
 
 interface Counts {
   at: number;
+  /** When the library counted in was downloaded (XtreamService.libraryAt). */
+  libraryAt: string;
   counts: Record<number, number>;
 }
-
-const countsKey = (kind: TmdbKind) => `xtream_tmdb_genre_counts_${kind}`;
 
 /** Each looked-up title's genres, by "movie:603". */
 const TITLE_GENRES_KEY = 'xtream_tmdb_title_genres';
