@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom, of } from 'rxjs';
@@ -210,7 +210,10 @@ export class FilmComponent {
     inject(BackButtonService).bindTo(computed(() => this.subtitleTarget() !== null), () => this.subtitleTarget.set(null));
     inject(BackButtonService).bindTo(this.moreOpen, () => this.closeMore());
     const route = inject(ActivatedRoute);
+    inject(DestroyRef).onDestroy(() => this.left.abort());
     route.paramMap.pipe(takeUntilDestroyed()).subscribe(params => {
+      this.left.abort();
+      this.left = new AbortController();
       this.ref = params.get('id') ?? '';
       this.hint = { ...(history.state as { film?: FilmHint } | null)?.film, name: route.snapshot.queryParamMap.get('name') ?? undefined };
       this.page.set(null);
@@ -220,7 +223,15 @@ export class FilmComponent {
     });
   }
 
+  /**
+   * Aborted when this film is left: its rows' library reads not yet made are
+   * not made. Android runs them one at a time, and five film pages queued
+   * minutes of them ahead of every other read on a user's TV (26 November).
+   */
+  private left = new AbortController();
+
   async load(): Promise<void> {
+    const signal = this.left.signal;
     this.failed.set(false);
     try {
       const page = await this.films.open(this.ref, this.hint);
@@ -231,9 +242,12 @@ export class FilmComponent {
       await this.loadWatching(page);
       // Below the fold, and slower: each one is looked for in the library.
       if (page.collection) {
-        void this.films.collection(page.collection.id).then(collection => this.collection.set(collection)).catch(() => undefined);
+        void this.films
+          .collection(page.collection.id, signal)
+          .then(collection => signal.aborted || this.collection.set(collection))
+          .catch(() => undefined);
       }
-      void this.films.moreLikeThis(page).then(links => this.moreLikeThis.set(links)).catch(() => undefined);
+      void this.films.moreLikeThis(page, signal).then(links => signal.aborted || this.moreLikeThis.set(links)).catch(() => undefined);
       void this.copiesOnceLibraryArrives(this.ref);
     } catch (error) {
       this.failed.set(true);

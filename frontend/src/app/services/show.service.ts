@@ -153,8 +153,8 @@ export class ShowService {
   }
 
   /** TMDB's recommendations kept to the shows the library has. */
-  async moreLikeThis(page: ShowPage): Promise<FilmLink[]> {
-    return (await this.films.linked(page.recommendations, 'series')).filter(link => link.copies > 0);
+  async moreLikeThis(page: ShowPage, signal?: AbortSignal): Promise<FilmLink[]> {
+    return (await this.films.linked(page.recommendations, 'series', signal)).filter(link => link.copies > 0);
   }
 
   /** The copy of a show a TMDB list opens: the one chosen for it, else the first in the person's languages. */

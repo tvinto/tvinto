@@ -106,13 +106,13 @@ export class MergedCatalogue {
     return lists.flat();
   }
 
-  async findTitles(type: StreamType, titles: string[], limitEach = 100): Promise<Map<string, Stream[]>> {
+  async findTitles(type: StreamType, titles: string[], signal?: AbortSignal): Promise<Map<string, Stream[]>> {
     const found = new Map<string, Stream[]>(titles.map(title => [title, []]));
     const each = await Promise.all(
       this.slots.map(async slot => ({
         slot,
         // As orNothing does for lists: one provider that cannot be read leaves the others.
-        held: await slot.catalogue.findTitles(type, titles, limitEach).catch(error => {
+        held: await slot.catalogue.findTitles(type, titles, signal).catch(error => {
           if (this.slots.length === 1) {
             throw error;
           }

@@ -60,6 +60,14 @@ export class CapacitorCatalogueStore implements CatalogueStore {
       CREATE INDEX IF NOT EXISTS idx_streams_category
         ON streams(provider, type, category_id);
 
+      -- For the name searches (findWhere): a LIKE '%word%' still reads every
+      -- name, but here in name order, so with no sort and no seek into the
+      -- table for a name that does not match. Without it SQLite went through
+      -- idx_streams_category, a seek per row: a search of 200,000 films was
+      -- 450 ms on a PC and 16 s on a user's TV; with it, 40 ms (26 November).
+      CREATE INDEX IF NOT EXISTS idx_streams_name
+        ON streams(provider, type, name);
+
       -- Which categories have been asked about, separately from what came
       -- back. Without it an empty category is indistinguishable from one never
       -- fetched, and gets asked about on every visit forever.
@@ -275,7 +283,9 @@ export class CapacitorCatalogueStore implements CatalogueStore {
     if (words.length === 0) {
       return [];
     }
-    const column = joined ? searchableSql('name') : 'LOWER(name)';
+    // `name`, not `LOWER(name)`: LIKE already ignores case, and the words
+    // arrive lower-cased. LOWER on every name made a read of twenty titles three times slower.
+    const column = joined ? searchableSql('name') : 'name';
     return this.findWhere(type, words.map(() => `${column} LIKE ?`).join(' AND '), words, limit);
   }
 
@@ -284,7 +294,7 @@ export class CapacitorCatalogueStore implements CatalogueStore {
     if (words.length === 0) {
       return [];
     }
-    return this.findWhere(type, `(${words.map(() => 'LOWER(name) LIKE ?').join(' OR ')})`, words, limit);
+    return this.findWhere(type, `(${words.map(() => 'name LIKE ?').join(' OR ')})`, words, limit);
   }
 
   /** Streams of a type whose names meet `conditions`, one `LIKE ?` per word in order. */

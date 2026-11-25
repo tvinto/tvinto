@@ -242,12 +242,12 @@ export class FilmService {
   }
 
   /** TMDB's recommendations for a film, kept to the ones the library has, in TMDB's order. */
-  async moreLikeThis(page: FilmPage): Promise<FilmLink[]> {
-    return (await this.linked(page.recommendations)).filter(link => link.copies > 0);
+  async moreLikeThis(page: FilmPage, signal?: AbortSignal): Promise<FilmLink[]> {
+    return (await this.linked(page.recommendations, 'vod', signal)).filter(link => link.copies > 0);
   }
 
   /** A film series in order, with the films the library lacks kept, so a gap shows (TV-30). */
-  async collection(id: number): Promise<CollectionPage | null> {
+  async collection(id: number, signal?: AbortSignal): Promise<CollectionPage | null> {
     const client = await this.tmdb.client();
     if (!client) {
       return null;
@@ -256,11 +256,12 @@ export class FilmService {
     if (!raw) {
       return null;
     }
-    return { id: raw.id, name: raw.name, backdrop: tmdbBackdrop(raw.backdrop), parts: await this.linked(raw.parts) };
+    return { id: raw.id, name: raw.name, backdrop: tmdbBackdrop(raw.backdrop), parts: await this.linked(raw.parts, 'vod', signal) };
   }
 
-  async linked(items: TmdbTrending[], type: 'vod' | 'series' = 'vod'): Promise<FilmLink[]> {
-    const copies = await this.popular.copiesIn(type, items);
+  /** `signal`: the page asking has been left, so the reads not yet made are not made (Catalogue.findTitles). */
+  async linked(items: TmdbTrending[], type: 'vod' | 'series' = 'vod', signal?: AbortSignal): Promise<FilmLink[]> {
+    const copies = await this.popular.copiesIn(type, items, signal);
     return items.map(item => ({ item, poster: tmdbPoster(item.poster), copies: copies.get(item.id)?.length ?? 0 }));
   }
 

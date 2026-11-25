@@ -325,8 +325,8 @@ export class PopularService {
    * in one lookup -- "More like this" and a film series asked once per title,
    * which is what made Popular take over a minute before it stopped.
    */
-  async copiesIn(type: 'vod' | 'series', items: readonly TmdbTrending[]): Promise<Map<number, Stream[]>> {
-    const held = await this.xtream.findHeldTitles(type, items.flatMap(item => namesOf(item)));
+  async copiesIn(type: 'vod' | 'series', items: readonly TmdbTrending[], signal?: AbortSignal): Promise<Map<number, Stream[]>> {
+    const held = await this.xtream.findHeldTitles(type, items.flatMap(item => namesOf(item)), signal);
     const copies = new Map<number, Stream[]>();
     for (const item of items) {
       const streams = new Map<string, Stream>();
@@ -387,13 +387,20 @@ export class PopularService {
 
   /** Every copy of a film or show this library holds: also what a film's own page offers (TV-28). */
   async copiesOf(item: Pick<TmdbTrending, 'title' | 'originalTitle' | 'year'>, type: 'vod' | 'series'): Promise<Stream[]> {
-    const found = new Map<string, Stream>();
-    for (const name of namesOf(item)) {
+    // Every name in one read of the library (findHeldTitles). A search per
+    // name made four reads for a name not held -- the original title, mostly
+    // -- each 16 s on a user's TV with 200,000 films, and five film pages
+    // queued minutes of them ahead of every other read (26 November).
+    const names = namesOf(item);
+    const held = await this.xtream.findHeldTitles(type, names);
+    let streams = names.flatMap(name => held.get(name) ?? []);
+    if (!streams.length) {
+      // The search's further passes (a word cut short, words run together)
+      // for a provider that spelled the title its own way: the title only.
       // Deep enough for a name with history: Resident Evil is fifty copies of eight films.
-      for (const stream of await this.xtream.findHeld(type, name, 100)) {
-        found.set(String(stream.stream_id), stream);
-      }
+      streams = await this.xtream.findHeld(type, names[0] ?? '', 100);
     }
+    const found = new Map(streams.map(stream => [String(stream.stream_id), stream]));
     return this.versionsIn(item, [...found.values()]);
   }
 

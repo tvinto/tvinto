@@ -276,7 +276,10 @@ export class SeriesDetailComponent implements OnInit {
   /** TMDB's recommendations kept to the library; shown only when there are enough. */
   readonly moreLikeThis = signal<FilmLink[]>([]);
 
-  private readonly loadShowPage = effect(() => {
+  private readonly loadShowPage = effect(onCleanup => {
+    // Left: the show's More like this reads not yet made are not made (FilmComponent.left).
+    const left = new AbortController();
+    onCleanup(() => left.abort());
     const info = this.infoHere();
     const id = this.seriesId();
     const name = this.knownName();
@@ -297,7 +300,10 @@ export class SeriesDetailComponent implements OnInit {
             return;
           }
           this.tmdbShow.set(page);
-          void this.shows.moreLikeThis(page).then(links => this.store.seriesInfo() === info && this.moreLikeThis.set(links));
+          void this.shows
+            .moreLikeThis(page, left.signal)
+            .then(links => this.store.seriesInfo() === info && this.moreLikeThis.set(links))
+            .catch(() => undefined);
           void this.copiesOnceLibraryArrives(id, name, info);
         })
         .catch(() => this.seriesId() === id && this.showPageSettled.set(true));

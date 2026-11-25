@@ -1095,14 +1095,15 @@ export class XtreamService {
   /**
    * Many titles looked for in what the device holds, at once
    * (Catalogue.findTitles): each title with its copies, the parental lock
-   * applied. Empty answers without a device catalogue.
+   * applied. Empty answers without a device catalogue; partial ones once
+   * `signal` is aborted.
    */
-  async findHeldTitles(type: StreamType, titles: string[], limitEach = 100): Promise<Map<string, Stream[]>> {
+  async findHeldTitles(type: StreamType, titles: string[], signal?: AbortSignal): Promise<Map<string, Stream[]>> {
     const direct = await this.provider.direct().catch(() => null);
     if (!direct) {
       return new Map();
     }
-    const found = await direct.catalogue.findTitles(type, titles, limitEach).catch(() => new Map<string, Stream[]>());
+    const found = await direct.catalogue.findTitles(type, titles, signal).catch(() => new Map<string, Stream[]>());
     for (const [title, streams] of found) {
       found.set(title, streams.filter(stream => !this.lock.keepsOut(type, stream.category_id)));
     }

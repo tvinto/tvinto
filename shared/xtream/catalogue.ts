@@ -442,8 +442,12 @@ export class Catalogue {
    * name, as in `search`, or when its words written together begin the
    * name's ("Spider-Man: No Way Home" and "Spiderman No Way Home"). There
    * are no fuzzy passes: these titles are spelled by TMDB, not typed.
+   *
+   * `signal` stops the reads not yet made, for a page that has been left:
+   * Android's one database lane runs them in turn, and a film page's went on
+   * long after it, ahead of every other read (26 November).
    */
-  async findTitles(type: StreamType, titles: string[], limitEach = 100): Promise<Map<string, Stream[]>> {
+  async findTitles(type: StreamType, titles: string[], signal?: AbortSignal): Promise<Map<string, Stream[]>> {
     const found = new Map<string, Stream[]>();
     const wanted = [...new Set(titles)]
       .map(title => ({ title, words: nameWords(title) }))
@@ -454,11 +458,11 @@ export class Catalogue {
 
     const keys = [...new Set(wanted.map(entry => entry.words.reduce((a, b) => (b.length > a.length ? b : a))))];
     const candidates = new Map<string, Stream>();
-    for (let start = 0; start < keys.length; start += TITLE_KEYS_PER_READ) {
+    for (let start = 0; start < keys.length && !signal?.aborted; start += TITLE_KEYS_PER_READ) {
       const some = keys.slice(start, start + TITLE_KEYS_PER_READ);
       const read = this.store.findStreamsWithAny
         ? await this.store.findStreamsWithAny(type, some, TITLE_CANDIDATES)
-        : (await Promise.all(some.map(key => this.store.findStreams(type, [key], limitEach * 4)))).flat();
+        : (await Promise.all(some.map(key => this.store.findStreams(type, [key], TITLE_COPIES * 4)))).flat();
       for (const stream of read) {
         candidates.set(String(stream.stream_id), stream);
       }
@@ -481,7 +485,7 @@ export class Catalogue {
                 candidate.words.some(nameWord => (word.length >= PREFIX_FROM ? nameWord.startsWith(word) : nameWord === word))
               )
           )
-          .slice(0, limitEach)
+          .slice(0, TITLE_COPIES)
           .map(candidate => candidate.stream)
       );
     }
@@ -605,6 +609,9 @@ const PREFIX_FROM = 3;
 
 /** Titles' words asked for in one read of the library (`findTitles`). */
 const TITLE_KEYS_PER_READ = 20;
+
+/** Copies kept of each title (`findTitles`): Resident Evil is fifty copies of eight films. */
+const TITLE_COPIES = 100;
 
 /** How many candidates one such read may bring back. */
 const TITLE_CANDIDATES = 4000;

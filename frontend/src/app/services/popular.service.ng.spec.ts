@@ -62,8 +62,8 @@ describe('PopularService', () => {
           provide: XtreamService,
           useValue: {
             findHeld: async (type: string, query: string) => {
-              searched.push(`${type}:${query}`);
-              return options.held?.[`${type}:${query}`] ?? [];
+              searched.push(`search ${type}:${query}`);
+              return options.held?.[`search ${type}:${query}`] ?? [];
             },
             findHeldTitles: async (type: string, titles: string[]) =>
               new Map(
@@ -277,6 +277,17 @@ describe('PopularService', () => {
     const copies = await service.copiesIn('vod', [trend('movie', 1, 'Hope', '2026'), trend('movie', 2, 'Unheld', '2020')]);
     expect(copies.get(1)?.map(held => held.stream_id)).toEqual(['1']);
     expect(copies.get(2)).toEqual([]);
+  });
+
+  it("finds a film's copies by all its names in one read, and searches by its title only when that finds none", async () => {
+    const amelie = { title: 'Amelie', originalTitle: 'Le Fabuleux Destin', year: '2001' };
+    const held = setup({ held: { 'vod:Le Fabuleux Destin': [stream(1, 'FR - Le Fabuleux Destin (2001)')] } });
+    expect((await held.copiesOf(amelie, 'vod')).map(copy => copy.stream_id)).toEqual(['1']);
+    expect(searched).toEqual(['vod:Amelie', 'vod:Le Fabuleux Destin']);
+
+    const spelt = setup({ held: { 'search vod:Amelie': [stream(2, 'EN - Amelie (2001)')] } });
+    expect((await spelt.copiesOf(amelie, 'vod')).map(copy => copy.stream_id)).toEqual(['2']);
+    expect(searched).toEqual(['vod:Amelie', 'vod:Le Fabuleux Destin', 'search vod:Amelie']);
   });
 
   it('keeps what the row found when TMDB stops answering, and tells a page asked for on purpose', async () => {

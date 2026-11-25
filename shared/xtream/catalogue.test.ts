@@ -429,6 +429,22 @@ describe('search', () => {
     expect(asked).toHaveLength(1);
   });
 
+  // Five film pages on a user's TV queued minutes of these reads after they were left (26 November).
+  it("makes no more of a lookup's reads once the page that asked is left", async () => {
+    const { catalogue, store } = build();
+    const left = new AbortController();
+    const asked: string[][] = [];
+    store.findStreamsWithAny = async (_type, words) => {
+      asked.push(words);
+      left.abort();
+      return [];
+    };
+
+    await catalogue.findTitles('vod', Array.from({ length: 30 }, (_, i) => `Title${i}`), left.signal);
+
+    expect(asked).toHaveLength(1);
+  });
+
   it('finds a name written with a hyphen from the words typed together, and the other way round', async () => {
     const { catalogue, store } = build();
     await store.writeStreams('vod', '1', [
