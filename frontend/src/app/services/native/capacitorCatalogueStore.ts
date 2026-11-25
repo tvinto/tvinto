@@ -2,6 +2,15 @@ import { SQLiteDBConnection } from '@capacitor-community/sqlite';
 import { Category, Stream, StreamType } from '@shared/types';
 import { CatalogueStore } from '@shared/xtream/catalogue';
 import { searchableSql } from '@shared/xtream/channelNames';
+import {
+  namesBeginningWith,
+  STREAM_NAMES_FILL,
+  STREAM_NAMES_PIECE,
+  STREAM_NAMES_PROGRESS,
+  STREAM_NAMES_SETUP,
+  STREAMS_NAMED,
+  UPSERT_STREAM
+} from '@shared/xtream/streamNames';
 import { ensureColumns } from './capacitorGuideStore';
 
 /** Rows per write of a category's streams (`writeStreams`). */
@@ -23,6 +32,9 @@ export class CapacitorCatalogueStore implements CatalogueStore {
     private readonly db: SQLiteDBConnection,
     private readonly providerUsername: string
   ) {}
+
+  /** Whether `stream_names` indexes every name held (shared/xtream/streamNames.ts). */
+  private namesIndexed = false;
 
   /**
    * Creates the tables if this device has not held a catalogue before.
@@ -87,6 +99,35 @@ export class CapacitorCatalogueStore implements CatalogueStore {
       ['streams', 'tv_archive_duration', 'INTEGER'],
       ['streams', 'extra', 'TEXT']
     ]);
+
+    try {
+      await this.db.execute(STREAM_NAMES_SETUP);
+    } catch {
+      // No FTS5 here (the web's sql.js): titles are looked for with LIKE.
+      return;
+    }
+    void this.indexNames().catch(() => undefined);
+  }
+
+  /**
+   * Indexes the names held before the index existed, a piece per call, so
+   * every other read waits for one piece at most. 200,000 films are two
+   * hundred pieces; the triggers index whatever is written meanwhile.
+   */
+  private async indexNames(): Promise<void> {
+    const filled = (await this.db.query('SELECT upto, done FROM stream_names_filled WHERE id = 1')).values?.[0];
+    let upto = Number(filled?.['upto'] ?? 0);
+    if (!filled?.['done']) {
+      const last = Number((await this.db.query('SELECT MAX(rowid) AS last FROM streams')).values?.[0]?.['last'] ?? 0);
+      // `run`, not executeSet: given rows of values, executeSet writes them
+      // into a VALUES list, which an INSERT ... SELECT has not got.
+      for (; upto < last; upto += STREAM_NAMES_PIECE) {
+        await this.db.run(STREAM_NAMES_FILL, [upto, upto + STREAM_NAMES_PIECE]);
+        await this.db.run(STREAM_NAMES_PROGRESS, [upto + STREAM_NAMES_PIECE, 0]);
+      }
+      await this.db.run(STREAM_NAMES_PROGRESS, [upto, 1]);
+    }
+    this.namesIndexed = true;
   }
 
   async readCategories(type: StreamType): Promise<Category[]> {
@@ -189,11 +230,9 @@ export class CapacitorCatalogueStore implements CatalogueStore {
       await this.db.executeSet(
         [
           {
-            statement: `INSERT OR REPLACE INTO streams
-                          (provider, type, category_id, stream_id, name, stream_icon,
-                           epg_channel_id, added, num, container_extension,
-                           tv_archive, tv_archive_duration, extra)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            // An UPSERT, not INSERT OR REPLACE: a stream already held keeps its
+            // rowid, which the name index is keyed by (streamNames.ts).
+            statement: UPSERT_STREAM,
             values: rows.slice(at, at + WRITE_PIECE_ROWS)
           }
         ],
@@ -289,10 +328,27 @@ export class CapacitorCatalogueStore implements CatalogueStore {
     return this.findWhere(type, words.map(() => `${column} LIKE ?`).join(' AND '), words, limit);
   }
 
-  /** Any of the words, in one read of the library (Catalogue.findTitles). */
+  /** Any of the words, in one read of the library (Catalogue.findTitles): from the name index once it is whole. */
   async findStreamsWithAny(type: StreamType, words: string[], limit: number): Promise<Stream[]> {
     if (words.length === 0) {
       return [];
+    }
+    if (this.namesIndexed) {
+      try {
+        // A word that begins a word of the name, where LIKE found it anywhere:
+        // findTitles keeps only those anyway. Unsorted, so a word in a great
+        // many names stops at `limit` rather than sorting every one of them
+        // (three times quicker on the emulator for a word in 200,000).
+        const result = await this.db.query(
+          `SELECT ${FOUND_COLUMNS.split(', ').map(column => `streams.${column}`).join(', ')}
+             ${STREAMS_NAMED} AND streams.provider = ? AND streams.type = ?
+            LIMIT ?`,
+          [namesBeginningWith(words), this.providerUsername, type, limit]
+        );
+        return (result.values ?? []).map(foundStream);
+      } catch {
+        // A word FTS5 cannot read: as before.
+      }
     }
     return this.findWhere(type, `(${words.map(() => 'name LIKE ?').join(' OR ')})`, words, limit);
   }
@@ -309,8 +365,7 @@ export class CapacitorCatalogueStore implements CatalogueStore {
       // category_id, because a search result that cannot say which category it
       // came from cannot be grouped by one: the facet chips on the results page
       // had nothing to count and offered nothing.
-      `SELECT stream_id, name, stream_icon, epg_channel_id, added, num, container_extension, category_id,
-              tv_archive, tv_archive_duration, extra
+      `SELECT ${FOUND_COLUMNS}
          FROM streams
         WHERE provider = ? AND type = ? AND ${conditions}
         ORDER BY name
@@ -318,19 +373,7 @@ export class CapacitorCatalogueStore implements CatalogueStore {
       parameters
     );
 
-    return (result.values ?? []).map(row => ({
-      stream_id: String(row['stream_id']),
-      name: String(row['name'] ?? ''),
-      icon: String(row['stream_icon'] ?? ''),
-      stream_icon: String(row['stream_icon'] ?? ''),
-      epg_channel_id: row['epg_channel_id'] ?? undefined,
-      added: row['added'] ?? undefined,
-      num: row['num'] ?? undefined,
-      container_extension: row['container_extension'] ?? undefined,
-      ...archiveOf(row),
-      ...extraOf(row),
-      category_id: row['category_id'] ?? undefined
-    })) as Stream[];
+    return (result.values ?? []).map(foundStream);
   }
 
   async markFetched(type: StreamType, categoryId: string, at: string): Promise<void> {
@@ -354,6 +397,26 @@ export class CapacitorCatalogueStore implements CatalogueStore {
       await this.db.run(`DELETE FROM ${table} WHERE provider = ?`, [this.providerUsername]);
     }
   }
+}
+
+const FOUND_COLUMNS =
+  'stream_id, name, stream_icon, epg_channel_id, added, num, container_extension, category_id, tv_archive, tv_archive_duration, extra';
+
+/** A row of a search (FOUND_COLUMNS) as a stream. */
+function foundStream(row: Record<string, unknown>): Stream {
+  return {
+    stream_id: String(row['stream_id']),
+    name: String(row['name'] ?? ''),
+    icon: String(row['stream_icon'] ?? ''),
+    stream_icon: String(row['stream_icon'] ?? ''),
+    epg_channel_id: row['epg_channel_id'] ?? undefined,
+    added: row['added'] ?? undefined,
+    num: row['num'] ?? undefined,
+    container_extension: row['container_extension'] ?? undefined,
+    ...archiveOf(row),
+    ...extraOf(row),
+    category_id: row['category_id'] ?? undefined
+  } as unknown as Stream;
 }
 
 /** Catch-up, when the row says; nothing on a row stored before it was kept. */

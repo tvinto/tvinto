@@ -69,3 +69,24 @@ describe('CapacitorCatalogueStore searches', () => {
     expect(steps).not.toContain('TEMP B-TREE');
   });
 });
+
+describe('CapacitorCatalogueStore name index', () => {
+  it('indexes a library already held a piece a call, then marks it done', async () => {
+    const ran: unknown[][] = [];
+    const db = {
+      execute: async () => ({ changes: { changes: 0 } }),
+      query: async (sql: string) => ({
+        values: sql.includes('stream_names_filled')
+          ? []
+          : sql.includes('MAX(rowid)')
+            ? [{ last: 2500 }]
+            : ['tv_archive', 'tv_archive_duration', 'extra'].map(name => ({ name }))
+      }),
+      run: async (_sql: string, values: unknown[]) => (ran.push(values), { changes: { changes: 0 } })
+    };
+    await new CapacitorCatalogueStore(db as never, 'provider').initialise();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(ran).toEqual([[0, 1000], [1000, 0], [1000, 2000], [2000, 0], [2000, 3000], [3000, 0], [3000, 1]]);
+  });
+});
