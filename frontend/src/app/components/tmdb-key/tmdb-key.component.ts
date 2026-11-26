@@ -18,7 +18,7 @@ export const TMDB_LOGO =
   'https://www.themoviedb.org/assets/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg';
 
 /**
- * A TMDB key of this device's own (TmdbService): where to get one, what it
+ * The person's own TMDB key (TmdbService): the account's when signed in, the device's without one: where to get one, what it
  * looks like, the field, and TMDB's notice. The same on Settings, under
  * Descriptions, and in the first launch's TMDB step.
  *
@@ -34,7 +34,7 @@ export const TMDB_LOGO =
   host: { class: 'contents' },
   template: `
     @if (keys.ownKey()) {
-      <app-setting-row [label]="'describe.ownKey' | t" [sub]="'describe.ownKeyInUse' | t" kind="static" data-tmdb-own-key>
+      <app-setting-row [label]="'describe.ownKey' | t" [sub]="(keys.onAccount() ? 'describe.ownKeyOnAccount' : 'describe.ownKeyInUse') | t" kind="static" data-tmdb-own-key>
         <button rowEnd hlmBtn variant="quiet" size="sm" type="button" (click)="removeKey()">{{ 'describe.ownKeyRemove' | t }}</button>
       </app-setting-row>
     } @else {
@@ -158,7 +158,12 @@ export class TmdbKeyComponent {
     }
   }
 
-  removeKey(): void {
-    this.keys.clearOwnKey();
+  /** Signed in, from the account: every device of it stops using it. */
+  async removeKey(): Promise<void> {
+    try {
+      await this.keys.clearOwnKey();
+    } catch (error) {
+      this.toasts.error(t('os.serviceUnreachable'), undefined, { detail: error instanceof Error ? error.message : String(error) });
+    }
   }
 }

@@ -363,6 +363,14 @@ CREATE TABLE IF NOT EXISTS subtitle_accounts (
   updated_at TEXT NOT NULL
 );
 
+-- The account's own TMDB key, sealed the same way, so every device signed in
+-- to the account uses it. The service's TMDB_API_KEY is only the fallback.
+CREATE TABLE IF NOT EXISTS tmdb_keys (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  payload TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
 -- A record that something was deleted.
 --
 -- Needed because absence does not travel. Without one of these, a device still

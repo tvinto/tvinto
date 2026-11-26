@@ -2,6 +2,7 @@ import { Injectable, effect, inject, signal, untracked } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { fromBase64, toBase64 } from '@shared/auth/accountKeys';
+import { ACCOUNT_TMDB_KEY_PATH } from '@shared/tmdb/accountKey';
 import { makeKeyPair, openPrivateKey, openWith, sealFor, sealPrivateKey } from '@shared/auth/keyPair';
 import { FamilyMember, FamilyRole, FamilyView, ManagedKey } from '@shared/family';
 import { ProviderRecord, newTag, readProviderRecord, recordId, tagged } from '@shared/providers/providerRecord';
@@ -279,7 +280,7 @@ export class FamilyService {
   /**
    * A new password for a member who forgot theirs.
    *
-   * Their subscriptions, guides and OpenSubtitles login are sealed under the
+   * Their subscriptions, guides, OpenSubtitles login and TMDB key are sealed under the
    * old `enc`, which this device holds; they are sealed again under the new one
    * first, through a setup session, and only then is the password replaced --
    * which ends that session along with every other the member had.
@@ -312,7 +313,7 @@ export class FamilyService {
    * Checked against the key this device holds, so a mistyped current
    * password is said at once and nothing is sent. Then everything sealed under
    * the old `enc` is sealed again under the new -- subscriptions, guides, the
-   * OpenSubtitles login, the account's private key, and the copies of `enc`
+   * OpenSubtitles login, the TMDB key, the account's private key, and the copies of `enc`
    * its managers hold -- and only then is the password replaced, which signs
    * the account's other devices out (worker/src/accounts.ts, `replaceKeys`).
    * If that last step fails, what was sealed again is put back as it was.
@@ -410,17 +411,16 @@ export class FamilyService {
       return this.push(asBefore, token);
     });
 
-    const subtitles = await firstValueFrom(
-      this.http.get<{ data: { payload?: string } | null }>(`${this.apiUrl}/subtitles/account`, auth)
-    ).catch(() => null);
-    const subtitlePayload = subtitles?.data?.payload;
-    if (subtitlePayload) {
-      const opened = await this.keys.openFor(subtitlePayload, oldEnc);
+    // The OpenSubtitles login and the TMDB key, each one sealed blob.
+    for (const path of ['/subtitles/account', ACCOUNT_TMDB_KEY_PATH]) {
+      const kept = await firstValueFrom(
+        this.http.get<{ data: { payload?: string } | null }>(`${this.apiUrl}${path}`, auth)
+      ).catch(() => null);
+      const payload = kept?.data?.payload;
+      const opened = payload ? await this.keys.openFor(payload, oldEnc) : null;
       if (opened) {
-        await firstValueFrom(
-          this.http.post(`${this.apiUrl}/subtitles/account`, { payload: await this.keys.sealFor(opened, newEnc) }, auth)
-        );
-        undo.push(() => firstValueFrom(this.http.post(`${this.apiUrl}/subtitles/account`, { payload: subtitlePayload }, auth)));
+        await firstValueFrom(this.http.post(`${this.apiUrl}${path}`, { payload: await this.keys.sealFor(opened, newEnc) }, auth));
+        undo.push(() => firstValueFrom(this.http.post(`${this.apiUrl}${path}`, { payload }, auth)));
       }
     }
 

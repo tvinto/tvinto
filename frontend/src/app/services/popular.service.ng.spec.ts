@@ -1,3 +1,4 @@
+import { webcrypto } from 'crypto';
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
@@ -6,6 +7,8 @@ import { Stream } from '@shared/types';
 import { TmdbTrending } from '@shared/tmdb/client';
 import { API_URL } from './api-url';
 import { LocalProfileService } from './local-profile.service';
+import { AccountService } from './account.service';
+import { AccountKeysService } from './account-keys.service';
 import { PopularService } from './popular.service';
 import { TmdbService } from './tmdb.service';
 import { XtreamService } from './xtream.service';
@@ -345,5 +348,74 @@ describe('TmdbService', () => {
     await expect(service.setOwnKey('wrong')).rejects.toThrow('TMDB answered 401');
     expect(service.ownKey()).toBe('');
     expect(localStorage.getItem('xtream_tmdb_key')).toBeNull();
+  });
+});
+
+describe('TmdbService, signed in', () => {
+  const MADE_UP = 'deadbeefdeadbeefdeadbeefdeadbeef';
+  const ENC = new Uint8Array(32).fill(5);
+  /** The sync service the account's devices share. */
+  let kept: { payload: string } | null;
+
+  /** One device of the account: a fresh TmdbService, as after clearing the app's data. */
+  const device = () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: HttpClient,
+          useValue: {
+            get: (url: string) => of({ data: url.endsWith('/tmdb/key') ? kept : { apiKey: 'service-key' } }),
+            post: (_url: string, body: { payload: string }) => ((kept = body), of({ data: body })),
+            delete: () => ((kept = null), of({ data: null }))
+          }
+        },
+        { provide: API_URL, useValue: () => 'https://sync.example/api' },
+        { provide: LocalProfileService, useValue: { active: signal(false) } },
+        { provide: AccountService, useValue: { account: signal({ id: 1 }), deliberateSignOuts: signal(0) } },
+        { provide: AccountKeysService, useValue: { sealingKey: () => ENC } }
+      ]
+    });
+    const service = TestBed.inject(TmdbService);
+    const used: string[] = [];
+    service.fetchImpl = async url => {
+      used.push(new URL(url).searchParams.get('api_key') ?? '');
+      return { ok: true, status: 200, json: async () => ({ results: [] }) };
+    };
+    return { service, used };
+  };
+
+  beforeAll(() => Object.defineProperty(globalThis, 'crypto', { value: webcrypto, configurable: true }));
+
+  beforeEach(() => {
+    localStorage.clear();
+    kept = null;
+  });
+
+  it('keeps a key on the account, sealed, for every device of it, and removing it there removes it everywhere', async () => {
+    const one = device();
+    await one.service.setOwnKey(MADE_UP);
+    expect(kept?.payload).not.toContain(MADE_UP);
+    expect(localStorage.getItem('xtream_tmdb_key')).toBeNull();
+
+    const other = device();
+    await (await other.service.client())!.trending('movie', 'en-US');
+    expect(other.used).toEqual([MADE_UP]);
+
+    await other.service.clearOwnKey();
+    const third = device();
+    await (await third.service.client())!.trending('movie', 'en-US');
+    expect(third.used).toEqual(['service-key']);
+  });
+
+  it('gives a key this device kept to an account that has none', async () => {
+    localStorage.setItem('xtream_tmdb_key', MADE_UP);
+    await device().service.client();
+    expect(kept).not.toBeNull();
+    expect(localStorage.getItem('xtream_tmdb_key')).toBeNull();
+
+    const other = device();
+    await (await other.service.client())!.trending('movie', 'en-US');
+    expect(other.used).toEqual([MADE_UP]);
   });
 });

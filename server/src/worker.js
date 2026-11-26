@@ -2051,8 +2051,266 @@ var serveUpdate = async (request, env, path) => {
   return new Response(object.body, { status: 200, headers });
 };
 
+// ../shared/subtitles.ts
+var MAX_SUBTITLE_BYTES = 512 * 1024;
+var MAX_SUBTITLES_PER_ACCOUNT = 200;
+var MAX_SUBTITLES_PER_ITEM = 10;
+var MAX_SUBTITLE_OFFSET_MS = 6e4;
+var isWebVtt = (text2) => /^﻿?WEBVTT(?:[ \t]|\r?\n|$)/.test(text2);
+
+// src/subtitles.ts
+var SUBTITLE_ROUTE = /^(GET|POST|DELETE) \/api\/subtitles\/([A-Za-z0-9-]{8,64})$/;
+var COLUMNS = `id, type, item_id, series_id, season, episode_num, name, language, release,
+  file_id, hearing_impaired, offset_ms, created_at, updated_at`;
+var subtitlesConfig = async (env) => ok({ apiKey: env.OPENSUBTITLES_API_KEY?.trim() || null });
+var getSubtitleAccount = async (env, userId) => {
+  const row = await env.DB.prepare("SELECT payload, updated_at FROM subtitle_accounts WHERE user_id = ?").bind(userId).first();
+  return ok(row ? { payload: text(row["payload"]), updatedAt: text(row["updated_at"]) } : null);
+};
+var readSealed = async (request) => {
+  const { payload } = await readJson(request);
+  if (typeof payload !== "string" || !/^sb1\$[A-Za-z0-9+/=]+\$[A-Za-z0-9+/=]+$/.test(payload) || payload.length > 4096) {
+    throw new HttpError("A sealed payload is required", 400);
+  }
+  return payload;
+};
+var saveSubtitleAccount = async (request, env, userId) => {
+  const payload = await readSealed(request);
+  const at = now();
+  await env.DB.prepare(
+    `INSERT INTO subtitle_accounts (user_id, payload, updated_at) VALUES (?, ?, ?)
+     ON CONFLICT(user_id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at`
+  ).bind(userId, payload, at).run();
+  return ok({ payload, updatedAt: at });
+};
+var forgetSubtitleAccount = async (env, userId) => {
+  await env.DB.prepare("DELETE FROM subtitle_accounts WHERE user_id = ?").bind(userId).run();
+  return ok(null);
+};
+var listSubtitles = async (request, env, userId) => {
+  const query = new URL(request.url).searchParams;
+  const type = query.get("type");
+  const itemId = query.get("itemId");
+  if (type === null !== (itemId === null)) {
+    throw new HttpError("type and itemId go together", 400);
+  }
+  const rows = type === null ? await env.DB.prepare(
+    `SELECT ${COLUMNS} FROM subtitles WHERE user_id = ? ORDER BY updated_at DESC`
+  ).bind(userId).all() : await env.DB.prepare(
+    `SELECT ${COLUMNS} FROM subtitles WHERE user_id = ? AND type = ? AND item_id = ?
+            ORDER BY updated_at DESC`
+  ).bind(userId, itemType(type), itemId).all();
+  return ok(rows.results.map((row) => toSubtitle(row)));
+};
+var getSubtitle = async (env, userId, id) => {
+  const row = await env.DB.prepare(`SELECT ${COLUMNS}, body FROM subtitles WHERE user_id = ? AND id = ?`).bind(userId, id).first();
+  if (!row) {
+    throw new HttpError("No such subtitle", 404);
+  }
+  const withText = { ...toSubtitle(row), text: text(row["body"]) };
+  return ok(withText);
+};
+var addSubtitle = async (request, env, userId) => {
+  const input = validNew(await readJson(request));
+  const counts = await env.DB.prepare(
+    `SELECT
+       COUNT(*) AS total,
+       SUM(CASE WHEN type = ? AND item_id = ? THEN 1 ELSE 0 END) AS for_item,
+       MAX(CASE WHEN type = ? AND item_id = ? AND file_id = ? THEN id END) AS existing
+     FROM subtitles WHERE user_id = ?`
+  ).bind(input.type, input.itemId, input.type, input.itemId, input.fileId, userId).first();
+  const existing = maybeText(counts?.["existing"]);
+  if (!existing) {
+    if (number(counts?.["total"]) >= MAX_SUBTITLES_PER_ACCOUNT) {
+      throw new HttpError(
+        `An account can keep ${MAX_SUBTITLES_PER_ACCOUNT} subtitles. Remove some first.`,
+        409
+      );
+    }
+    if (number(counts?.["for_item"]) >= MAX_SUBTITLES_PER_ITEM) {
+      throw new HttpError(
+        `One title can keep ${MAX_SUBTITLES_PER_ITEM} subtitles. Remove one first.`,
+        409
+      );
+    }
+  }
+  const id = existing ?? crypto.randomUUID();
+  const at = now();
+  await env.DB.prepare(
+    `INSERT INTO subtitles (
+       user_id, id, type, item_id, series_id, season, episode_num, name, language, release,
+       file_id, hearing_impaired, offset_ms, body, created_at, updated_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(user_id, type, item_id, file_id) DO UPDATE SET
+       series_id = excluded.series_id,
+       season = excluded.season,
+       episode_num = excluded.episode_num,
+       name = excluded.name,
+       language = excluded.language,
+       release = excluded.release,
+       hearing_impaired = excluded.hearing_impaired,
+       offset_ms = ${input.offsetMs === void 0 ? "subtitles.offset_ms" : "excluded.offset_ms"},
+       body = excluded.body,
+       updated_at = excluded.updated_at`
+  ).bind(
+    userId,
+    id,
+    input.type,
+    input.itemId,
+    input.seriesId ?? null,
+    input.season ?? null,
+    input.episodeNum ?? null,
+    input.name ?? null,
+    input.language,
+    input.release,
+    input.fileId,
+    input.hearingImpaired ? 1 : 0,
+    input.offsetMs ?? 0,
+    input.text,
+    at,
+    at
+  ).run();
+  return readBack(env, userId, id, existing ? 200 : 201);
+};
+var updateSubtitle = async (request, env, userId, id) => {
+  const input = await readJson(request);
+  const offsetMs = validOffset(input.offsetMs);
+  if (offsetMs === void 0) {
+    throw new HttpError("offsetMs is required", 400);
+  }
+  const result = await env.DB.prepare(
+    "UPDATE subtitles SET offset_ms = ?, updated_at = ? WHERE user_id = ? AND id = ?"
+  ).bind(offsetMs, now(), userId, id).run();
+  if (!result.meta.changes) {
+    throw new HttpError("No such subtitle", 404);
+  }
+  return readBack(env, userId, id, 200);
+};
+var removeSubtitle = async (env, userId, id) => {
+  const result = await env.DB.prepare("DELETE FROM subtitles WHERE user_id = ? AND id = ?").bind(userId, id).run();
+  if (!result.meta.changes) {
+    throw new HttpError("No such subtitle", 404);
+  }
+  return ok({ removed: id });
+};
+var readBack = async (env, userId, id, status) => {
+  const row = await env.DB.prepare(`SELECT ${COLUMNS} FROM subtitles WHERE user_id = ? AND id = ?`).bind(userId, id).first();
+  if (!row) {
+    throw new HttpError("No such subtitle", 404);
+  }
+  return ok(toSubtitle(row), status);
+};
+var toSubtitle = (row) => ({
+  id: text(row["id"]),
+  type: itemType(text(row["type"])),
+  itemId: text(row["item_id"]),
+  seriesId: maybeText(row["series_id"]),
+  season: maybeNumber(row["season"]),
+  episodeNum: maybeNumber(row["episode_num"]),
+  name: maybeText(row["name"]),
+  language: text(row["language"]),
+  release: text(row["release"]),
+  fileId: number(row["file_id"]),
+  hearingImpaired: number(row["hearing_impaired"]) === 1,
+  offsetMs: number(row["offset_ms"]),
+  createdAt: text(row["created_at"]),
+  updatedAt: text(row["updated_at"])
+});
+var itemType = (value) => {
+  if (value !== "vod" && value !== "series") {
+    throw new HttpError("type must be vod or series", 400);
+  }
+  return value;
+};
+var shortText = (value, field, max, required) => {
+  if (value === void 0 || value === null || value === "") {
+    if (required) {
+      throw new HttpError(`${field} is required`, 400);
+    }
+    return null;
+  }
+  if (typeof value !== "string" && typeof value !== "number") {
+    throw new HttpError(`${field} must be text`, 400);
+  }
+  const trimmed = String(value).trim();
+  if (required && !trimmed) {
+    throw new HttpError(`${field} is required`, 400);
+  }
+  if (trimmed.length > max) {
+    throw new HttpError(`${field} is too long`, 400);
+  }
+  return trimmed || null;
+};
+var smallInteger = (value, field) => {
+  if (value === void 0 || value === null) {
+    return null;
+  }
+  if (!Number.isInteger(value) || value < 0 || value > 1e5) {
+    throw new HttpError(`${field} must be a whole number`, 400);
+  }
+  return value;
+};
+var validOffset = (value) => {
+  if (value === void 0) {
+    return void 0;
+  }
+  if (!Number.isInteger(value) || Math.abs(value) > MAX_SUBTITLE_OFFSET_MS) {
+    throw new HttpError(`offsetMs must be whole milliseconds within ${MAX_SUBTITLE_OFFSET_MS / 1e3} s`, 400);
+  }
+  return value;
+};
+var validNew = (input) => {
+  const type = itemType(String(input.type ?? ""));
+  const itemId = shortText(input.itemId, "itemId", 64, true);
+  const language = shortText(input.language, "language", 16, true);
+  const release2 = shortText(input.release, "release", 300, true);
+  if (!/^[a-z]{2,3}(-[a-z]{2,4})?$/i.test(language)) {
+    throw new HttpError("language must be a language code", 400);
+  }
+  if (!Number.isInteger(input.fileId) || input.fileId <= 0) {
+    throw new HttpError("fileId must be an OpenSubtitles file id", 400);
+  }
+  if (typeof input.text !== "string" || !isWebVtt(input.text)) {
+    throw new HttpError("text must be WebVTT", 400);
+  }
+  if (new TextEncoder().encode(input.text).length > MAX_SUBTITLE_BYTES) {
+    throw new HttpError(`A subtitle can be at most ${MAX_SUBTITLE_BYTES / 1024} KB`, 413);
+  }
+  return {
+    type,
+    itemId,
+    seriesId: shortText(input.seriesId, "seriesId", 64, false),
+    season: smallInteger(input.season, "season"),
+    episodeNum: smallInteger(input.episodeNum, "episodeNum"),
+    name: shortText(input.name, "name", 300, false),
+    language: language.toLowerCase(),
+    release: release2,
+    fileId: input.fileId,
+    hearingImpaired: input.hearingImpaired === true,
+    offsetMs: validOffset(input.offsetMs),
+    text: input.text
+  };
+};
+
 // src/tmdb.ts
 var tmdbConfig = async (env) => ok({ apiKey: env.TMDB_API_KEY?.trim() || null });
+var getTmdbKey = async (env, userId) => {
+  const row = await env.DB.prepare("SELECT payload, updated_at FROM tmdb_keys WHERE user_id = ?").bind(userId).first();
+  return ok(row ? { payload: text(row["payload"]), updatedAt: text(row["updated_at"]) } : null);
+};
+var saveTmdbKey = async (request, env, userId) => {
+  const payload = await readSealed(request);
+  const at = now();
+  await env.DB.prepare(
+    `INSERT INTO tmdb_keys (user_id, payload, updated_at) VALUES (?, ?, ?)
+     ON CONFLICT(user_id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at`
+  ).bind(userId, payload, at).run();
+  return ok({ payload, updatedAt: at });
+};
+var forgetTmdbKey = async (env, userId) => {
+  await env.DB.prepare("DELETE FROM tmdb_keys WHERE user_id = ?").bind(userId).run();
+  return ok(null);
+};
 
 // ../shared/auth/secretBox.ts
 var VERSION = "sb1";
@@ -2585,243 +2843,6 @@ var latestDownload = async (env, which) => {
   return redirect(found);
 };
 
-// ../shared/subtitles.ts
-var MAX_SUBTITLE_BYTES = 512 * 1024;
-var MAX_SUBTITLES_PER_ACCOUNT = 200;
-var MAX_SUBTITLES_PER_ITEM = 10;
-var MAX_SUBTITLE_OFFSET_MS = 6e4;
-var isWebVtt = (text2) => /^﻿?WEBVTT(?:[ \t]|\r?\n|$)/.test(text2);
-
-// src/subtitles.ts
-var SUBTITLE_ROUTE = /^(GET|POST|DELETE) \/api\/subtitles\/([A-Za-z0-9-]{8,64})$/;
-var COLUMNS = `id, type, item_id, series_id, season, episode_num, name, language, release,
-  file_id, hearing_impaired, offset_ms, created_at, updated_at`;
-var subtitlesConfig = async (env) => ok({ apiKey: env.OPENSUBTITLES_API_KEY?.trim() || null });
-var getSubtitleAccount = async (env, userId) => {
-  const row = await env.DB.prepare("SELECT payload, updated_at FROM subtitle_accounts WHERE user_id = ?").bind(userId).first();
-  return ok(row ? { payload: text(row["payload"]), updatedAt: text(row["updated_at"]) } : null);
-};
-var saveSubtitleAccount = async (request, env, userId) => {
-  const { payload } = await readJson(request);
-  if (typeof payload !== "string" || !/^sb1\$[A-Za-z0-9+/=]+\$[A-Za-z0-9+/=]+$/.test(payload) || payload.length > 4096) {
-    throw new HttpError("A sealed payload is required", 400);
-  }
-  const at = now();
-  await env.DB.prepare(
-    `INSERT INTO subtitle_accounts (user_id, payload, updated_at) VALUES (?, ?, ?)
-     ON CONFLICT(user_id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at`
-  ).bind(userId, payload, at).run();
-  return ok({ payload, updatedAt: at });
-};
-var forgetSubtitleAccount = async (env, userId) => {
-  await env.DB.prepare("DELETE FROM subtitle_accounts WHERE user_id = ?").bind(userId).run();
-  return ok(null);
-};
-var listSubtitles = async (request, env, userId) => {
-  const query = new URL(request.url).searchParams;
-  const type = query.get("type");
-  const itemId = query.get("itemId");
-  if (type === null !== (itemId === null)) {
-    throw new HttpError("type and itemId go together", 400);
-  }
-  const rows = type === null ? await env.DB.prepare(
-    `SELECT ${COLUMNS} FROM subtitles WHERE user_id = ? ORDER BY updated_at DESC`
-  ).bind(userId).all() : await env.DB.prepare(
-    `SELECT ${COLUMNS} FROM subtitles WHERE user_id = ? AND type = ? AND item_id = ?
-            ORDER BY updated_at DESC`
-  ).bind(userId, itemType(type), itemId).all();
-  return ok(rows.results.map((row) => toSubtitle(row)));
-};
-var getSubtitle = async (env, userId, id) => {
-  const row = await env.DB.prepare(`SELECT ${COLUMNS}, body FROM subtitles WHERE user_id = ? AND id = ?`).bind(userId, id).first();
-  if (!row) {
-    throw new HttpError("No such subtitle", 404);
-  }
-  const withText = { ...toSubtitle(row), text: text(row["body"]) };
-  return ok(withText);
-};
-var addSubtitle = async (request, env, userId) => {
-  const input = validNew(await readJson(request));
-  const counts = await env.DB.prepare(
-    `SELECT
-       COUNT(*) AS total,
-       SUM(CASE WHEN type = ? AND item_id = ? THEN 1 ELSE 0 END) AS for_item,
-       MAX(CASE WHEN type = ? AND item_id = ? AND file_id = ? THEN id END) AS existing
-     FROM subtitles WHERE user_id = ?`
-  ).bind(input.type, input.itemId, input.type, input.itemId, input.fileId, userId).first();
-  const existing = maybeText(counts?.["existing"]);
-  if (!existing) {
-    if (number(counts?.["total"]) >= MAX_SUBTITLES_PER_ACCOUNT) {
-      throw new HttpError(
-        `An account can keep ${MAX_SUBTITLES_PER_ACCOUNT} subtitles. Remove some first.`,
-        409
-      );
-    }
-    if (number(counts?.["for_item"]) >= MAX_SUBTITLES_PER_ITEM) {
-      throw new HttpError(
-        `One title can keep ${MAX_SUBTITLES_PER_ITEM} subtitles. Remove one first.`,
-        409
-      );
-    }
-  }
-  const id = existing ?? crypto.randomUUID();
-  const at = now();
-  await env.DB.prepare(
-    `INSERT INTO subtitles (
-       user_id, id, type, item_id, series_id, season, episode_num, name, language, release,
-       file_id, hearing_impaired, offset_ms, body, created_at, updated_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT(user_id, type, item_id, file_id) DO UPDATE SET
-       series_id = excluded.series_id,
-       season = excluded.season,
-       episode_num = excluded.episode_num,
-       name = excluded.name,
-       language = excluded.language,
-       release = excluded.release,
-       hearing_impaired = excluded.hearing_impaired,
-       offset_ms = ${input.offsetMs === void 0 ? "subtitles.offset_ms" : "excluded.offset_ms"},
-       body = excluded.body,
-       updated_at = excluded.updated_at`
-  ).bind(
-    userId,
-    id,
-    input.type,
-    input.itemId,
-    input.seriesId ?? null,
-    input.season ?? null,
-    input.episodeNum ?? null,
-    input.name ?? null,
-    input.language,
-    input.release,
-    input.fileId,
-    input.hearingImpaired ? 1 : 0,
-    input.offsetMs ?? 0,
-    input.text,
-    at,
-    at
-  ).run();
-  return readBack(env, userId, id, existing ? 200 : 201);
-};
-var updateSubtitle = async (request, env, userId, id) => {
-  const input = await readJson(request);
-  const offsetMs = validOffset(input.offsetMs);
-  if (offsetMs === void 0) {
-    throw new HttpError("offsetMs is required", 400);
-  }
-  const result = await env.DB.prepare(
-    "UPDATE subtitles SET offset_ms = ?, updated_at = ? WHERE user_id = ? AND id = ?"
-  ).bind(offsetMs, now(), userId, id).run();
-  if (!result.meta.changes) {
-    throw new HttpError("No such subtitle", 404);
-  }
-  return readBack(env, userId, id, 200);
-};
-var removeSubtitle = async (env, userId, id) => {
-  const result = await env.DB.prepare("DELETE FROM subtitles WHERE user_id = ? AND id = ?").bind(userId, id).run();
-  if (!result.meta.changes) {
-    throw new HttpError("No such subtitle", 404);
-  }
-  return ok({ removed: id });
-};
-var readBack = async (env, userId, id, status) => {
-  const row = await env.DB.prepare(`SELECT ${COLUMNS} FROM subtitles WHERE user_id = ? AND id = ?`).bind(userId, id).first();
-  if (!row) {
-    throw new HttpError("No such subtitle", 404);
-  }
-  return ok(toSubtitle(row), status);
-};
-var toSubtitle = (row) => ({
-  id: text(row["id"]),
-  type: itemType(text(row["type"])),
-  itemId: text(row["item_id"]),
-  seriesId: maybeText(row["series_id"]),
-  season: maybeNumber(row["season"]),
-  episodeNum: maybeNumber(row["episode_num"]),
-  name: maybeText(row["name"]),
-  language: text(row["language"]),
-  release: text(row["release"]),
-  fileId: number(row["file_id"]),
-  hearingImpaired: number(row["hearing_impaired"]) === 1,
-  offsetMs: number(row["offset_ms"]),
-  createdAt: text(row["created_at"]),
-  updatedAt: text(row["updated_at"])
-});
-var itemType = (value) => {
-  if (value !== "vod" && value !== "series") {
-    throw new HttpError("type must be vod or series", 400);
-  }
-  return value;
-};
-var shortText = (value, field, max, required) => {
-  if (value === void 0 || value === null || value === "") {
-    if (required) {
-      throw new HttpError(`${field} is required`, 400);
-    }
-    return null;
-  }
-  if (typeof value !== "string" && typeof value !== "number") {
-    throw new HttpError(`${field} must be text`, 400);
-  }
-  const trimmed = String(value).trim();
-  if (required && !trimmed) {
-    throw new HttpError(`${field} is required`, 400);
-  }
-  if (trimmed.length > max) {
-    throw new HttpError(`${field} is too long`, 400);
-  }
-  return trimmed || null;
-};
-var smallInteger = (value, field) => {
-  if (value === void 0 || value === null) {
-    return null;
-  }
-  if (!Number.isInteger(value) || value < 0 || value > 1e5) {
-    throw new HttpError(`${field} must be a whole number`, 400);
-  }
-  return value;
-};
-var validOffset = (value) => {
-  if (value === void 0) {
-    return void 0;
-  }
-  if (!Number.isInteger(value) || Math.abs(value) > MAX_SUBTITLE_OFFSET_MS) {
-    throw new HttpError(`offsetMs must be whole milliseconds within ${MAX_SUBTITLE_OFFSET_MS / 1e3} s`, 400);
-  }
-  return value;
-};
-var validNew = (input) => {
-  const type = itemType(String(input.type ?? ""));
-  const itemId = shortText(input.itemId, "itemId", 64, true);
-  const language = shortText(input.language, "language", 16, true);
-  const release2 = shortText(input.release, "release", 300, true);
-  if (!/^[a-z]{2,3}(-[a-z]{2,4})?$/i.test(language)) {
-    throw new HttpError("language must be a language code", 400);
-  }
-  if (!Number.isInteger(input.fileId) || input.fileId <= 0) {
-    throw new HttpError("fileId must be an OpenSubtitles file id", 400);
-  }
-  if (typeof input.text !== "string" || !isWebVtt(input.text)) {
-    throw new HttpError("text must be WebVTT", 400);
-  }
-  if (new TextEncoder().encode(input.text).length > MAX_SUBTITLE_BYTES) {
-    throw new HttpError(`A subtitle can be at most ${MAX_SUBTITLE_BYTES / 1024} KB`, 413);
-  }
-  return {
-    type,
-    itemId,
-    seriesId: shortText(input.seriesId, "seriesId", 64, false),
-    season: smallInteger(input.season, "season"),
-    episodeNum: smallInteger(input.episodeNum, "episodeNum"),
-    name: shortText(input.name, "name", 300, false),
-    language: language.toLowerCase(),
-    release: release2,
-    fileId: input.fileId,
-    hearingImpaired: input.hearingImpaired === true,
-    offsetMs: validOffset(input.offsetMs),
-    text: input.text
-  };
-};
-
 // src/index.ts
 var OPEN = {
   "POST /api/accounts/register": register,
@@ -2843,6 +2864,9 @@ var ACCOUNT_ROUTES = /* @__PURE__ */ new Set([
   "POST /api/devices/settings",
   "GET /api/subtitles/config",
   "GET /api/tmdb/config",
+  "GET /api/tmdb/key",
+  "POST /api/tmdb/key",
+  "DELETE /api/tmdb/key",
   "GET /api/subtitles/account",
   "POST /api/subtitles/account",
   "DELETE /api/subtitles/account",
@@ -2872,7 +2896,9 @@ var KID_REFUSED = /* @__PURE__ */ new Set([
   "POST /api/accounts/invites",
   "POST /api/devices/settings",
   "POST /api/subtitles/account",
-  "DELETE /api/subtitles/account"
+  "DELETE /api/subtitles/account",
+  "POST /api/tmdb/key",
+  "DELETE /api/tmdb/key"
 ]);
 var SETUP_REFUSED = /* @__PURE__ */ new Set([
   "POST /api/accounts/keys",
@@ -2891,6 +2917,7 @@ var TOOL_REFUSED = /* @__PURE__ */ new Set([
   "GET /api/subtitles/account",
   "POST /api/subtitles/account",
   "DELETE /api/subtitles/account",
+  "GET /api/tmdb/key",
   "GET /api/accounts/tools",
   "GET /api/accounts/tools/requests",
   "GET /api/accounts/tools/actions",
@@ -3030,6 +3057,12 @@ var handle = async (request, env) => {
       return saveSettings(request, env, userId);
     case "GET /api/tmdb/config":
       return tmdbConfig(env);
+    case "GET /api/tmdb/key":
+      return getTmdbKey(env, userId);
+    case "POST /api/tmdb/key":
+      return saveTmdbKey(request, env, userId);
+    case "DELETE /api/tmdb/key":
+      return forgetTmdbKey(env, userId);
     case "GET /api/subtitles/config":
       return subtitlesConfig(env);
     case "GET /api/subtitles/account":

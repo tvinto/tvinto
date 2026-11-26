@@ -2694,9 +2694,22 @@ button.setting-row:hover {
 .setting-row-end {
   display: flex;
   flex: none;
+  flex-wrap: wrap;
+  max-width: 100%;
   align-items: center;
   gap: 0.5rem;
   color: var(--muted-foreground);
+}
+/* A row that holds its own choices beside a description: the description
+   keeps a readable width, about 45 characters, and the choices go on their
+   own line under it, aligned with it, when both do not fit. Skip intro's
+   three pills had squeezed its explanation into a column 14 lines tall on
+   the TV (26 November). A row with a name only keeps its choices beside it. */
+div.setting-row > .setting-row-text:has(> .setting-row-sub) {
+  min-width: min(20rem, 100%);
+}
+.tv div.setting-row > .setting-row-text:has(> .setting-row-sub) {
+  min-width: min(34rem, 100%);
 }
 .setting-row-end ng-icon {
   width: 1.125rem;

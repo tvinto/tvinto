@@ -1309,6 +1309,7 @@
     "ownKeyBody": "Za uređaj bez računa ili servis za sinhronizaciju bez TMDB ključa. Besplatno na themoviedb.org, pod Postavke, API. Čuva se samo na ovom uređaju.",
     "ownKeyPlaceholder": "API ključ ili token za čitanje",
     "ownKeyInUse": "Koristi se ključ upisan na ovom uređaju.",
+    "ownKeyOnAccount": "Sačuvan na vašem računu: koristi ga svaki uređaj prijavljen na njega.",
     "ownKeySave": "Spremi ključ",
     "ownKeyRemove": "Ukloni ključ",
     "ownKeyChecking": "Provjeravam kod TMDB-a…",

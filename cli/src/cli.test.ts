@@ -8,6 +8,7 @@ import { TestD1, openTestD1 } from '../../worker/src/test-utils/d1';
 import { deriveAccountKeys, fromBase64, toBase64 } from '../../shared/auth/accountKeys';
 import { makeKeyPair, sealFor, sealPrivateKey } from '../../shared/auth/keyPair';
 import { seal } from '../../shared/auth/secretBox';
+import { openTmdbKey } from '../../shared/tmdb/accountKey';
 import { hashPin } from '../../shared/categoryLock';
 import { Deps, run } from './cli';
 import { nodeKdf } from './nodeKdf';
@@ -987,5 +988,45 @@ describe('playlists and matching channels to guides', () => {
     expect(unmatched.out).toContain('Matches these automatically again:\n  "HR| HRT 1"');
     await tvinto(`apply ${codeIn(unmatched.out)}`);
     expect(await mappings(token)).toEqual(['12>g1:HRT2.hr']);
+  });
+});
+
+describe("the account's TMDB key", () => {
+  const MADE_UP_KEY = 'deadbeefdeadbeefdeadbeefdeadbeef';
+  const withTmdb = (status: number) => {
+    const service = fetchFor(() => env);
+    return async (url: string, init?: RequestInit) =>
+      url.startsWith('https://api.themoviedb.org/') ? new Response('{}', { status }) : service(url, init);
+  };
+  const typing = (status: number) => ({
+    fetch: withTmdb(status),
+    terminal: { isTTY: true, ask: async () => 'petar', askHidden: async () => MADE_UP_KEY }
+  });
+
+  it('is kept sealed on the account, which opens it, and removed from it', async () => {
+    const { token } = await seed();
+    await tvinto(`sign-in --password --server ${SERVER}`);
+    const { enc } = await deriveAccountKeys(PASSWORD, fromBase64(SALT)!, FLOOR, nodeKdf);
+
+    const kept = await tvinto('tmdb-key', typing(200));
+    expect(kept.code).toBe(0);
+    expect(kept.out).not.toContain(MADE_UP_KEY);
+    const payload = (await data(await call('GET', '/api/tmdb/key', { token }))).payload as string;
+    expect(payload).not.toContain(MADE_UP_KEY);
+    expect(await openTmdbKey(payload, enc)).toBe(MADE_UP_KEY);
+
+    expect((await tvinto('tmdb-key remove')).code).toBe(0);
+    expect(await data(await call('GET', '/api/tmdb/key', { token }))).toBeNull();
+  });
+
+  it('keeps nothing TMDB refuses, and is typed only at a terminal', async () => {
+    const { token } = await seed();
+    await tvinto(`sign-in --password --server ${SERVER}`);
+
+    const refused = await tvinto('tmdb-key', typing(401));
+    expect(refused.code).toBe(1);
+    expect(refused.out).toContain('TMDB did not accept that key');
+    expect(await data(await call('GET', '/api/tmdb/key', { token }))).toBeNull();
+    expect((await tvinto('tmdb-key', { terminal: { isTTY: false, ask: async () => '', askHidden: async () => MADE_UP_KEY } })).code).toBe(1);
   });
 });

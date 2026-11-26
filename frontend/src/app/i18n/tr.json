@@ -1275,6 +1275,7 @@
     "ownKeyBody": "Hesabı olmayan bir cihaz veya TMDB anahtarı olmayan bir eşitleme hizmeti için. themoviedb.org'da Ayarlar, API altında ücretsiz. Yalnızca bu cihazda tutulur.",
     "ownKeyPlaceholder": "API anahtarı veya okuma erişim belirteci",
     "ownKeyInUse": "Bu cihazda yazılan anahtar kullanılıyor.",
+    "ownKeyOnAccount": "Hesabınızda saklanır: bu hesapla oturum açılan her cihaz onu kullanır.",
     "ownKeySave": "Anahtarı kaydet",
     "ownKeyRemove": "Anahtarı kaldır",
     "ownKeyChecking": "TMDB ile kontrol ediliyor…",

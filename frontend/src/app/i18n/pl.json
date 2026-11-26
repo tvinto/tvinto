@@ -1343,6 +1343,7 @@
     "ownKeyBody": "Dla urządzenia bez konta albo usługi synchronizacji bez klucza TMDB. Za darmo na themoviedb.org, w Ustawieniach, API. Zapisywany tylko na tym urządzeniu.",
     "ownKeyPlaceholder": "Klucz API lub token odczytu",
     "ownKeyInUse": "Używany jest klucz wpisany na tym urządzeniu.",
+    "ownKeyOnAccount": "Zapisany na Twoim koncie: używa go każde urządzenie zalogowane na to konto.",
     "ownKeySave": "Zapisz klucz",
     "ownKeyRemove": "Usuń klucz",
     "ownKeyChecking": "Sprawdzam w TMDB…",

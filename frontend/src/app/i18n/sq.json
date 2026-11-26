@@ -1275,6 +1275,7 @@
     "ownKeyBody": "Për një pajisje pa llogari, ose një shërbim sinkronizimi pa çelës TMDB. Falas në themoviedb.org, te Cilësimet, API. Ruhet vetëm në këtë pajisje.",
     "ownKeyPlaceholder": "Çelës API ose token leximi",
     "ownKeyInUse": "Po përdoret çelësi i shkruar në këtë pajisje.",
+    "ownKeyOnAccount": "Ruhet në llogarinë tuaj: e përdor çdo pajisje e lidhur me të.",
     "ownKeySave": "Ruaj çelësin",
     "ownKeyRemove": "Hiq çelësin",
     "ownKeyChecking": "Po kontrollohet te TMDB…",

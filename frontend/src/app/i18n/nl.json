@@ -1275,6 +1275,7 @@
     "ownKeyBody": "Voor een apparaat zonder account, of een synchronisatiedienst zonder TMDB-sleutel. Gratis op themoviedb.org, onder Instellingen, API. Alleen op dit apparaat bewaard.",
     "ownKeyPlaceholder": "API-sleutel of leestoken",
     "ownKeyInUse": "De op dit apparaat getypte sleutel wordt gebruikt.",
+    "ownKeyOnAccount": "Bewaard in je account: elk apparaat dat ermee is aangemeld gebruikt hem.",
     "ownKeySave": "Sleutel opslaan",
     "ownKeyRemove": "Sleutel verwijderen",
     "ownKeyChecking": "Bezig met controleren bij TMDB…",

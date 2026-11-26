@@ -51,6 +51,9 @@ import { epgShareCountries, epgShareFor, epgShareUrl, suggestedCountry } from '.
 import { KnownChannel } from '../../shared/xtream/guide';
 import { SETTING_KEYS } from '../../shared/types';
 import { DESCRIPTION_LANGUAGES } from '../../shared/tmdb/describe';
+import { TmdbError } from '../../shared/tmdb/client';
+import { TMDB_KEY_ADDRESS_SHORT, normaliseTmdbKey, tmdbKeyKind } from '../../shared/tmdb/key';
+import { sealCheckedTmdbKey } from '../../shared/tmdb/accountKey';
 import { readCategorySets } from '../../shared/categoryLock';
 import { Terminal } from './prompt';
 import { Fetch } from './service';
@@ -157,6 +160,8 @@ Changes answer with what they will do and a code; nothing changes until
   tvinto preview <on|off>                      a television plays the channel in focus
   tvinto error-reports <on|off>                the apps send error reports (nothing personal)
   tvinto languages <code...|default>          copies and trailers in this order, up to 3
+  tvinto tmdb-key [remove]                     the account's own TMDB key, typed at a terminal
+                                               (not a change: kept at once, sealed)
   tvinto age-lock <off|12|16|18> [HR|DE|US|GB] films and shows by age rating (opening up: the PIN)
   tvinto recordings book <channel id> <YYYY-MM-DDTHH:MM> <minutes> <device> [title]
                                                recorded by that television, phone or computer
@@ -955,6 +960,39 @@ export async function run(argv: string[], deps: Deps): Promise<number> {
           return 0;
         }
         preview(current, last.change, last.undoes);
+        return 0;
+      }
+
+      case 'tmdb-key': {
+        if (args.length > 1 || (args.length === 1 && args[0] !== 'remove')) {
+          throw new Error('tvinto tmdb-key  or  tvinto tmdb-key remove');
+        }
+        const current = await acting();
+        if (args[0] === 'remove') {
+          await current.service.forgetTmdbKey();
+          print(["The account's TMDB key is removed from every device of it. They use the service's, if it has one."], { tmdbKey: false });
+          return 0;
+        }
+        // A key is typed by a person, never passed as an argument where a shell keeps it.
+        if (!deps.terminal.isTTY) {
+          throw new Error('tvinto tmdb-key asks for the key at a terminal.');
+        }
+        const pasted = await deps.terminal.askHidden('TMDB API key or read access token (not shown): ');
+        if (!tmdbKeyKind(normaliseTmdbKey(pasted))) {
+          throw new Error(
+            `That is neither of TMDB's two values: the API key (32 letters and numbers) or the API read access token (long, starts with eyJ), from ${TMDB_KEY_ADDRESS_SHORT}.`
+          );
+        }
+        try {
+          const { payload } = await sealCheckedTmdbKey(pasted, current.enc, (url, init) => deps.fetch(url, init));
+          await current.service.setTmdbKey(payload);
+        } catch (error) {
+          if (error instanceof TmdbError && (error.status === 401 || error.status === 403)) {
+            throw new Error(`TMDB did not accept that key. Copy the API key or the read access token from ${TMDB_KEY_ADDRESS_SHORT}, whole.`);
+          }
+          throw error;
+        }
+        print(["TMDB key kept on the account, sealed. Every device signed in to it uses it from its next launch."], { tmdbKey: true });
         return 0;
       }
 

@@ -57,15 +57,22 @@ export const getSubtitleAccount = async (env: Env, userId: number): Promise<Resp
   return ok(row ? { payload: text(row['payload']), updatedAt: text(row['updated_at']) } : null);
 };
 
-/** Keeps a sealed login, replacing any before it. Refuses anything not sealed. */
-export const saveSubtitleAccount = async (request: Request, env: Env, userId: number): Promise<Response> => {
+/**
+ * The `payload` of a request, refused unless it has the shape of a box from
+ * shared/auth/secretBox.ts -- so a device with a bug can never leave a
+ * password or key here in the clear.
+ */
+export const readSealed = async (request: Request): Promise<string> => {
   const { payload } = await readJson<{ payload?: unknown }>(request);
-
-  // The shape of a box from shared/auth/secretBox.ts. Checked so that a device
-  // with a bug can never leave a password here in the clear.
   if (typeof payload !== 'string' || !/^sb1\$[A-Za-z0-9+/=]+\$[A-Za-z0-9+/=]+$/.test(payload) || payload.length > 4096) {
     throw new HttpError('A sealed payload is required', 400);
   }
+  return payload;
+};
+
+/** Keeps a sealed login, replacing any before it. Refuses anything not sealed. */
+export const saveSubtitleAccount = async (request: Request, env: Env, userId: number): Promise<Response> => {
+  const payload = await readSealed(request);
 
   const at = now();
   await env.DB.prepare(
