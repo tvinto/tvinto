@@ -13,6 +13,37 @@ import { XtreamResponse, XtreamTransport, noResponse, timedOut } from '@shared/x
  * such escape: there the request has to be handed to the platform underneath.
  * Here the platform is already underneath.
  */
+/**
+ * Bytes of a response so far, about twice a second, while XtreamService
+ * downloads a library listing: a first load counts it as it comes (card 42).
+ */
+export const fetchProgress: { onBytes?: (bytes: number) => void } = {};
+
+/** A body as text, its bytes told to `fetchProgress` as they arrive when someone listens. */
+async function readText(response: Response): Promise<string> {
+  const told = fetchProgress.onBytes;
+  if (!told || !response.body) {
+    return response.text();
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let text = '';
+  let bytes = 0;
+  let toldAt = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      return text + decoder.decode();
+    }
+    text += decoder.decode(value, { stream: true });
+    bytes += value.length;
+    if (Date.now() - toldAt >= 500) {
+      toldAt = Date.now();
+      told(bytes);
+    }
+  }
+}
+
 export class FetchTransport implements XtreamTransport {
   constructor(private readonly defaultTimeoutMs = 15_000) {}
 
@@ -42,7 +73,7 @@ export class FetchTransport implements XtreamTransport {
       // Read as text and parse here: these servers answer with a JSON body
       // under a content type of text/html often enough that trusting the header
       // means throwing away a perfectly good answer.
-      const body = await response.text();
+      const body = await readText(response);
       const data = this.parse(body);
 
       // Enough to tell an empty answer from a refused one from a malformed one,

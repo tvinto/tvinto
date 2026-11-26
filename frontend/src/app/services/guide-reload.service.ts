@@ -6,6 +6,7 @@ import { GuideSourcesService } from './guide-sources.service';
 import { GuideSource } from '@shared/xtream/guideSources';
 import { NativePlayerService } from './native-player.service';
 import { isMeteredConnection } from '../utils/connection.utils';
+import { librariesFirst } from '../utils/library-refresh.utils';
 
 /** Long enough for the first screen and its catalogue requests to finish. */
 const FIRST_CHECK_AFTER_MS = 45 * 1000;
@@ -72,7 +73,8 @@ export class GuideReloadService {
 
   /** One pass over this account's guides. Public so it can be asked for directly. */
   async check(): Promise<void> {
-    if (this.checking || this.guide.isLoading() || isMeteredConnection()) {
+    // Not during a first load's libraries: the guide comes after them (card 42).
+    if (this.checking || this.guide.isLoading() || isMeteredConnection() || librariesFirst.done) {
       return;
     }
     this.checking = true;

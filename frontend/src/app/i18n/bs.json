@@ -1490,6 +1490,24 @@
     "notAllowed": "Televizor ne dopušta aplikaciji da se sama otvori",
     "notAllowedBody": "Dopustite to u postavkama televizora: Aplikacije, Poseban pristup aplikacija, Prikaz preko drugih aplikacija, Tvinto. Zatim ovo ponovo uključite."
   },
+  "firstLoad": {
+    "title": "Učitavanje biblioteke",
+    "lead": "Tvinto se otvara sam čim stignu kanali, filmovi i serije.",
+    "channels": "Kanali",
+    "films": "Filmovi",
+    "shows": "Serije",
+    "guide": "Vodič",
+    "count": "{{count}}",
+    "megabytes": "{{size}} MB",
+    "minutesLeft": "Još oko {{count}} min",
+    "underMinute": "Još manje od minute",
+    "retrying": "Provajder nije odgovorio. Uskoro pokušavamo ponovo.",
+    "failed": "Dio biblioteke nije stigao. Pokušat ćemo ponovo pri sljedećem pokretanju.",
+    "notIn": "još nije stiglo",
+    "stillLoading": "Još se učitava: {{parts}}. Popunit će se dok koristite aplikaciju.",
+    "continueAnyway": "Ipak nastavi",
+    "libraryUpdated": "Biblioteka posljednji put osvježena {{when}}"
+  },
   "home": {
     "favouriteChannels": "Omiljeni kanali",
     "watchedLately": "Nedavno gledano"

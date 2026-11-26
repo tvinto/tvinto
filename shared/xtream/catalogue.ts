@@ -101,8 +101,8 @@ const DEFAULT_POLICY: CataloguePolicy = {
   now: () => new Date()
 };
 
-/** Categories written so far, and of how many: null where that is not known yet. */
-export type FiledProgress = (filed: number, total: number | null) => void;
+/** Categories written so far, and of how many (null where that is not known yet); and the titles in them. */
+export type FiledProgress = (filed: number, total: number | null, titles: number) => void;
 
 /**
  * The catalogue, as a device sees it: local first, provider only when it must.
@@ -309,11 +309,13 @@ export class Catalogue {
     return this.once(type, async () => {
       const at = this.policy.now().toISOString();
       let filed = 0;
+      let titles = 0;
       const count = await read(async (categoryId, streams) => {
         await pause?.();
         await this.store.writeStreams(type, categoryId, streams);
         await this.store.markFetched(type, categoryId, at);
-        onFiled?.(++filed, null);
+        titles += streams.length;
+        onFiled?.(++filed, null, titles);
       });
       await this.store.markFetched(type, WHOLE_LIBRARY, at);
       return count;
@@ -346,12 +348,14 @@ export class Catalogue {
     }
 
     let filed = 0;
-    onFiled?.(0, byCategory.size);
+    let titles = 0;
+    onFiled?.(0, byCategory.size, 0);
     for (const [categoryId, streams] of byCategory) {
       await pause?.();
       await this.store.writeStreams(type, categoryId, streams);
       await this.store.markFetched(type, categoryId, at);
-      onFiled?.(++filed, byCategory.size);
+      titles += streams.length;
+      onFiled?.(++filed, byCategory.size, titles);
     }
 
     // Last, so an index cut short is not taken for a finished one.

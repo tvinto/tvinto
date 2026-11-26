@@ -38,6 +38,7 @@ import { DeviceSyncService } from '../../services/device-sync.service';
 import { ToastService } from '../../services/toast.service';
 import { ConfirmService } from '../../services/confirm.service';
 import { ProvidersService } from '../../services/providers.service';
+import { XtreamService } from '../../services/xtream.service';
 import { API_URL } from '../../services/api-url';
 import { serverName } from '@shared/server';
 import { ProfilePictureDialogComponent } from '../../ui/profile-picture-dialog.component';
@@ -154,6 +155,17 @@ export class AccountComponent {
     if (this.accounts.getToken()) {
       this.accounts.loadSubscriptions().subscribe({ error: () => undefined });
     }
+    // Read when Providers opens: one small read a library.
+    const xtream = inject(XtreamService);
+    effect(() => {
+      if (this.current() === 'providers') {
+        untracked(() =>
+          void Promise.all((['live', 'vod', 'series'] as const).map(type => xtream.libraryAt(type).catch(() => null))).then(times =>
+            this.libraryAt.set(times.filter((at): at is string => !!at).sort()[0] ?? null)
+          )
+        );
+      }
+    });
   }
 
   /** The open section's title, as a key for the t pipe. */
@@ -215,6 +227,24 @@ export class AccountComponent {
       );
     }
     return parts.join(' · ');
+  });
+
+  /**
+   * When the library was last downloaded whole -- the oldest of channels,
+   * films and shows -- under Providers: all a background refresh that failed
+   * shows (it keeps what is held and tries again later; card 42).
+   */
+  private readonly libraryAt = signal<string | null>(null);
+  readonly libraryLine = computed(() => {
+    const at = this.libraryAt();
+    if (!at) {
+      return null;
+    }
+    const when = new Date(at);
+    const time = clockTime(when.getTime());
+    return t('firstLoad.libraryUpdated', {
+      when: when.toDateString() === new Date().toDateString() ? time : `${when.toLocaleDateString(locale())} ${time}`
+    });
   });
 
   passwords = { current: '', next: '', repeat: '' };

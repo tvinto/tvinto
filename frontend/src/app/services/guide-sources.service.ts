@@ -18,6 +18,7 @@ import {
 } from '@shared/xtream/guideSources';
 import { ChangeSet } from '@shared/sync';
 import { guideSourceId } from '@shared/xtream/guideSourceId';
+import { afterFirstLibraries } from '../utils/library-refresh.utils';
 import { epgShareCountryOfLabel } from '@shared/xtream/epgShare';
 import { epgShareName } from '../utils/epg-share.utils';
 import { accountStorageKey, adoptableLegacyValue } from '../utils/account-storage.utils';
@@ -520,6 +521,8 @@ export class GuideSourcesService {
       this.guide.willLoad(ids);
       void (async () => {
         try {
+          // After the libraries of a first load: one connection, in turn (card 42).
+          await afterFirstLibraries();
           for (const guide of missing) {
             // One at a time, as the guide store allows; the addresses carry the
             // provider's password, so a failure is logged without them.
@@ -558,6 +561,7 @@ export class GuideSourcesService {
     const ids = fresh.map(source => source.id);
     this.guide.willLoad(ids);
     try {
+      await afterFirstLibraries();
       for (const source of fresh) {
         // The guide store takes one at a time; one somebody started waits its turn.
         while (this.guide.isLoading()) {

@@ -53,32 +53,19 @@ describe('OnboardingService', () => {
     expect(onboarding.shouldShow()).toBe(false);
   });
 
-  it('is not shown to a device that has a provider, or is signed in', () => {
+  it('is not shown to a device that has a provider', () => {
     const onboarding = setup();
     hasSubscription.set(true);
     expect(onboarding.shouldShow()).toBe(false);
+  });
 
-    hasSubscription.set(false);
+  it('is shown to a brand-new account with nothing to watch, as to a device without one (card 42)', () => {
+    const onboarding = setup();
     local.set(false);
-    expect(onboarding.shouldShow()).toBe(false);
-  });
-
-  it('is still shown after going to sign in and coming back without signing in', () => {
-    const onboarding = setup();
-
-    onboarding.signingIn(true);
-
     expect(onboarding.shouldShow()).toBe(true);
-  });
 
-  it('brings a television back for Starting up after signing in, once; not a phone', () => {
-    const onboarding = setup();
-    onboarding.signingIn(true);
-    expect(onboarding.takeAfterSignIn()).toBe(true);
-    expect(onboarding.takeAfterSignIn()).toBe(false);
-
-    onboarding.signingIn(false);
-    expect(onboarding.takeAfterSignIn()).toBe(false);
+    onboarding.finish();
+    expect(onboarding.shouldShow()).toBe(false);
   });
 
   it('downloads a guide added here only once the one before it has finished', async () => {

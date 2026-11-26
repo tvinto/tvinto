@@ -11,7 +11,7 @@
  * seasons and one of none), and answers every stream address with 404:
  * nothing can play.
  *
- *   node tools/qa/fake-xtream.js [--port 8767] [--play <local .ts file>] [--art <image address>] [--demo] [--slow <seconds>]
+ *   node tools/qa/fake-xtream.js [--port 8767] [--play <local .ts file>] [--art <image address>] [--demo] [--slow <seconds>] [--pad <films>] [--library-kbps <n>]
  *
  * --demo answers with demo-catalogue.js instead: a believable, invented
  * line-up with drawn posters and logos, for screenshots people will see.
@@ -504,9 +504,35 @@ function xmltv() {
 
 /** The demo's pictures are addressed as ART/...; they are served from wherever the app reached this. */
 let artBase = '';
-const json = (res, body) => {
+const sendJson = (res, body) => {
   res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
   res.end(JSON.stringify(body).split('"ART/').join(`"${artBase}/art/`));
+};
+
+const json = sendJson;
+
+/**
+ * --library-kbps <n>: a whole library sent at that many kilobits a second, as
+ * a real line sends tens of megabytes -- for seeing a first load's download
+ * counted as it comes (card 42).
+ */
+const LIBRARY_KBPS = process.argv.includes('--library-kbps') ? Number(process.argv[process.argv.indexOf('--library-kbps') + 1]) : 0;
+const pacedJson = (res, body) => {
+  const bytes = Buffer.from(JSON.stringify(body).split('"ART/').join(`"${artBase}/art/`));
+  res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+  const piece = Math.max(1024, Math.round((LIBRARY_KBPS * 1000) / 8 / 10));
+  let at = 0;
+  const timer = setInterval(() => {
+    if (res.destroyed) {
+      return clearInterval(timer);
+    }
+    res.write(bytes.subarray(at, at + piece));
+    at += piece;
+    if (at >= bytes.length) {
+      clearInterval(timer);
+      res.end();
+    }
+  }, 100);
 };
 
 http
@@ -646,6 +672,7 @@ http
     return answer();
     function answer() {
     const inCategory = list => (category ? list.filter(entry => entry.category_id === category) : list);
+    const json = (res, body) => (LIBRARY_KBPS && !category && ['get_live_streams', 'get_vod_streams', 'get_series'].includes(action) ? pacedJson : sendJson)(res, body);
     switch (action) {
       case null:
         return json(res, {

@@ -37,6 +37,8 @@ import { StartupSettingsComponent } from '../startup-settings/startup-settings.c
 import { TvintoMarkComponent } from '../../ui/tvinto-mark.component';
 import { TmdbKeyComponent } from '../tmdb-key/tmdb-key.component';
 import { TmdbService } from '../../services/tmdb.service';
+import { FirstLoadService } from '../../services/first-load.service';
+import { FirstLoadStripComponent } from '../first-load-strip/first-load-strip.component';
 
 type Step = 'welcome' | 'provider' | 'guide' | 'tmdb' | 'startup' | 'done';
 
@@ -58,7 +60,7 @@ const CHECK_TIMEOUT_MS = 30_000;
 @Component({
   selector: 'app-onboarding',
   standalone: true,
-  imports: [UpdateBarsComponent, TPipe, NgIcon, HlmButton, HlmInput, HlmLabel, StartupSettingsComponent, TvintoMarkComponent, PhoneFormOfferComponent, LanguagePickerComponent, TmdbKeyComponent, SettingRowComponent],
+  imports: [UpdateBarsComponent, TPipe, NgIcon, HlmButton, HlmInput, HlmLabel, StartupSettingsComponent, TvintoMarkComponent, PhoneFormOfferComponent, LanguagePickerComponent, TmdbKeyComponent, SettingRowComponent, FirstLoadStripComponent],
   providers: [provideIcons({ lucideArrowLeft, lucideCheck, lucideEye, lucideEyeOff, lucideGlobe, lucideLoaderCircle, lucidePlus })],
   templateUrl: './onboarding.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -79,10 +81,23 @@ export class OnboardingComponent {
   /** Send error reports, on Welcome: on, and said so, before anything can be sent. */
   readonly reports = inject(ErrorReportsService);
 
-  readonly step = signal<Step>(inject(ActivatedRoute).snapshot.queryParamMap.get('step') === 'startup' ? 'startup' : 'welcome');
+  /** The library and guide, loading while the steps go on (card 42). */
+  readonly firstLoad = inject(FirstLoadService);
 
-  /** Signed in already: came back after "I have an account" for Starting up. */
+  /** Signed in already: a new account, or one signed in to on this device just now. */
   readonly signedIn = !this.accounts.localProfile.active();
+
+  /**
+   * Where the walk-through opens: Welcome; the provider for a new account;
+   * the guide for an account that has one (LoginComponent); the last screen
+   * for a first load cut short at an earlier start.
+   */
+  private readonly opened: Step = (() => {
+    const asked = inject(ActivatedRoute).snapshot.queryParamMap.get('step');
+    return asked === 'guide' || asked === 'done' ? asked : this.signedIn ? 'provider' : 'welcome';
+  })();
+
+  readonly step = signal<Step>(this.opened);
 
   /** The numbered steps after Welcome, as this device has them. */
   readonly numbered = computed<Step[]>(() =>
@@ -90,8 +105,20 @@ export class OnboardingComponent {
   );
   readonly stepNumber = computed(() => this.numbered().indexOf(this.step()) + 1);
 
-  /** Back goes to the step before, down to Welcome; not from Starting up after signing in. */
-  readonly canGoBack = computed(() => this.step() !== 'welcome' && !(this.signedIn && this.step() === 'startup'));
+  /** Back goes to the step before, down to the one it opened on. */
+  readonly canGoBack = computed(() => this.step() !== this.opened && this.step() !== 'welcome');
+
+  /** On the last screen, the libraries still coming in: it waits, and opens the app once they are in. */
+  readonly waiting = computed(() => this.step() === 'done' && this.firstLoad.started() && !this.firstLoad.librariesIn());
+
+  /** The parts still loading, for the line beside "Continue anyway". */
+  readonly stillLoading = computed(() =>
+    this.firstLoad
+      .parts()
+      .filter(part => part.state === 'loading' || part.state === 'waiting')
+      .map(part => t({ live: 'firstLoad.channels', vod: 'firstLoad.films', series: 'firstLoad.shows', guide: 'firstLoad.guide' }[part.part]))
+      .join(', ')
+  );
 
   // --- The provider -----------------------------------------------------------
 
@@ -144,7 +171,7 @@ export class OnboardingComponent {
   readonly opensOnLastChannel = computed(() => opensLastChannel(this.settings.get(SETTING_KEYS.openLastChannel)));
 
   constructor() {
-    if (!this.signedIn && !this.onboarding.shouldShow()) {
+    if ((this.opened === 'welcome' || this.opened === 'provider') && !this.onboarding.shouldShow()) {
       void this.router.navigate(['/for-you'], { replaceUrl: true });
     } else if (this.step() === 'welcome' && this.reports.available) {
       // Welcome is where a walk-through starts, and it shows the switch.
@@ -175,6 +202,29 @@ export class OnboardingComponent {
           this.tv.focusAsIfMoved(first);
         }
       });
+    });
+
+    // Loading from the moment there is a provider and the steps go on past
+    // it: an account's arrives with it, and one cut short goes on here.
+    if (this.opened === 'done' || this.opened === 'guide') {
+      void this.firstLoad.start();
+    }
+    effect(() => {
+      if (this.providers.all().length && this.step() !== 'welcome' && this.step() !== 'provider') {
+        untracked(() => void this.firstLoad.start());
+      }
+    });
+
+    // The last screen opens the app by itself once channels, films and shows
+    // are in -- if it had to wait for them: arrived before, it is the summary
+    // with Start watching, as a small library has always had.
+    let waited = false;
+    effect(() => {
+      if (this.waiting()) {
+        waited = true;
+      } else if (waited && this.step() === 'done' && this.firstLoad.librariesIn()) {
+        untracked(() => this.startWatching());
+      }
     });
 
     // What a guide holds, read again whenever a download finishes.
@@ -209,9 +259,8 @@ export class OnboardingComponent {
     this.step.set('provider');
   }
 
-  /** "I have an account": the sign-in page, and on a television back here for Starting up. */
+  /** "I have an account": the sign-in page, and back here from the guide on once signed in (LoginComponent). */
   haveAccount(): void {
-    this.onboarding.signingIn(this.tv.isTelevision());
     void this.router.navigate(['/sign-in']);
   }
 
@@ -242,6 +291,8 @@ export class OnboardingComponent {
     const sourcesBefore = new Set(this.sources.sources().map(source => source.id));
 
     this.checking.set(true);
+    // Its own guide comes with it, and waits for the library (FirstLoadService).
+    this.firstLoad.holdGuides();
     try {
       await this.providers.add(input);
       // Channels first; films, then shows, only for one with no channels -- a
@@ -252,6 +303,8 @@ export class OnboardingComponent {
         throw new Error('No categories');
       }
       this.found.set({ host, categories: count });
+      // Everything else loads from now on, while the steps after this go on.
+      void this.firstLoad.start();
     } catch (error) {
       const added = this.providers.all().find(record => !tagsBefore.has(record.tag));
       if (added) {
@@ -262,6 +315,7 @@ export class OnboardingComponent {
           this.sources.remove(source.id);
         }
       }
+      this.firstLoad.releaseGuides();
       this.toasts.error(t('onboarding.notReached'), t('onboarding.notReachedBody', { host }), { detail: technicalDetail(error) });
     } finally {
       this.checking.set(false);

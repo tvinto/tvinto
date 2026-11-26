@@ -1453,6 +1453,24 @@
     "notAllowed": "El televisor no deja que la app se abra sola",
     "notAllowedBody": "Permítelo en los ajustes del televisor: Aplicaciones, Acceso especial de aplicaciones, Mostrar sobre otras aplicaciones, Tvinto. Luego vuelve a activar esto."
   },
+  "firstLoad": {
+    "title": "Cargando tu biblioteca",
+    "lead": "Tvinto se abrirá solo en cuanto lleguen los canales, las películas y las series.",
+    "channels": "Canales",
+    "films": "Películas",
+    "shows": "Series",
+    "guide": "Guía",
+    "count": "{{count}}",
+    "megabytes": "{{size}} MB",
+    "minutesLeft": "Quedan unos {{count}} min",
+    "underMinute": "Queda menos de un minuto",
+    "retrying": "El proveedor no respondió. Se volverá a intentar en breve.",
+    "failed": "Parte de la biblioteca no llegó. Se volverá a intentar en el próximo inicio.",
+    "notIn": "aún no ha llegado",
+    "stillLoading": "Aún cargando: {{parts}}. Se completará mientras usas la app.",
+    "continueAnyway": "Continuar de todos modos",
+    "libraryUpdated": "Biblioteca actualizada por última vez {{when}}"
+  },
   "home": {
     "favouriteChannels": "Canales favoritos",
     "watchedLately": "Visto últimamente"

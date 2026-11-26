@@ -1453,6 +1453,24 @@
     "notAllowed": "De tv laat de app niet vanzelf openen",
     "notAllowedBody": "Sta het toe in de instellingen van de tv: Apps, Speciale app-toegang, Weergeven vóór andere apps, Tvinto. Zet dit daarna opnieuw aan."
   },
+  "firstLoad": {
+    "title": "Je bibliotheek wordt geladen",
+    "lead": "Tvinto opent vanzelf zodra zenders, films en series binnen zijn.",
+    "channels": "Zenders",
+    "films": "Films",
+    "shows": "Series",
+    "guide": "Gids",
+    "count": "{{count}}",
+    "megabytes": "{{size}} MB",
+    "minutesLeft": "Nog ongeveer {{count}} min",
+    "underMinute": "Minder dan een minuut",
+    "retrying": "De provider antwoordde niet. Zo meteen opnieuw.",
+    "failed": "Een deel van de bibliotheek is niet aangekomen. Bij de volgende start wordt het opnieuw geprobeerd.",
+    "notIn": "nog niet binnen",
+    "stillLoading": "Nog bezig: {{parts}}. Het vult zich aan terwijl je de app gebruikt.",
+    "continueAnyway": "Toch doorgaan",
+    "libraryUpdated": "Bibliotheek laatst bijgewerkt {{when}}"
+  },
   "home": {
     "favouriteChannels": "Favoriete zenders",
     "watchedLately": "Onlangs gekeken"

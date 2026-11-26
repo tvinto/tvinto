@@ -39,7 +39,7 @@
             @case ('guide') { {{ 'onboarding.guideTitle' | t }} }
             @case ('tmdb') { {{ 'onboarding.tmdbTitle' | t }} }
             @case ('startup') { {{ 'startup.title' | t }} }
-            @case ('done') { {{ 'onboarding.doneTitle' | t }} }
+            @case ('done') { {{ (waiting() ? 'firstLoad.title' : 'onboarding.doneTitle') | t }} }
           }
         </h1>
         @switch (step()) {
@@ -51,6 +51,15 @@
             <p class="text-sm text-muted-foreground">{{ 'onboarding.tmdbWithout' | t }}</p>
           }
           @case ('startup') { <p class="text-sm text-muted-foreground">{{ 'onboarding.startupLead' | t }}</p> }
+          @case ('done') {
+            @if (waiting()) {
+              <p class="text-sm text-muted-foreground">{{ 'firstLoad.lead' | t }}</p>
+            }
+          }
+        }
+        <!-- What has come in so far, while the steps go on (card 42). -->
+        @if (step() !== 'welcome' && step() !== 'done') {
+          <app-first-load-strip />
         }
       </div>
     </div>
@@ -262,6 +271,13 @@
         }
 
         @case ('done') {
+          @if (waiting()) {
+            <app-first-load-strip [full]="true" />
+            <div class="mt-auto flex flex-col gap-2" data-onboarding-actions>
+              <p class="text-sm text-muted-foreground" data-first-load-still>{{ 'firstLoad.stillLoading' | t: { parts: stillLoading() } }}</p>
+              <button hlmBtn variant="secondary" type="button" data-onboarding-first data-first-load-continue (click)="startWatching()">{{ 'firstLoad.continueAnyway' | t }}</button>
+            </div>
+          } @else {
           <div class="flex flex-col" data-onboarding-summary>
             <div class="flex items-center gap-3 border-b border-border py-3">
               <span class="w-28 shrink-0 text-sm text-muted-foreground">{{ 'onboarding.doneProvider' | t }}</span>
@@ -288,6 +304,7 @@
               <button hlmBtn variant="secondary" type="button" (click)="syncWithAccount()">{{ 'onboarding.syncWithAccount' | t }}</button>
             }
           </div>
+          }
         }
       }
     </div>

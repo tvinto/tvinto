@@ -19,6 +19,7 @@ import { API_URL, buildHasServer, chooseServer, chosenServer, hasServer, movedAp
 import { ToastService } from '../../services/toast.service';
 import { SyncStartService } from '../../services/sync-start.service';
 import { OnboardingService } from '../../services/onboarding.service';
+import { FirstLoadService } from '../../services/first-load.service';
 import { ServiceKindService } from '../../services/service-kind.service';
 import { technicalDetail } from '../../utils/failure-messages.utils';
 import { isSyncServiceHealth, registrationOf, serverAddressCandidates, serverName } from '@shared/server';
@@ -70,6 +71,7 @@ export class LoginComponent {
   readonly toSync = this.route.routeConfig?.path === 'sign-in';
   readonly passingThrough = this.accounts.localProfile.active() && !this.toSync;
   private readonly onboarding = inject(OnboardingService);
+  private readonly firstLoad = inject(FirstLoadService);
 
   /** Making an account, when the first launch's "Sync with an account" sent somebody here. */
   readonly mode = signal<Mode>(this.route.queryParamMap.get('create') === '1' ? 'register' : 'signIn');
@@ -520,7 +522,7 @@ export class LoginComponent {
       return;
     }
     this.loading.set(false);
-    this.goOnward();
+    this.goOnward(true);
   }
 
   /**
@@ -530,16 +532,28 @@ export class LoginComponent {
    * library closes the app as it does on any other first screen. Pushed, it
    * went back to a sign-in form for an account already signed in (a user,
    * 22 September).
+   *
+   * `signedInNow`: from the form just now, not a session kept from before.
    */
-  private goOnward(): void {
+  private goOnward(signedInNow = false): void {
+    // A first load cut short (the app closed, the TV asleep): back on its
+    // waiting screen, not in a half-empty app (card 42).
+    if (this.firstLoad.pending()) {
+      void this.router.navigate(['/welcome'], { queryParams: { step: 'done' }, replaceUrl: true });
+      return;
+    }
     // The first launch on a device with nothing in it yet, instead of "Add
-    // your provider"; and a television signed in from it, back for Starting up.
+    // your provider", with an account or without.
     if (this.onboarding.shouldShow()) {
       void this.router.navigate(['/welcome'], { replaceUrl: true });
       return;
     }
-    if (!this.accounts.localProfile.active() && this.onboarding.takeAfterSignIn()) {
-      void this.router.navigate(['/welcome'], { queryParams: { step: 'startup' }, replaceUrl: true });
+    // An account with a provider, signed in to on a device that has not been
+    // set up: the same steps from the guide on, its library loading meanwhile.
+    if (signedInNow && !this.onboarding.done()) {
+      // The account's guides come down with it: after its library.
+      this.firstLoad.holdGuides();
+      void this.router.navigate(['/welcome'], { queryParams: { step: 'guide' }, replaceUrl: true });
       return;
     }
     // A family profile switch starts the app again and names the page to open.

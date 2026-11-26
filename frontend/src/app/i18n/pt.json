@@ -1453,6 +1453,24 @@
     "notAllowed": "A TV não deixa o app abrir sozinho",
     "notAllowedBody": "Permita isso nas configurações da TV: Apps, Acesso especial de apps, Sobrepor a outros apps, Tvinto. Depois ligue isto de novo."
   },
+  "firstLoad": {
+    "title": "A carregar a sua biblioteca",
+    "lead": "O Tvinto abre sozinho assim que chegarem os canais, filmes e séries.",
+    "channels": "Canais",
+    "films": "Filmes",
+    "shows": "Séries",
+    "guide": "Guia",
+    "count": "{{count}}",
+    "megabytes": "{{size}} MB",
+    "minutesLeft": "Faltam cerca de {{count}} min",
+    "underMinute": "Falta menos de um minuto",
+    "retrying": "O fornecedor não respondeu. Nova tentativa em breve.",
+    "failed": "Parte da biblioteca não chegou. Será tentado de novo no próximo arranque.",
+    "notIn": "ainda não chegou",
+    "stillLoading": "Ainda a carregar: {{parts}}. Vai sendo preenchido enquanto usa a app.",
+    "continueAnyway": "Continuar mesmo assim",
+    "libraryUpdated": "Biblioteca atualizada pela última vez {{when}}"
+  },
   "home": {
     "favouriteChannels": "Canais favoritos",
     "watchedLately": "Assistidos recentemente"

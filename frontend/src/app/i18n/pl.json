@@ -1527,6 +1527,24 @@
     "notAllowed": "Telewizor nie pozwala aplikacji otworzyć się samodzielnie",
     "notAllowedBody": "Zezwól na to w ustawieniach telewizora: Aplikacje, Specjalny dostęp aplikacji, Wyświetlanie nad innymi aplikacjami, Tvinto. Potem włącz to ponownie."
   },
+  "firstLoad": {
+    "title": "Wczytywanie biblioteki",
+    "lead": "Tvinto otworzy się samo, gdy tylko dotrą kanały, filmy i seriale.",
+    "channels": "Kanały",
+    "films": "Filmy",
+    "shows": "Seriale",
+    "guide": "Przewodnik",
+    "count": "{{count}}",
+    "megabytes": "{{size}} MB",
+    "minutesLeft": "Jeszcze około {{count}} min",
+    "underMinute": "Mniej niż minuta",
+    "retrying": "Dostawca nie odpowiedział. Za chwilę kolejna próba.",
+    "failed": "Część biblioteki nie dotarła. Kolejna próba przy następnym uruchomieniu.",
+    "notIn": "jeszcze nie dotarło",
+    "stillLoading": "Jeszcze się wczytuje: {{parts}}. Uzupełni się, gdy będziesz korzystać z aplikacji.",
+    "continueAnyway": "Kontynuuj mimo to",
+    "libraryUpdated": "Biblioteka ostatnio odświeżona {{when}}"
+  },
   "home": {
     "favouriteChannels": "Ulubione kanały",
     "watchedLately": "Ostatnio oglądane"

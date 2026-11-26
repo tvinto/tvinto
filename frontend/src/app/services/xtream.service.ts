@@ -40,6 +40,7 @@ import { LocalUserDataService } from './local-user-data.service';
 import { NativePlayerService } from './native-player.service';
 import { ParentalLockService } from './parental-lock.service';
 import { ProviderSlot } from './routed-client';
+import { fetchProgress } from './native/fetchTransport';
 import { DownloadedFile, GuideDownloadPlugin, downloadedFileAddress, downloadedFileBytes, guideDownloadPlugin } from './native/guideDownload';
 import {
   FileCategory,
@@ -105,6 +106,18 @@ const EMPTY_SERIES: SeriesInfo = {
   category_id: ''
 };
 
+/**
+ * A library download as it goes: categories written of how many (null until
+ * known), the titles in them, and before any is written the bytes of the
+ * listing downloaded so far where the device says (null otherwise).
+ */
+export interface LibraryProgress {
+  filed: number;
+  total: number | null;
+  titles: number;
+  bytes: number | null;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -134,7 +147,10 @@ export class XtreamService {
    * that is known). Null while the library is still downloading, which is one
    * request whose length nobody says.
    */
-  readonly indexProgress = signal<{ filed: number; total: number | null } | null>(null);
+  readonly indexProgress = signal<LibraryProgress | null>(null);
+
+  /** How many titles each library held when this launch last downloaded it (FirstLoadService's counts). */
+  readonly libraryTitles = signal<Partial<Record<StreamType, number>>>({});
 
   constructor(private http: HttpClient) {}
 
@@ -919,11 +935,14 @@ export class XtreamService {
     // Shown twice a second at most, as a guide's is: a redraw per category
     // is a lot of them on a television.
     let shownAt = 0;
-    const onFiled = (filed: number, total: number | null) => {
+    // How many categories there are, where the reader cannot say until it is
+    // done (a television's): the list held, for a rough time left (card 42).
+    let known: number | null = null;
+    const onFiled = (filed: number, total: number | null, titles: number) => {
       const now = Date.now();
       if (now - shownAt >= 500 || filed === total) {
         shownAt = now;
-        this.indexProgress.set({ filed, total });
+        this.indexProgress.set({ filed, total: total ?? (known && known >= filed ? known : null), titles, bytes: null });
       }
     };
     try {
@@ -945,8 +964,9 @@ export class XtreamService {
         const plugin = slot.xtream ? guideDownloadPlugin() : null;
         if (slot.xtream && plugin) {
           const address = slot.xtream.streamsAddress(type);
+          known = (await slot.catalogue.categories(type).catch(() => [])).length || null;
           count += await slot.catalogue.indexWith(type, async file => {
-            const downloaded = await plugin.download({ url: address, idleTimeoutMs: 60_000 });
+            const downloaded = await this.downloadCounted(plugin, address);
             try {
               return await this.readLibraryFile(plugin, downloaded, type, file);
             } finally {
@@ -954,14 +974,48 @@ export class XtreamService {
             }
           }, onFiled, pause);
         } else {
-          count += await slot.catalogue.index(type, undefined, onFiled, pause);
+          // The desktop's listing counted as it downloads (FetchTransport).
+          fetchProgress.onBytes = bytes => {
+            if (!this.indexProgress()?.titles) {
+              this.indexProgress.set({ filed: 0, total: null, titles: 0, bytes });
+            }
+          };
+          try {
+            count += await slot.catalogue.index(type, undefined, onFiled, pause);
+          } finally {
+            fetchProgress.onBytes = undefined;
+          }
         }
         this.indexProgress.set(null);
+      }
+      if (onlyTag === undefined) {
+        this.libraryTitles.update(held => ({ ...held, [type]: count }));
       }
       return count;
     } finally {
       this.indexing.set(null);
       this.indexProgress.set(null);
+    }
+  }
+
+  /**
+   * A library's listing downloaded to a file, its bytes shown as they come
+   * (an APK from card 42 says; an older one says nothing until it is in): on
+   * a television the listing is minutes of a first load.
+   */
+  private async downloadCounted(plugin: GuideDownloadPlugin, url: string): Promise<DownloadedFile> {
+    const tag = `library-${Date.now()}`;
+    const listening = await plugin
+      .addListener?.('progress', event => {
+        if (event.tag === tag && !this.indexProgress()?.titles) {
+          this.indexProgress.set({ filed: 0, total: null, titles: 0, bytes: event.bytes });
+        }
+      })
+      .catch(() => null);
+    try {
+      return await plugin.download({ url, idleTimeoutMs: 60_000, tag });
+    } finally {
+      await listening?.remove().catch(() => undefined);
     }
   }
 

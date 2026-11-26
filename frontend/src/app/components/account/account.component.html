@@ -158,6 +158,9 @@
         }
         @case ('providers') {
           <app-providers />
+          @if (libraryLine(); as line) {
+            <p class="px-1 text-xs text-muted-foreground" data-library-updated>{{ line }}</p>
+          }
 
           <!-- The old single-subscription form, only where there is no
                Providers card: a browser, which goes through the backend.

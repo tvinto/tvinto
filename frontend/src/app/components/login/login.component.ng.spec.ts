@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { LoginComponent } from './login.component';
 import { AccountService } from '../../services/account.service';
 import { SyncStartService } from '../../services/sync-start.service';
+import { FirstLoadService } from '../../services/first-load.service';
 import { OnboardingService } from '../../services/onboarding.service';
 import { ToastService } from '../../services/toast.service';
 import { ServiceKindService } from '../../services/service-kind.service';
@@ -23,6 +24,7 @@ describe('LoginComponent from a phone', () => {
         { provide: SyncStartService, useValue: {} },
         { provide: ActivatedRoute, useValue: { snapshot: { routeConfig: { path: 'login' }, queryParamMap: new Map() } } },
         { provide: OnboardingService, useValue: {} },
+        { provide: FirstLoadService, useValue: {} },
         { provide: ToastService, useValue: {} },
         { provide: ServiceKindService, useValue: {} },
         { provide: TvNavigationService, useValue: { isTelevision: () => true } }
