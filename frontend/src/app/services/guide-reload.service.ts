@@ -1,12 +1,12 @@
 import { Injectable, inject } from '@angular/core';
 import { decideGuideReload } from '@shared/xtream/guideReload';
 import { GuideService } from './guide.service';
-import { rememberLoadedHere, wasLoadedHere } from './guide-loaded-here';
+import { isShortGuide, rememberLoadedHere, shortGuides, wasLoadedHere } from './guide-loaded-here';
 import { GuideSourcesService } from './guide-sources.service';
 import { GuideSource } from '@shared/xtream/guideSources';
 import { NativePlayerService } from './native-player.service';
 import { isMeteredConnection } from '../utils/connection.utils';
-import { librariesFirst } from '../utils/library-refresh.utils';
+import { librariesFirst, untilIdleWork } from '../utils/library-refresh.utils';
 
 /** Long enough for the first screen and its catalogue requests to finish. */
 const FIRST_CHECK_AFTER_MS = 45 * 1000;
@@ -74,7 +74,7 @@ export class GuideReloadService {
   /** One pass over this account's guides. Public so it can be asked for directly. */
   async check(): Promise<void> {
     // Not during a first load's libraries: the guide comes after them (card 42).
-    if (this.checking || this.guide.isLoading() || isMeteredConnection() || librariesFirst.done) {
+    if (this.checking || this.guide.isLoading() || isMeteredConnection() || librariesFirst.done || shortGuides.on) {
       return;
     }
     this.checking = true;
@@ -108,13 +108,23 @@ export class GuideReloadService {
           runsOutAt: Infinity,
           lastAttemptAt: this.readAttempt(source.id)
         };
+        // Loaded with the next days only during a first load: the rest now,
+        // once nobody is using the app -- writing a whole guide took the
+        // owner's TV minutes (card 42).
+        const short = loadedAt !== null && isShortGuide(source.id);
         let decision = decideGuideReload(state, Date.now());
-        if (decision.reason === 'enough-left') {
+        if (!short && decision.reason === 'enough-left') {
           decision = decideGuideReload({ ...state, runsOutAt: await this.guide.runsOutAt(source.id) }, Date.now());
         }
 
-        if (!decision.reload) {
+        if (!short && !decision.reload) {
           continue;
+        }
+        if (short) {
+          await untilIdleWork();
+          if (this.standingAside(programmes) || this.guide.isLoading()) {
+            return;
+          }
         }
 
         // Recorded before the download rather than after it. A load that
@@ -126,7 +136,7 @@ export class GuideReloadService {
         try {
           const report = await this.guide.load(source.id, source.url);
           console.info(
-            `Reloaded the guide "${source.label}" (${decision.reason}): ` +
+            `Reloaded the guide "${source.label}" (${short ? 'the rest after a first load' : decision.reason}): ` +
               `${report.channels} channels, ${report.programmes} programmes`
           );
         } catch (failure) {

@@ -413,11 +413,13 @@ export class OnboardingComponent {
   }
 
   startWatching(): void {
+    this.firstLoad.finishGuides();
     this.onboarding.finish();
     void this.router.navigate(['/for-you'], { replaceUrl: true });
   }
 
   syncWithAccount(): void {
+    this.firstLoad.finishGuides();
     this.onboarding.finish();
     void this.router.navigate(['/sign-in'], { queryParams: { create: 1 } });
   }

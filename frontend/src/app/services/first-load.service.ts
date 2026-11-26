@@ -1,6 +1,7 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { StreamType } from '@shared/types';
 import { librariesFirst } from '../utils/library-refresh.utils';
+import { shortGuides } from './guide-loaded-here';
 import { GuideService } from './guide.service';
 import { GuideSourcesService } from './guide-sources.service';
 import { ProviderAccessService } from './provider-access.service';
@@ -150,6 +151,8 @@ export class FirstLoadService {
       return;
     }
     this.running.set(true);
+    // Guides loaded from here until the walk-through is left keep the next days only.
+    shortGuides.on = true;
     this.setPending(true);
     this.holdGuides();
     try {
@@ -174,6 +177,11 @@ export class FirstLoadService {
     if (!librariesFirst.done) {
       librariesFirst.done = new Promise<void>(resolve => (this.release = resolve));
     }
+  }
+
+  /** Left the walk-through: guides load whole again, and the short ones are made up when the TV is idle (GuideReloadService). */
+  finishGuides(): void {
+    shortGuides.on = false;
   }
 
   /** Guides go again: the libraries are in, or the provider was not added after all. */

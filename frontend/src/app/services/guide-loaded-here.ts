@@ -33,3 +33,32 @@ export const wasLoadedHere = (sourceId: string): boolean => {
     return false;
   }
 };
+
+/** How many days of programmes a guide loaded during a first load keeps (card 42). */
+export const SHORT_GUIDE_DAYS = 2;
+
+/** Set by FirstLoadService for its first load: guides loaded meanwhile keep the next days only. */
+export const shortGuides = { on: false };
+
+const shortKey = (sourceId: string) => `tvinto_guide_short:${sourceId}`;
+
+/** A guide loaded with the next days only, until a whole load of it replaces that (GuideReloadService). */
+export const markShortGuide = (sourceId: string, short: boolean): void => {
+  try {
+    if (short) {
+      localStorage.setItem(shortKey(sourceId), '1');
+    } else {
+      localStorage.removeItem(shortKey(sourceId));
+    }
+  } catch {
+    // Not remembered: the guide fills in when it runs out, as any guide.
+  }
+};
+
+export const isShortGuide = (sourceId: string): boolean => {
+  try {
+    return localStorage.getItem(shortKey(sourceId)) === '1';
+  } catch {
+    return false;
+  }
+};

@@ -185,6 +185,12 @@ export interface LoadGuideOptions {
    * answering a remote is not also reading a guide.
    */
   parse?: GuideParser;
+  /**
+   * Programmes starting at or after this time (ms) are left out: a first
+   * load keeps the next two days and the rest follows (card 42 -- writing a
+   * whole guide took the owner's TV minutes).
+   */
+  until?: number;
 }
 
 /** A load that brought in no channels and no programmes: not a guide. */
@@ -313,7 +319,9 @@ export const loadGuide = async (
         }
         options.onProgress?.({ channels, programmes, chars });
       },
-      programmes: async batch => {
+      programmes: async parsed => {
+        const until = options.until;
+        const batch = until === undefined ? parsed : parsed.filter(programme => programme.start < until);
         if (batch.length) {
           await store.writeProgrammes(sourceId, batch);
           programmes += batch.length;
