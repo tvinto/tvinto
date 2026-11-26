@@ -167,18 +167,11 @@ export class CapacitorGuideStore implements GuideStore {
     // left its rows for good. Channels hid it by being rewritten in full on
     // every load. Inserts through `executeSet` are unaffected.
     //
-    // A slice of rows at a time: one DELETE reads every programme held, which
-    // held the database 1.9 s on a user's TV (275,000 programmes, 27 November).
-    // `+source_id` keeps SQLite on the rowid range: with no statistics in the
-    // file it chose the primary key by source instead, and so read every
-    // programme of the source for each slice (12 slices of 0.5 to 2 s on the TV).
-    const last = Number((await this.db.query('SELECT MAX(rowid) AS last FROM guide_programmes')).values?.[0]?.['last'] ?? 0);
-    for (let from = 0; from < last; from += DELETE_PIECE_ROWS) {
-      await this.db.run(
-        'DELETE FROM guide_programmes WHERE rowid > ? AND rowid <= ? AND +source_id = ? AND generation IS NOT ?',
-        [from, from + DELETE_PIECE_ROWS, sourceId, generation]
-      );
-    }
+    // `+source_id` keeps SQLite on the rowid range (`deleteProgrammesWhere`):
+    // with no statistics in the file it chose the primary key by source
+    // instead, and so read every programme of the source for each slice (12
+    // slices of 0.5 to 2 s on a user's TV).
+    await this.deleteProgrammesWhere('+source_id = ? AND generation IS NOT ?', [sourceId, generation]);
     await this.db.run(
       'DELETE FROM guide_channels WHERE source_id = ? AND generation IS NOT ?',
       [sourceId, generation]
@@ -364,7 +357,22 @@ export class CapacitorGuideStore implements GuideStore {
   }
 
   async prune(before: number): Promise<void> {
-    await this.db.run('DELETE FROM guide_programmes WHERE stop < ?', [before]);
+    await this.deleteProgrammesWhere('stop < ?', [before]);
+  }
+
+  /**
+   * Deletes the programmes meeting `condition` a slice of rowids at a time,
+   * each its own call: one DELETE reads every programme held, which held the
+   * database 1.6 to 1.9 s on a user's TV (275,000 programmes, 27 November).
+   */
+  private async deleteProgrammesWhere(condition: string, values: unknown[]): Promise<void> {
+    const last = Number((await this.db.query('SELECT MAX(rowid) AS last FROM guide_programmes')).values?.[0]?.['last'] ?? 0);
+    for (let from = 0; from < last; from += DELETE_PIECE_ROWS) {
+      await this.db.run(
+        `DELETE FROM guide_programmes WHERE rowid > ? AND rowid <= ? AND ${condition}`,
+        [from, from + DELETE_PIECE_ROWS, ...values]
+      );
+    }
   }
 
   /** Throws the lot away, for a sign-out. */

@@ -86,4 +86,13 @@ describe('CapacitorGuideStore writes in pieces', () => {
       [2 * DELETE_PIECE_ROWS, 3 * DELETE_PIECE_ROWS]
     ]);
   });
+
+  it('removes past programmes a slice of rows at a time', async () => {
+    const db = recording(DELETE_PIECE_ROWS + 1);
+    await new CapacitorGuideStore(db as never).prune(42);
+    expect(db.runs).toEqual([
+      [0, DELETE_PIECE_ROWS, 42],
+      [DELETE_PIECE_ROWS, 2 * DELETE_PIECE_ROWS, 42]
+    ]);
+  });
 });
