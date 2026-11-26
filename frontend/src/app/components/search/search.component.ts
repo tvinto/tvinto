@@ -66,8 +66,12 @@ interface ResultSection {
  * of this width fit, and Show all takes the last of them, so every row ends at
  * the right edge. These are the widths a card would have had; the columns
  * stretch them a little to use up the remainder.
+ *
+ * For You's cards, as the cards are For You's (26 November): its channel
+ * card and its poster, at a television's sizes there (styles.css).
  */
-const CARD_REM: Record<StreamType, number> = { live: 14.25, vod: 9, series: 9 };
+const CARD_REM: Record<StreamType, number> = { live: 14.25, vod: 7.875, series: 7.875 };
+const TV_CARD_REM: Record<StreamType, number> = { live: 21.25, vod: 12.5, series: 12.5 };
 const GAP_REM = 0.75;
 
 /**
@@ -120,6 +124,22 @@ const SEARCH_DEPTH = 300;
  * the row -- so a remote reaches it by carrying on right rather than hunting
  * for a control.
  */
+/** How long a finished search is shown again for the same words without searching (Back). */
+const KEEP_SEARCH_MS = 10 * 60_000;
+
+interface KeptSearch {
+  term: string;
+  at: number;
+  live: Stream[];
+  vod: Stream[];
+  series: Stream[];
+  categories: Category[];
+  inGuide: GuideFind[];
+}
+
+/** The last search that finished, for the launch: Back to the page shows it at once. */
+let lastSearch: KeptSearch | null = null;
+
 @Component({
   selector: 'app-search',
   standalone: true,
@@ -265,11 +285,26 @@ export class SearchComponent {
       return;
     }
 
+    // Back from a film or a show: the page is made again, and searched again
+    // with it (the owner, 26 November). The search it showed stands for a
+    // while, as Movies' rows do on Back (card 39).
+    if (lastSearch && lastSearch.term === term && Date.now() - lastSearch.at < KEEP_SEARCH_MS) {
+      this.live.set(lastSearch.live);
+      this.vod.set(lastSearch.vod);
+      this.series.set(lastSearch.series);
+      this.categories.set(lastSearch.categories);
+      this.inGuide.set(lastSearch.inGuide);
+      this.working.set(null);
+      return;
+    }
+    const kept: KeptSearch = { term, at: 0, live: [], vod: [], series: [], categories: [], inGuide: [] };
+
     void this.xtream
       .searchGuide(term)
       .then(found => {
         if (mine === this.latest) {
           this.inGuide.set(found);
+          kept.inGuide = found;
         }
       })
       // The libraries are still searched; the guide's part is simply absent.
@@ -328,6 +363,7 @@ export class SearchComponent {
     }
 
     this.working.set(null);
+    lastSearch = { ...kept, at: Date.now(), live: this.live(), vod: this.vod(), series: this.series(), categories: this.categories() };
   }
 
   /**
@@ -455,7 +491,7 @@ export class SearchComponent {
 
     const rem = this.remPx();
     const width = this.rowWidth() || 1920;
-    const card = CARD_REM[type] * rem;
+    const card = (this.tv.isTelevision() ? TV_CARD_REM : CARD_REM)[type] * rem;
     const gap = GAP_REM * rem;
     const columns = Math.max(2, Math.floor((width + gap) / (card + gap)));
 

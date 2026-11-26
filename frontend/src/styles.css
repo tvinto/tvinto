@@ -1535,7 +1535,7 @@ html.tv ::-webkit-scrollbar {
 
 /* A television's cards at FY-TV's size: 340x150, the ways in a row of four.
    Continue watching is posters now (NX-TV-2), sized as every poster is. */
-.tv [data-for-you] [data-fy-card] {
+.tv :is([data-for-you], [data-search-page]) [data-fy-card] {
   width: 21.25rem; /* 340 */
   height: 9.375rem; /* 150 */
 }
@@ -1855,8 +1855,10 @@ html.tv ::-webkit-scrollbar {
   padding: 0 0.75rem 0.75rem;
 }
 
+/* `a[...]`: the phone's Show all is a pill, whose own display came later and
+   won, so a television showed it under every row with more to show. */
 [data-search-count-phone],
-[data-search-show-all-phone],
+a[data-search-show-all-phone],
 [data-search-total-inline] {
   display: none;
 }
