@@ -579,6 +579,19 @@ body.tv {
 .tv ng-icon[size='28'] { width: 2.625rem; height: 2.625rem; }
 .tv ng-icon[size='32'] { width: 3rem; height: 3rem; }
 
+/* A spinning icon turns its drawing about the drawing's own centre. Turning
+   the host wobbled on the owner's TV and phone (26 November): a row squeezed
+   the host smaller than the circle inside it (14 x 11.5 around 15.3 x 15.3),
+   so it turned about a point that was not the circle's centre. */
+ng-icon.animate-spin {
+  animation: none;
+  flex-shrink: 0;
+}
+ng-icon.animate-spin > svg {
+  animation: var(--animate-spin);
+  transform-origin: center;
+}
+
 /* A button that is unavailable for now but keeps its focus: marked
    aria-disabled rather than disabled, because a disabled button drops focus
    to the page and leaves a remote with nothing to move from (the Guides

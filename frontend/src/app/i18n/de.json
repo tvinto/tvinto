@@ -1444,6 +1444,7 @@
     "tmdbLead": "TMDB ist eine freie Datenbank für Filme und Serien. Ein Schlüssel dafür gibt Tvinto Poster, Beschreibungen, Besetzung, Bewertungen und was gerade beliebt ist.",
     "tmdbWithout": "Ohne ihn bleiben Beliebt und die Film- und Serienseiten größtenteils leer. Du kannst ihn auch später unter Konto, Beschreibungen hinzufügen.",
     "tmdbSkip": "Vorerst überspringen",
+    "tmdbSaveContinue": "Speichern und weiter",
     "tmdbAdded": "Schlüssel hinzugefügt"
   },
   "startup": {

@@ -1518,6 +1518,7 @@
     "tmdbLead": "TMDB je brezplačna zbirka filmov in serij. Ključ z nje Tvintu da plakate, opise, igralce, ocene in to, kar je priljubljeno.",
     "tmdbWithout": "Brez njega so Priljubljeno ter strani filmov in serij večinoma prazne. Dodate ga lahko tudi pozneje, v Računu, pod Opisi.",
     "tmdbSkip": "Za zdaj preskoči",
+    "tmdbSaveContinue": "Shrani in nadaljuj",
     "tmdbAdded": "Ključ dodan"
   },
   "startup": {

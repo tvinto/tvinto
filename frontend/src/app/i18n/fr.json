@@ -1444,6 +1444,7 @@
     "tmdbLead": "TMDB est une base de données libre de films et de séries. Une clé TMDB donne à Tvinto les affiches, descriptions, distributions, notes et ce qui est populaire.",
     "tmdbWithout": "Sans elle, Populaire et les pages des films et des séries restent presque vides. Tu peux l'ajouter plus tard dans Compte, sous Descriptions.",
     "tmdbSkip": "Passer pour l'instant",
+    "tmdbSaveContinue": "Enregistrer et continuer",
     "tmdbAdded": "Clé ajoutée"
   },
   "startup": {

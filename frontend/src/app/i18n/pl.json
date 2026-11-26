@@ -1518,6 +1518,7 @@
     "tmdbLead": "TMDB to darmowa baza filmów i seriali. Klucz z niej daje Tvinto plakaty, opisy, obsadę, oceny i to, co popularne.",
     "tmdbWithout": "Bez niego Popularne oraz strony filmów i seriali są prawie puste. Możesz go dodać później w Koncie, w sekcji Opisy.",
     "tmdbSkip": "Na razie pomiń",
+    "tmdbSaveContinue": "Zapisz i kontynuuj",
     "tmdbAdded": "Klucz dodany"
   },
   "startup": {

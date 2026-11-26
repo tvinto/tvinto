@@ -238,10 +238,17 @@
           <div class="flex flex-col" data-onboarding-tmdb>
             <app-tmdb-key [compact]="true" />
           </div>
-          <!-- Skip as plain to reach as Continue: a full button, first in focus on a television. -->
+          <!-- Skip as plain to reach as Continue: a full button, first in focus on a television.
+               A key typed or sent from a phone and not saved yet makes saving it the step's
+               action: Skip stayed the primary button beside it (the owner, 26 November). -->
           <div class="mt-auto flex flex-col gap-2 sm:flex-row" data-onboarding-actions>
             @if (tmdb.ownKey()) {
               <button hlmBtn variant="primary" type="button" class="sm:flex-1" data-onboarding-first (click)="next()">{{ 'onboarding.continue' | t }}</button>
+            } @else if (keyTyped()) {
+              <button hlmBtn variant="primary" type="button" class="sm:flex-1" [attr.aria-disabled]="tmdbKey()?.checking() ? true : null" data-onboarding-tmdb-save (click)="saveKeyAndContinue()">
+                {{ (tmdbKey()?.checking() ? 'describe.ownKeyChecking' : 'onboarding.tmdbSaveContinue') | t }}
+              </button>
+              <button hlmBtn variant="quiet" type="button" data-onboarding-skip (click)="next()">{{ 'onboarding.tmdbSkip' | t }}</button>
             } @else {
               <button hlmBtn variant="secondary" type="button" class="sm:flex-1" data-onboarding-first data-onboarding-skip (click)="next()">
                 {{ 'onboarding.tmdbSkip' | t }}

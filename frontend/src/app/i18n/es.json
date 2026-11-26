@@ -1444,6 +1444,7 @@
     "tmdbLead": "TMDB es una base de datos libre de películas y series. Una clave suya le da a Tvinto pósteres, descripciones, reparto, valoraciones y lo que es popular.",
     "tmdbWithout": "Sin ella, Popular y las páginas de películas y series quedan casi vacías. Puedes añadirla más tarde en Cuenta, en Descripciones.",
     "tmdbSkip": "Omitir por ahora",
+    "tmdbSaveContinue": "Guardar y continuar",
     "tmdbAdded": "Clave añadida"
   },
   "startup": {

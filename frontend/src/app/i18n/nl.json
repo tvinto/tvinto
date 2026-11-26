@@ -1444,6 +1444,7 @@
     "tmdbLead": "TMDB is een vrije database van films en series. Een sleutel ervan geeft Tvinto posters, beschrijvingen, cast, beoordelingen en wat populair is.",
     "tmdbWithout": "Zonder blijven Populair en de film- en seriepagina's grotendeels leeg. Je kunt hem later toevoegen bij Account, onder Beschrijvingen.",
     "tmdbSkip": "Nu overslaan",
+    "tmdbSaveContinue": "Opslaan en doorgaan",
     "tmdbAdded": "Sleutel toegevoegd"
   },
   "startup": {

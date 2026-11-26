@@ -1444,6 +1444,7 @@
     "tmdbLead": "TMDB ücretsiz bir film ve dizi veritabanıdır. Ondan alınan bir anahtar Tvinto'ya afişler, açıklamalar, oyuncular, puanlar ve popüler olanları verir.",
     "tmdbWithout": "Anahtar olmadan Popüler ile film ve dizi sayfaları büyük ölçüde boş kalır. Daha sonra Hesap'ta, Açıklamalar altında ekleyebilirsiniz.",
     "tmdbSkip": "Şimdilik atla",
+    "tmdbSaveContinue": "Kaydet ve devam et",
     "tmdbAdded": "Anahtar eklendi"
   },
   "startup": {

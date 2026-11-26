@@ -1417,6 +1417,7 @@
     "tmdbLead": "TMDB is a free database of films and TV. A key from it gives Tvinto posters, descriptions, cast, ratings and what's popular.",
     "tmdbWithout": "Without one, Popular and the film and show pages stay mostly empty. You can add it later on Account, under Descriptions.",
     "tmdbSkip": "Skip for now",
+    "tmdbSaveContinue": "Save and continue",
     "tmdbAdded": "Key added"
   },
   "startup": {

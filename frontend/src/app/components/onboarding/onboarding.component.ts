@@ -2,7 +2,7 @@ import { UpdateBarsComponent } from '../update-bars/update-bars.component';
 import { normaliseMac } from '@shared/stalker/client';
 import { recordAddress } from '@shared/providers/providerRecord';
 import { PhoneFormOfferComponent } from '../phone-form-offer/phone-form-offer.component';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideArrowLeft, lucideCheck, lucideEye, lucideEyeOff, lucideGlobe, lucideLoaderCircle, lucidePlus } from '@ng-icons/lucide';
@@ -107,6 +107,10 @@ export class OnboardingComponent {
 
   /** Back goes to the step before, down to the one it opened on. */
   readonly canGoBack = computed(() => this.step() !== this.opened && this.step() !== 'welcome');
+
+  /** The TMDB step's key field, and whether a key waits in it unsaved. */
+  readonly tmdbKey = viewChild(TmdbKeyComponent);
+  readonly keyTyped = computed(() => !!this.tmdbKey()?.draft().trim());
 
   /** On the last screen, the libraries still coming in: it waits, and opens the app once they are in. */
   readonly waiting = computed(() => this.step() === 'done' && this.firstLoad.started() && !this.firstLoad.librariesIn());
@@ -398,6 +402,14 @@ export class OnboardingComponent {
       at--;
     }
     this.step.set(order[Math.max(at, 0)]);
+  }
+
+  /** The key in the field saved, as its own Save button does, and on to the next step once it is in. */
+  async saveKeyAndContinue(): Promise<void> {
+    await this.tmdbKey()?.saveKey();
+    if (this.tmdb.ownKey()) {
+      this.next();
+    }
   }
 
   startWatching(): void {

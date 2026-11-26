@@ -1481,6 +1481,7 @@
     "tmdbLead": "TMDB je besplatna baza filmova i serija. Ključ s njega Tvintu daje postere, opise, glumce, ocjene i ono što je popularno.",
     "tmdbWithout": "Bez njega su Popularno i stranice filmova i serija uglavnom prazne. Možete ga dodati i kasnije, na Računu, pod Opisi.",
     "tmdbSkip": "Preskoči zasad",
+    "tmdbSaveContinue": "Sačuvaj i nastavi",
     "tmdbAdded": "Ključ dodan"
   },
   "startup": {
