@@ -12,6 +12,12 @@ import {
 import { likePattern, titleMatches } from '@shared/xtream/guideSearch';
 import { whenRunningOut } from '@shared/xtream/guideReload';
 
+/** Programmes per write (`writeProgrammes`). */
+const WRITE_PIECE_PROGRAMMES = 100;
+
+/** Rows of guide_programmes looked through per DELETE of a previous load (`finishLoad`). */
+export const DELETE_PIECE_ROWS = 25000;
+
 /**
  * The device's own guide, in SQLite on the phone.
  *
@@ -120,24 +126,29 @@ export class CapacitorGuideStore implements GuideStore {
       return;
     }
 
-    await this.db.executeSet([
-      {
-        statement:
-          'INSERT OR REPLACE INTO guide_programmes ' +
-          '(source_id, channel_id, start, stop, title, description, category, generation) ' +
-          'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        values: programmes.map(programme => [
-          sourceId,
-          programme.channel,
-          programme.start,
-          programme.stop,
-          programme.title,
-          programme.description,
-          programme.category,
-          this.generations.get(sourceId) ?? null
-        ])
-      }
+    const rows = programmes.map(programme => [
+      sourceId,
+      programme.channel,
+      programme.start,
+      programme.stop,
+      programme.title,
+      programme.description,
+      programme.category,
+      this.generations.get(sourceId) ?? null
     ]);
+    // In pieces, each its own call: a parsed batch of 200 held the database
+    // up to 0.8 s on a user's TV during a first load (27 November).
+    for (let at = 0; at < rows.length; at += WRITE_PIECE_PROGRAMMES) {
+      await this.db.executeSet([
+        {
+          statement:
+            'INSERT OR REPLACE INTO guide_programmes ' +
+            '(source_id, channel_id, start, stop, title, description, category, generation) ' +
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          values: rows.slice(at, at + WRITE_PIECE_PROGRAMMES)
+        }
+      ]);
+    }
   }
 
   async finishLoad(sourceId: string, at: string, totals?: GuideTotals): Promise<void> {
@@ -155,10 +166,16 @@ export class CapacitorGuideStore implements GuideStore {
     // moved stayed beside their replacements, and a reload killed half way
     // left its rows for good. Channels hid it by being rewritten in full on
     // every load. Inserts through `executeSet` are unaffected.
-    await this.db.run(
-      'DELETE FROM guide_programmes WHERE source_id = ? AND generation IS NOT ?',
-      [sourceId, generation]
-    );
+    //
+    // A slice of rows at a time: one DELETE reads every programme held, which
+    // held the database 1.9 s on a user's TV (275,000 programmes, 27 November).
+    const last = Number((await this.db.query('SELECT MAX(rowid) AS last FROM guide_programmes')).values?.[0]?.['last'] ?? 0);
+    for (let from = 0; from < last; from += DELETE_PIECE_ROWS) {
+      await this.db.run(
+        'DELETE FROM guide_programmes WHERE rowid > ? AND rowid <= ? AND source_id = ? AND generation IS NOT ?',
+        [from, from + DELETE_PIECE_ROWS, sourceId, generation]
+      );
+    }
     await this.db.run(
       'DELETE FROM guide_channels WHERE source_id = ? AND generation IS NOT ?',
       [sourceId, generation]

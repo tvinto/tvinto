@@ -31,7 +31,7 @@ describe('DeviceDatabaseService on Android', () => {
   it('holds writes, not reads, while the log is folded in after "foldDue"', async () => {
     const connection = await TestBed.inject(DeviceDatabaseService).connect();
     listeners['foldDue']();
-    listeners['foldDue']();
+    await new Promise(settled => setTimeout(settled, 0));
     expect(plugin.untilFolded).toHaveBeenCalledTimes(1);
 
     let wrote = false;
@@ -44,5 +44,17 @@ describe('DeviceDatabaseService on Android', () => {
     folded();
     await write;
     expect(db.executeSet).toHaveBeenCalledTimes(1);
+  });
+
+  it('folds again for a notice that comes while a fold is finishing', async () => {
+    plugin.untilFolded.mockClear();
+    TestBed.inject(DeviceDatabaseService);
+    listeners['foldDue']();
+    listeners['foldDue']();
+    await new Promise(settled => setTimeout(settled, 0));
+    expect(plugin.untilFolded).toHaveBeenCalledTimes(1);
+    folded();
+    await new Promise(settled => setTimeout(settled, 0));
+    expect(plugin.untilFolded).toHaveBeenCalledTimes(2);
   });
 });

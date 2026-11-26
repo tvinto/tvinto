@@ -1,4 +1,4 @@
-import { ensureColumns } from './capacitorGuideStore';
+import { CapacitorGuideStore, DELETE_PIECE_ROWS, ensureColumns } from './capacitorGuideStore';
 
 /** A connection that knows each table's columns, and can refuse ALTERs a number of times. */
 function fakeDb(columns: Record<string, string[]>, refusals = 0) {
@@ -44,5 +44,46 @@ describe('ensureColumns', () => {
     await expect(ensureColumns(db as never, [['guide_programmes', 'generation', 'TEXT']])).rejects.toThrow(
       'Could not add generation to guide_programmes: database table is locked'
     );
+  });
+});
+
+describe('CapacitorGuideStore writes in pieces', () => {
+  /** Records the calls; the table's last rowid is `last`. */
+  function recording(last: number) {
+    const sets: number[] = [];
+    const runs: unknown[][] = [];
+    return {
+      sets,
+      runs,
+      executeSet: async (set: { values: unknown[][] }[]) => {
+        sets.push(set[0].values.length);
+        return { changes: { changes: 0 } };
+      },
+      run: async (_sql: string, values: unknown[]) => {
+        runs.push(values);
+        return { changes: { changes: 0 } };
+      },
+      query: async () => ({ values: [{ last }] })
+    };
+  }
+
+  it('writes programmes a hundred to a call', async () => {
+    const db = recording(0);
+    const programme = { channel: 'c', start: 0, stop: 1, title: 't', description: '', category: '' };
+    await new CapacitorGuideStore(db as never).writeProgrammes('s', Array(250).fill(programme));
+    expect(db.sets).toEqual([100, 100, 50]);
+  });
+
+  it('removes a previous load a slice of rows at a time, the slices covering every row', async () => {
+    const db = recording(2 * DELETE_PIECE_ROWS + 1);
+    const store = new CapacitorGuideStore(db as never);
+    await store.beginLoad('s');
+    await store.finishLoad('s', 'now');
+    const slices = db.runs.filter(values => values.length === 4).map(([from, to]) => [from, to]);
+    expect(slices).toEqual([
+      [0, DELETE_PIECE_ROWS],
+      [DELETE_PIECE_ROWS, 2 * DELETE_PIECE_ROWS],
+      [2 * DELETE_PIECE_ROWS, 3 * DELETE_PIECE_ROWS]
+    ]);
   });
 });

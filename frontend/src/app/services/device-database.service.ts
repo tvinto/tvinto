@@ -57,10 +57,19 @@ export class DeviceDatabaseService {
       return;
     }
     const lane = CapacitorSQLite as unknown as Folding;
+    // Each notice gets a fold of its own, after any under way: the plugin
+    // says it once until a fold answers, so a notice dropped because one was
+    // finishing let the log grow to 447 MB on the TV emulator.
     void lane.addListener('foldDue', () => {
-      this.folding ??= lane.untilFolded()
+      const folding: Promise<void> = (this.folding ?? Promise.resolve())
+        .then(() => lane.untilFolded())
         .catch(() => undefined)
-        .finally(() => (this.folding = null));
+        .finally(() => {
+          if (this.folding === folding) {
+            this.folding = null;
+          }
+        });
+      this.folding = folding;
     });
   }
 

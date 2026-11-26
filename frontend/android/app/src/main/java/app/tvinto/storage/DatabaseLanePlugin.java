@@ -46,11 +46,13 @@ public class DatabaseLanePlugin extends CapacitorSQLitePlugin {
     private static final String FILE = "xtream-catalogueSQLite.db";
 
     /**
-     * Pages in the log not yet in the file before they are folded in: SQLite's
-     * own point for it, which the app's connection no longer acts on
-     * (device-database.service.ts sets wal_autocheckpoint to 0).
+     * Pages in the log not yet in the file before they are folded in. A
+     * quarter of SQLite's own point for it (1,000), which the app's connection
+     * no longer acts on (device-database.service.ts sets wal_autocheckpoint
+     * to 0): a fold ends in a sync, and on a user's TV a write made meanwhile
+     * waited for it, 0.6 to 1.3 s after a fold of 1,000 pages (27 November).
      */
-    private static final int FOLD_FRAMES = 1000;
+    private static final int FOLD_FRAMES = 256;
 
     /**
      * A log this long, 16 MB, is started over (`untilFolded`): the size it
