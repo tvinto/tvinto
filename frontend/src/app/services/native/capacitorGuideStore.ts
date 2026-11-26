@@ -169,10 +169,13 @@ export class CapacitorGuideStore implements GuideStore {
     //
     // A slice of rows at a time: one DELETE reads every programme held, which
     // held the database 1.9 s on a user's TV (275,000 programmes, 27 November).
+    // `+source_id` keeps SQLite on the rowid range: with no statistics in the
+    // file it chose the primary key by source instead, and so read every
+    // programme of the source for each slice (12 slices of 0.5 to 2 s on the TV).
     const last = Number((await this.db.query('SELECT MAX(rowid) AS last FROM guide_programmes')).values?.[0]?.['last'] ?? 0);
     for (let from = 0; from < last; from += DELETE_PIECE_ROWS) {
       await this.db.run(
-        'DELETE FROM guide_programmes WHERE rowid > ? AND rowid <= ? AND source_id = ? AND generation IS NOT ?',
+        'DELETE FROM guide_programmes WHERE rowid > ? AND rowid <= ? AND +source_id = ? AND generation IS NOT ?',
         [from, from + DELETE_PIECE_ROWS, sourceId, generation]
       );
     }
