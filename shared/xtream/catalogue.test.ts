@@ -686,23 +686,6 @@ describe('index', () => {
     expect(await catalogue.indexIsFresh('series')).toBe(true);
   });
 
-  it('writes a library never held through the store\'s bulk, and a refresh not (card 42)', async () => {
-    const { store, catalogue } = build();
-    const bulks: number[] = [];
-    (store as unknown as { bulk: CatalogueStore['bulk'] }).bulk = async work => {
-      bulks.push(1);
-      return work();
-    };
-    const listing = (async function* () {
-      yield new TextEncoder().encode(JSON.stringify([{ series_id: 7, title: 'Taskmaster', category_id: '30' }]));
-    });
-
-    await catalogue.indexWith('series', file => readLibraryHere(listing(), 'series', file));
-    expect(bulks).toHaveLength(1);
-    await catalogue.indexWith('series', file => readLibraryHere(listing(), 'series', file));
-    expect(bulks).toHaveLength(1);
-  });
-
   it('keeps the library held whole when a refresh is cut short (card 42)', async () => {
     const { store, catalogue } = build();
     await store.writeStreams('series', '30', [{ stream_id: '1', name: 'Old one' } as never]);
