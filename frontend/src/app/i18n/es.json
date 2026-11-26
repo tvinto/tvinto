@@ -1275,6 +1275,7 @@
     "ownKeyBody": "Para un dispositivo sin cuenta o un servicio de sincronización sin clave de TMDB. Gratis en themoviedb.org, en Ajustes, API. Se guarda solo en este dispositivo.",
     "ownKeyPlaceholder": "Clave de API o token de acceso de lectura",
     "ownKeyInUse": "Se usa la clave escrita en este dispositivo.",
+    "ownKeyOnAccount": "Guardada en tu cuenta: la usa cada dispositivo con la sesión iniciada en ella.",
     "ownKeySave": "Guardar clave",
     "ownKeyRemove": "Quitar clave",
     "ownKeyChecking": "Comprobando con TMDB…",

@@ -85,6 +85,10 @@ tvinto picture fox
 tvinto family role anna kid
 ```
 
+`tvinto tmdb-key` keeps your own TMDB key on the account, sealed, so every
+device signed in to it uses it (`tvinto tmdb-key remove` takes it away). It
+asks for the key at a terminal and is not a change you apply.
+
 `tvinto --help` lists everything. Add `--json` to any command for output a
 script can read, and `--for <name>` to work on a family member's settings.
 

@@ -1257,6 +1257,7 @@
     "ownKeyBody": "For a device without an account, or a sync service without a TMDB key. Free from themoviedb.org, under Settings, API. Kept on this device only.",
     "ownKeyPlaceholder": "API key or read access token",
     "ownKeyInUse": "Using the key typed on this device.",
+    "ownKeyOnAccount": "Kept on your account: every device signed in to it uses it.",
     "ownKeySave": "Save key",
     "ownKeyRemove": "Remove key",
     "ownKeyChecking": "Checking with TMDB…",

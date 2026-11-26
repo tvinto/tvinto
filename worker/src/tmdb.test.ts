@@ -17,20 +17,25 @@ beforeEach(() => {
 
 afterEach(() => db.close());
 
-const call = (path: string, token?: string) =>
+const call = (path: string, token?: string, method = 'GET', body?: unknown) =>
   worker.fetch(
     new Request(`https://sync.example${path}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
+      method,
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(body ? { 'Content-Type': 'application/json' } : {})
+      },
+      body: body ? JSON.stringify(body) : undefined
     }),
     env
   );
 
-const signedIn = async (): Promise<string> => {
+const signedIn = async (username = 'petar'): Promise<string> => {
   const response = await worker.fetch(
     new Request('https://sync.example/api/accounts/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: 'petar', keys: await keysFor('a-good-long-password') })
+      body: JSON.stringify({ username, keys: await keysFor('a-good-long-password') })
     }),
     env
   );
@@ -57,5 +62,35 @@ describe('the TMDB key', () => {
     const response = await call('/api/tmdb/config', await signedIn());
 
     expect(await response.json()).toMatchObject({ data: { apiKey: null } });
+  });
+});
+
+describe("an account's own TMDB key", () => {
+  const SEALED = 'sb1$bWFkZS11cA==$bm90LWEta2V5';
+
+  it('is kept sealed and handed back to the same account', async () => {
+    const token = await signedIn();
+    expect(await (await call('/api/tmdb/key', token)).json()).toMatchObject({ data: null });
+
+    expect((await call('/api/tmdb/key', token, 'POST', { payload: SEALED })).status).toBe(200);
+
+    expect(await (await call('/api/tmdb/key', token)).json()).toMatchObject({ data: { payload: SEALED } });
+  });
+
+  it('is refused in the clear', async () => {
+    const response = await call('/api/tmdb/key', await signedIn(), 'POST', { payload: 'deadbeefdeadbeefdeadbeefdeadbeef' });
+
+    expect(response.status).toBe(400);
+  });
+
+  it('is gone once removed, and is never another account’s', async () => {
+    const token = await signedIn();
+    await call('/api/tmdb/key', token, 'POST', { payload: SEALED });
+    env = { ...env, ACCOUNT_REGISTRATION: 'open' };
+    const other = await signedIn('ana');
+
+    expect(await (await call('/api/tmdb/key', other)).json()).toMatchObject({ data: null });
+    await call('/api/tmdb/key', token, 'DELETE');
+    expect(await (await call('/api/tmdb/key', token)).json()).toMatchObject({ data: null });
   });
 });

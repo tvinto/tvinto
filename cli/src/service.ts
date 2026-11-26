@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { ChangeSet, PullResult, PushResult } from '../../shared/sync';
 import { FamilyView } from '../../shared/family';
+import { ACCOUNT_TMDB_KEY_PATH } from '../../shared/tmdb/accountKey';
 
 /**
  * The sync service, as the CLI talks to it: the same paths and the same
@@ -130,6 +131,15 @@ export class SyncService {
   /** This account's own profile picture (shared/profilePicture.ts). */
   setPicture(picture: string | null): Promise<unknown> {
     return this.call('POST', '/accounts/picture', { picture });
+  }
+
+  /** The account's own TMDB key, sealed (shared/tmdb/accountKey.ts). */
+  setTmdbKey(payload: string): Promise<unknown> {
+    return this.call('POST', ACCOUNT_TMDB_KEY_PATH, { payload });
+  }
+
+  forgetTmdbKey(): Promise<unknown> {
+    return this.call('DELETE', ACCOUNT_TMDB_KEY_PATH);
   }
 
   family(): Promise<FamilyView> {

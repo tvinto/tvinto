@@ -40,7 +40,7 @@ import {
 import { Caller } from './sessions';
 import { isToolScope, kindsAllowed, kindsVisible } from '../../shared/family';
 import { serveUpdate } from './updates';
-import { tmdbConfig } from './tmdb';
+import { forgetTmdbKey, getTmdbKey, saveTmdbKey, tmdbConfig } from './tmdb';
 import { createInvite, listInvites, revokeInvite } from './invites';
 import { answerToolRequest, createToolRequest, listToolRequests, pollToolRequest } from './toolRequests';
 import { answerToolAction, createToolAction, listToolActions, toolActionStatus } from './toolActions';
@@ -101,6 +101,9 @@ const ACCOUNT_ROUTES = new Set([
   'POST /api/devices/settings',
   'GET /api/subtitles/config',
   'GET /api/tmdb/config',
+  'GET /api/tmdb/key',
+  'POST /api/tmdb/key',
+  'DELETE /api/tmdb/key',
   'GET /api/subtitles/account',
   'POST /api/subtitles/account',
   'DELETE /api/subtitles/account',
@@ -154,7 +157,9 @@ const KID_REFUSED = new Set([
   'POST /api/accounts/invites',
   'POST /api/devices/settings',
   'POST /api/subtitles/account',
-  'DELETE /api/subtitles/account'
+  'DELETE /api/subtitles/account',
+  'POST /api/tmdb/key',
+  'DELETE /api/tmdb/key'
 ]);
 
 const SETUP_REFUSED = new Set([
@@ -183,6 +188,7 @@ const TOOL_REFUSED = new Set([
   'GET /api/subtitles/account',
   'POST /api/subtitles/account',
   'DELETE /api/subtitles/account',
+  'GET /api/tmdb/key',
   'GET /api/accounts/tools',
   'GET /api/accounts/tools/requests',
   'GET /api/accounts/tools/actions',
@@ -405,6 +411,12 @@ const handle = async (request: Request, env: Env): Promise<Response> => {
 
     case 'GET /api/tmdb/config':
       return tmdbConfig(env);
+    case 'GET /api/tmdb/key':
+      return getTmdbKey(env, userId);
+    case 'POST /api/tmdb/key':
+      return saveTmdbKey(request, env, userId);
+    case 'DELETE /api/tmdb/key':
+      return forgetTmdbKey(env, userId);
     case 'GET /api/subtitles/config':
       return subtitlesConfig(env);
     case 'GET /api/subtitles/account':
