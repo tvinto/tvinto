@@ -1445,6 +1445,7 @@
     "tmdbLead": "TMDB je besplatna baza filmova i serija. Ključ s njega Tvintu daje postere, opise, glumce, ocjene i ono što je popularno.",
     "tmdbWithout": "Bez njega su Popularno i stranice filmova i serija uglavnom prazne. Možete ga dodati i kasnije, na Računu, pod Opisi.",
     "tmdbSkip": "Preskoči zasad",
+    "tmdbSaveContinue": "Spremi i nastavi",
     "tmdbAdded": "Ključ dodan"
   },
   "startup": {
@@ -1454,6 +1455,24 @@
     "lastChannel": "Zadnji kanal",
     "notAllowed": "TV ne dopušta da se aplikacija sama otvori",
     "notAllowedBody": "Dopustite to u postavkama TV-a: Aplikacije, Poseban pristup aplikacija, Prikaz preko drugih aplikacija, Tvinto. Zatim ovo ponovno uključite."
+  },
+  "firstLoad": {
+    "title": "Učitavanje knjižnice",
+    "lead": "Tvinto se otvara sam čim stignu kanali, filmovi, serije i vodič.",
+    "channels": "Kanali",
+    "films": "Filmovi",
+    "shows": "Serije",
+    "guide": "Vodič",
+    "count": "{{count}}",
+    "megabytes": "{{size}} MB",
+    "minutesLeft": "Još oko {{count}} min",
+    "underMinute": "Još manje od minute",
+    "retrying": "Pružatelj nije odgovorio. Uskoro pokušavamo ponovno.",
+    "failed": "Dio knjižnice nije stigao. Pokušat ćemo ponovno pri sljedećem pokretanju.",
+    "notIn": "još nije stiglo",
+    "stillLoading": "Još se učitava: {{parts}}. Popunit će se dok koristite aplikaciju.",
+    "continueAnyway": "Ipak nastavi",
+    "libraryUpdated": "Knjižnica zadnji put osvježena {{when}}"
   },
   "home": {
     "favouriteChannels": "Omiljeni kanali",

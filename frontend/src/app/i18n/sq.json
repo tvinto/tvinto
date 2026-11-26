@@ -1444,6 +1444,7 @@
     "tmdbLead": "TMDB është një bazë të dhënash falas filmash dhe serialesh. Një çelës prej saj i jep Tvinto postera, përshkrime, aktorë, vlerësime dhe çfarë është popullore.",
     "tmdbWithout": "Pa të, Popullore dhe faqet e filmave e serialeve mbeten pothuajse bosh. Mund ta shtoni më vonë te Llogaria, nën Përshkrimet.",
     "tmdbSkip": "Kapërce tani për tani",
+    "tmdbSaveContinue": "Ruaj dhe vazhdo",
     "tmdbAdded": "Çelësi u shtua"
   },
   "startup": {
@@ -1453,6 +1454,24 @@
     "lastChannel": "Kanali i fundit",
     "notAllowed": "Televizori nuk e lejon aplikacionin të hapet vetë",
     "notAllowedBody": "Lejojeni në cilësimet e televizorit: Aplikacionet, Qasje e veçantë e aplikacioneve, Shfaq mbi aplikacione të tjera, Tvinto. Pastaj ndizeni sërish këtë."
+  },
+  "firstLoad": {
+    "title": "Po ngarkohet biblioteka",
+    "lead": "Tvinto hapet vetë sapo të vijnë kanalet, filmat, serialet dhe udhëzuesi.",
+    "channels": "Kanalet",
+    "films": "Filma",
+    "shows": "Seriale",
+    "guide": "Udhëzuesi",
+    "count": "{{count}}",
+    "megabytes": "{{size}} MB",
+    "minutesLeft": "Edhe rreth {{count}} min",
+    "underMinute": "Më pak se një minutë",
+    "retrying": "Ofruesi nuk u përgjigj. Provojmë përsëri së shpejti.",
+    "failed": "Një pjesë e bibliotekës nuk erdhi. Do të provohet përsëri në nisjen e ardhshme.",
+    "notIn": "ende nuk ka ardhur",
+    "stillLoading": "Ende po ngarkohet: {{parts}}. Plotësohet ndërsa përdorni aplikacionin.",
+    "continueAnyway": "Vazhdo gjithsesi",
+    "libraryUpdated": "Biblioteka u përditësua së fundi {{when}}"
   },
   "home": {
     "favouriteChannels": "Kanalet e preferuara",

@@ -1444,6 +1444,7 @@
     "tmdbLead": "TMDB est une base de données libre de films et de séries. Une clé TMDB donne à Tvinto les affiches, descriptions, distributions, notes et ce qui est populaire.",
     "tmdbWithout": "Sans elle, Populaire et les pages des films et des séries restent presque vides. Tu peux l'ajouter plus tard dans Compte, sous Descriptions.",
     "tmdbSkip": "Passer pour l'instant",
+    "tmdbSaveContinue": "Enregistrer et continuer",
     "tmdbAdded": "Clé ajoutée"
   },
   "startup": {
@@ -1453,6 +1454,24 @@
     "lastChannel": "Dernière chaîne",
     "notAllowed": "Le téléviseur ne laisse pas l'application s'ouvrir d'elle-même",
     "notAllowedBody": "Autorise-le dans les paramètres du téléviseur : Applications, Accès spécifiques des applications, Superposition sur d'autres applications, Tvinto. Puis réactive ceci."
+  },
+  "firstLoad": {
+    "title": "Chargement de votre bibliothèque",
+    "lead": "Tvinto s'ouvrira tout seul dès que les chaînes, les films, les séries et le guide seront arrivés.",
+    "channels": "Chaînes",
+    "films": "Films",
+    "shows": "Séries",
+    "guide": "Guide",
+    "count": "{{count}}",
+    "megabytes": "{{size}} Mo",
+    "minutesLeft": "Encore environ {{count}} min",
+    "underMinute": "Moins d'une minute",
+    "retrying": "Le fournisseur n'a pas répondu. Nouvel essai dans un instant.",
+    "failed": "Une partie de la bibliothèque n'est pas arrivée. Nouvel essai au prochain démarrage.",
+    "notIn": "pas encore arrivé",
+    "stillLoading": "Encore en chargement : {{parts}}. Cela se complète pendant que vous utilisez l'app.",
+    "continueAnyway": "Continuer quand même",
+    "libraryUpdated": "Bibliothèque mise à jour {{when}}"
   },
   "home": {
     "favouriteChannels": "Chaînes favorites",

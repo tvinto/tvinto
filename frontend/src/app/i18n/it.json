@@ -1444,6 +1444,7 @@
     "tmdbLead": "TMDB è un database libero di film e serie. Una sua chiave dà a Tvinto locandine, descrizioni, cast, voti e ciò che è popolare.",
     "tmdbWithout": "Senza, Popolari e le pagine di film e serie restano quasi vuote. Puoi aggiungerla più tardi in Account, sotto Descrizioni.",
     "tmdbSkip": "Salta per ora",
+    "tmdbSaveContinue": "Salva e continua",
     "tmdbAdded": "Chiave aggiunta"
   },
   "startup": {
@@ -1453,6 +1454,24 @@
     "lastChannel": "Ultimo canale",
     "notAllowed": "Il televisore non lascia aprire l'app da sola",
     "notAllowedBody": "Consentilo nelle impostazioni del televisore: App, Accesso speciale per le app, Mostra sopra altre app, Tvinto. Poi riattiva questa opzione."
+  },
+  "firstLoad": {
+    "title": "Caricamento della libreria",
+    "lead": "Tvinto si aprirà da solo appena arrivano canali, film, serie e guida.",
+    "channels": "Canali",
+    "films": "Film",
+    "shows": "Serie",
+    "guide": "Guida",
+    "count": "{{count}}",
+    "megabytes": "{{size}} MB",
+    "minutesLeft": "Ancora circa {{count}} min",
+    "underMinute": "Meno di un minuto",
+    "retrying": "Il provider non ha risposto. Nuovo tentativo a breve.",
+    "failed": "Parte della libreria non è arrivata. Si riproverà al prossimo avvio.",
+    "notIn": "non ancora arrivato",
+    "stillLoading": "Ancora in caricamento: {{parts}}. Si completa mentre usi l'app.",
+    "continueAnyway": "Continua comunque",
+    "libraryUpdated": "Libreria aggiornata l'ultima volta {{when}}"
   },
   "home": {
     "favouriteChannels": "Canali preferiti",

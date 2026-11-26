@@ -1444,6 +1444,7 @@
     "tmdbLead": "TMDB is een vrije database van films en series. Een sleutel ervan geeft Tvinto posters, beschrijvingen, cast, beoordelingen en wat populair is.",
     "tmdbWithout": "Zonder blijven Populair en de film- en seriepagina's grotendeels leeg. Je kunt hem later toevoegen bij Account, onder Beschrijvingen.",
     "tmdbSkip": "Nu overslaan",
+    "tmdbSaveContinue": "Opslaan en doorgaan",
     "tmdbAdded": "Sleutel toegevoegd"
   },
   "startup": {
@@ -1453,6 +1454,24 @@
     "lastChannel": "Laatste zender",
     "notAllowed": "De tv laat de app niet vanzelf openen",
     "notAllowedBody": "Sta het toe in de instellingen van de tv: Apps, Speciale app-toegang, Weergeven vóór andere apps, Tvinto. Zet dit daarna opnieuw aan."
+  },
+  "firstLoad": {
+    "title": "Je bibliotheek wordt geladen",
+    "lead": "Tvinto opent vanzelf zodra zenders, films, series en de gids binnen zijn.",
+    "channels": "Zenders",
+    "films": "Films",
+    "shows": "Series",
+    "guide": "Gids",
+    "count": "{{count}}",
+    "megabytes": "{{size}} MB",
+    "minutesLeft": "Nog ongeveer {{count}} min",
+    "underMinute": "Minder dan een minuut",
+    "retrying": "De provider antwoordde niet. Zo meteen opnieuw.",
+    "failed": "Een deel van de bibliotheek is niet aangekomen. Bij de volgende start wordt het opnieuw geprobeerd.",
+    "notIn": "nog niet binnen",
+    "stillLoading": "Nog bezig: {{parts}}. Het vult zich aan terwijl je de app gebruikt.",
+    "continueAnyway": "Toch doorgaan",
+    "libraryUpdated": "Bibliotheek laatst bijgewerkt {{when}}"
   },
   "home": {
     "favouriteChannels": "Favoriete zenders",

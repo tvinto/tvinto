@@ -1444,6 +1444,7 @@
     "tmdbLead": "TMDB ücretsiz bir film ve dizi veritabanıdır. Ondan alınan bir anahtar Tvinto'ya afişler, açıklamalar, oyuncular, puanlar ve popüler olanları verir.",
     "tmdbWithout": "Anahtar olmadan Popüler ile film ve dizi sayfaları büyük ölçüde boş kalır. Daha sonra Hesap'ta, Açıklamalar altında ekleyebilirsiniz.",
     "tmdbSkip": "Şimdilik atla",
+    "tmdbSaveContinue": "Kaydet ve devam et",
     "tmdbAdded": "Anahtar eklendi"
   },
   "startup": {
@@ -1453,6 +1454,24 @@
     "lastChannel": "Son kanal",
     "notAllowed": "Televizyon uygulamanın kendiliğinden açılmasına izin vermiyor",
     "notAllowedBody": "Televizyonun ayarlarında izin verin: Uygulamalar, Özel uygulama erişimi, Diğer uygulamaların üzerinde göster, Tvinto. Sonra bunu yeniden açın."
+  },
+  "firstLoad": {
+    "title": "Kütüphaneniz yükleniyor",
+    "lead": "Kanallar, filmler, diziler ve rehber gelir gelmez Tvinto kendiliğinden açılır.",
+    "channels": "Kanallar",
+    "films": "Filmler",
+    "shows": "Diziler",
+    "guide": "Rehber",
+    "count": "{{count}}",
+    "megabytes": "{{size}} MB",
+    "minutesLeft": "Yaklaşık {{count}} dk kaldı",
+    "underMinute": "Bir dakikadan az kaldı",
+    "retrying": "Sağlayıcı yanıt vermedi. Birazdan yeniden denenecek.",
+    "failed": "Kütüphanenin bir kısmı gelmedi. Bir sonraki açılışta yeniden denenecek.",
+    "notIn": "henüz gelmedi",
+    "stillLoading": "Hâlâ yükleniyor: {{parts}}. Uygulamayı kullanırken tamamlanır.",
+    "continueAnyway": "Yine de devam et",
+    "libraryUpdated": "Kütüphane en son güncellendi: {{when}}"
   },
   "home": {
     "favouriteChannels": "Favori kanallar",

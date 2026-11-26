@@ -1444,6 +1444,7 @@
     "tmdbLead": "TMDB ist eine freie Datenbank für Filme und Serien. Ein Schlüssel dafür gibt Tvinto Poster, Beschreibungen, Besetzung, Bewertungen und was gerade beliebt ist.",
     "tmdbWithout": "Ohne ihn bleiben Beliebt und die Film- und Serienseiten größtenteils leer. Du kannst ihn auch später unter Konto, Beschreibungen hinzufügen.",
     "tmdbSkip": "Vorerst überspringen",
+    "tmdbSaveContinue": "Speichern und weiter",
     "tmdbAdded": "Schlüssel hinzugefügt"
   },
   "startup": {
@@ -1453,6 +1454,24 @@
     "lastChannel": "Letzter Sender",
     "notAllowed": "Der Fernseher lässt die App nicht von selbst öffnen",
     "notAllowedBody": "Erlaube es in den Einstellungen des Fernsehers: Apps, Spezieller App-Zugriff, Über anderen Apps einblenden, Tvinto. Schalte dies dann erneut ein."
+  },
+  "firstLoad": {
+    "title": "Deine Mediathek wird geladen",
+    "lead": "Tvinto öffnet sich von selbst, sobald Sender, Filme, Serien und der Programmführer da sind.",
+    "channels": "Sender",
+    "films": "Filme",
+    "shows": "Serien",
+    "guide": "Programmführer",
+    "count": "{{count}}",
+    "megabytes": "{{size}} MB",
+    "minutesLeft": "Noch etwa {{count}} Min.",
+    "underMinute": "Weniger als eine Minute",
+    "retrying": "Der Anbieter hat nicht geantwortet. Gleich ein neuer Versuch.",
+    "failed": "Ein Teil der Mediathek ist nicht angekommen. Beim nächsten Start wird es erneut versucht.",
+    "notIn": "noch nicht da",
+    "stillLoading": "Lädt noch: {{parts}}. Es füllt sich, während du die App benutzt.",
+    "continueAnyway": "Trotzdem weiter",
+    "libraryUpdated": "Mediathek zuletzt aktualisiert {{when}}"
   },
   "home": {
     "favouriteChannels": "Lieblingssender",

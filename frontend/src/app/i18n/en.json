@@ -1417,6 +1417,7 @@
     "tmdbLead": "TMDB is a free database of films and TV. A key from it gives Tvinto posters, descriptions, cast, ratings and what's popular.",
     "tmdbWithout": "Without one, Popular and the film and show pages stay mostly empty. You can add it later on Account, under Descriptions.",
     "tmdbSkip": "Skip for now",
+    "tmdbSaveContinue": "Save and continue",
     "tmdbAdded": "Key added"
   },
   "startup": {
@@ -1426,6 +1427,24 @@
     "lastChannel": "Last channel",
     "notAllowed": "The TV does not let the app open by itself",
     "notAllowedBody": "Allow it in the TV's settings: Apps, Special app access, Display over other apps, Tvinto. Then turn this on again."
+  },
+  "firstLoad": {
+    "title": "Loading your library",
+    "lead": "Tvinto opens by itself as soon as channels, films, shows and the guide are in.",
+    "channels": "Channels",
+    "films": "Films",
+    "shows": "Shows",
+    "guide": "Guide",
+    "count": "{{count}}",
+    "megabytes": "{{size}} MB",
+    "minutesLeft": "About {{count}} min left",
+    "underMinute": "Less than a minute left",
+    "retrying": "The provider did not answer. Trying again shortly.",
+    "failed": "Part of the library did not arrive. It is tried again at the next start.",
+    "notIn": "not in yet",
+    "stillLoading": "Still loading: {{parts}}. It fills in while you use the app.",
+    "continueAnyway": "Continue anyway",
+    "libraryUpdated": "Library last updated {{when}}"
   },
   "home": {
     "favouriteChannels": "Favourite channels",

@@ -114,6 +114,13 @@ describe('loadGuide', () => {
     });
   });
 
+  it('leaves out programmes starting at or after `until` (card 42)', async () => {
+    const store = new RecordingStore();
+    await loadGuide('src', bytes(guide), store, { until: Date.parse('2026-08-27T17:00:00Z') });
+
+    expect(store.programmeRows.map(row => row.title)).toEqual(['Dnevnik']);
+  });
+
   // The feed is the truth about its own channels, so a programme withdrawn
   // upstream should disappear rather than linger because nothing overwrote it.
   it('clears the source before writing, and marks it loaded after', async () => {

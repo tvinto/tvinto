@@ -22,7 +22,7 @@ import { capacitorGuideBytes, fetchGuideBytes } from './native/guideBytesSource'
 import { downloadedFileAddress, downloadedFileBytes, guideDownloadPlugin } from './native/guideDownload';
 import { noteHeldTitles } from '../utils/held-titles';
 import { reportFailure } from '../utils/failure-reports';
-import { rememberLoadedHere } from './guide-loaded-here';
+import { SHORT_GUIDE_DAYS, markShortGuide, rememberLoadedHere, shortGuides } from './guide-loaded-here';
 
 /**
  * A guide's bytes on this device, where its download is when a worker can
@@ -111,6 +111,8 @@ export class GuideService {
    * would both hold a whole document.
    */
   async load(sourceId: string, url: string): Promise<GuideLoadReport> {
+    // During a first load only the next days, and the rest after (card 42).
+    const short = shortGuides.on;
     if (!this.supported) {
       throw new Error('This build cannot load a guide');
     }
@@ -144,8 +146,10 @@ export class GuideService {
             this.loading.set({ sourceId, ...progress });
           }
         },
-        parse: this.parser(source.address)
+        parse: this.parser(source.address),
+        until: short ? Date.now() + SHORT_GUIDE_DAYS * 24 * 60 * 60 * 1000 : undefined
       });
+      markShortGuide(sourceId, short);
 
       // Remembered outside the store, so that if the store later loses this
       // guide it can be told apart from one nobody ever loaded here.

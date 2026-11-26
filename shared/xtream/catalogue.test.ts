@@ -645,14 +645,14 @@ describe('index', () => {
           order.push(categoryId);
           await file(categoryId, streams);
         }),
-      (done, total) => filed.push([done, total])
+      (done, total, titles) => filed.push([done, total, titles])
     );
 
     expect(count).toBe(3);
-    // Counted as it goes; how many there are is not known while reading.
+    // Counted as it goes, categories and titles; how many categories there are is not known while reading.
     expect(filed).toEqual([
-      [1, null],
-      [2, null]
+      [1, null, 1],
+      [2, null, 2]
     ]);
     expect(order).toEqual(['30', '31']);
     expect((await store.readStreams('series', '30')).map(s => s.name)).toEqual(['Taskmaster']);
@@ -684,6 +684,26 @@ describe('index', () => {
     expect(await indexing).toBe(2);
     expect((await store.readStreams('series', '31')).map(s => s.name)).toEqual(['Novine']);
     expect(await catalogue.indexIsFresh('series')).toBe(true);
+  });
+
+  it('keeps the library held whole when a refresh is cut short (card 42)', async () => {
+    const { store, catalogue } = build();
+    await store.writeStreams('series', '30', [{ stream_id: '1', name: 'Old one' } as never]);
+    await store.writeStreams('series', '31', [{ stream_id: '2', name: 'Old two' } as never]);
+    await store.markFetched('series', '__whole_library__', '2026-11-01T00:00:00.000Z');
+    const before = await catalogue.indexedAt('series');
+
+    await expect(
+      catalogue.indexWith('series', async file => {
+        await file('30', [{ stream_id: '1', name: 'New one' } as never]);
+        throw new Error('connection dropped');
+      })
+    ).rejects.toThrow('connection dropped');
+
+    // Every title held before is still there, and the library is not taken for a new whole one.
+    expect((await store.readStreams('series', '30')).map(s => s.name)).toEqual(['New one']);
+    expect((await store.readStreams('series', '31')).map(s => s.name)).toEqual(['Old two']);
+    expect(await catalogue.indexedAt('series')).toBe(before);
   });
 
   it('does not count an index that failed as done', async () => {

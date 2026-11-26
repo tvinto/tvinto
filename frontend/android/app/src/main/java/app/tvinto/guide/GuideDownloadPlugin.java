@@ -78,6 +78,8 @@ public class GuideDownloadPlugin extends Plugin {
         // The JSON accessors rather than `call.getInt`, for the reason given in `read`.
         int connectTimeout = call.getData().optInt("connectTimeoutMs", 120_000);
         int idleTimeout = call.getData().optInt("idleTimeoutMs", 60_000);
+        // Echoed in the progress events, for the page to tell downloads apart.
+        String tag = call.getString("tag");
 
         if (address == null || !(address.startsWith("http://") || address.startsWith("https://"))) {
             call.reject("A guide address must be http or https");
@@ -106,12 +108,23 @@ public class GuideDownloadPlugin extends Plugin {
                 }
 
                 long total = 0;
+                long toldAt = 0;
                 byte[] buffer = new byte[64 * 1024];
                 try (InputStream in = connection.getInputStream();
                      FileOutputStream out = new FileOutputStream(file)) {
                     for (int read; (read = in.read(buffer)) != -1; ) {
                         out.write(buffer, 0, read);
                         total += read;
+                        // How far it has got, twice a second: a film library is
+                        // minutes of a first load on a television (card 42).
+                        long now = System.currentTimeMillis();
+                        if (tag != null && now - toldAt >= 500) {
+                            toldAt = now;
+                            JSObject progress = new JSObject();
+                            progress.put("tag", tag);
+                            progress.put("bytes", total);
+                            notifyListeners("progress", progress);
+                        }
                     }
                 }
 

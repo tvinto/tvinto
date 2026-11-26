@@ -101,3 +101,17 @@ export async function untilIdleWork(): Promise<void> {
   }
   await idleWork.until();
 }
+
+/**
+ * Set while a first load brings in the libraries (FirstLoadService): a guide
+ * download waits for it, so channels, films, shows and then the guide take
+ * the provider's one connection in turn (card 42).
+ */
+export const librariesFirst: { done?: Promise<void> } = {};
+
+/** Resolves once no first load is bringing in the libraries. */
+export async function afterFirstLibraries(): Promise<void> {
+  while (librariesFirst.done) {
+    await librariesFirst.done;
+  }
+}

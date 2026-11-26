@@ -39,7 +39,7 @@
             @case ('guide') { {{ 'onboarding.guideTitle' | t }} }
             @case ('tmdb') { {{ 'onboarding.tmdbTitle' | t }} }
             @case ('startup') { {{ 'startup.title' | t }} }
-            @case ('done') { {{ 'onboarding.doneTitle' | t }} }
+            @case ('done') { {{ (waiting() ? 'firstLoad.title' : 'onboarding.doneTitle') | t }} }
           }
         </h1>
         @switch (step()) {
@@ -51,6 +51,15 @@
             <p class="text-sm text-muted-foreground">{{ 'onboarding.tmdbWithout' | t }}</p>
           }
           @case ('startup') { <p class="text-sm text-muted-foreground">{{ 'onboarding.startupLead' | t }}</p> }
+          @case ('done') {
+            @if (waiting()) {
+              <p class="text-sm text-muted-foreground">{{ 'firstLoad.lead' | t }}</p>
+            }
+          }
+        }
+        <!-- What has come in so far, while the steps go on (card 42). -->
+        @if (step() !== 'welcome' && step() !== 'done') {
+          <app-first-load-strip />
         }
       </div>
     </div>
@@ -229,10 +238,17 @@
           <div class="flex flex-col" data-onboarding-tmdb>
             <app-tmdb-key [compact]="true" />
           </div>
-          <!-- Skip as plain to reach as Continue: a full button, first in focus on a television. -->
+          <!-- Skip as plain to reach as Continue: a full button, first in focus on a television.
+               A key typed or sent from a phone and not saved yet makes saving it the step's
+               action: Skip stayed the primary button beside it (the owner, 26 November). -->
           <div class="mt-auto flex flex-col gap-2 sm:flex-row" data-onboarding-actions>
             @if (tmdb.ownKey()) {
               <button hlmBtn variant="primary" type="button" class="sm:flex-1" data-onboarding-first (click)="next()">{{ 'onboarding.continue' | t }}</button>
+            } @else if (keyTyped()) {
+              <button hlmBtn variant="primary" type="button" class="sm:flex-1" [attr.aria-disabled]="tmdbKey()?.checking() ? true : null" data-onboarding-tmdb-save (click)="saveKeyAndContinue()">
+                {{ (tmdbKey()?.checking() ? 'describe.ownKeyChecking' : 'onboarding.tmdbSaveContinue') | t }}
+              </button>
+              <button hlmBtn variant="quiet" type="button" data-onboarding-skip (click)="next()">{{ 'onboarding.tmdbSkip' | t }}</button>
             } @else {
               <button hlmBtn variant="secondary" type="button" class="sm:flex-1" data-onboarding-first data-onboarding-skip (click)="next()">
                 {{ 'onboarding.tmdbSkip' | t }}
@@ -262,6 +278,13 @@
         }
 
         @case ('done') {
+          @if (waiting()) {
+            <app-first-load-strip [full]="true" />
+            <div class="mt-auto flex flex-col gap-2" data-onboarding-actions>
+              <p class="text-sm text-muted-foreground" data-first-load-still>{{ 'firstLoad.stillLoading' | t: { parts: stillLoading() } }}</p>
+              <button hlmBtn variant="secondary" type="button" data-onboarding-first data-first-load-continue (click)="startWatching()">{{ 'firstLoad.continueAnyway' | t }}</button>
+            </div>
+          } @else {
           <div class="flex flex-col" data-onboarding-summary>
             <div class="flex items-center gap-3 border-b border-border py-3">
               <span class="w-28 shrink-0 text-sm text-muted-foreground">{{ 'onboarding.doneProvider' | t }}</span>
@@ -288,6 +311,7 @@
               <button hlmBtn variant="secondary" type="button" (click)="syncWithAccount()">{{ 'onboarding.syncWithAccount' | t }}</button>
             }
           </div>
+          }
         }
       }
     </div>

@@ -38,9 +38,16 @@ export interface ReadLibrary {
  * A listing's titles, normalised, cut down to what the store keeps, and filed
  * by category. A title with no category is counted but has nowhere to go.
  */
-export async function readLibrary(bytes: AsyncIterable<Uint8Array>, type: StreamType, batchSize = 500): Promise<ReadLibrary> {
+export async function readLibrary(
+  bytes: AsyncIterable<Uint8Array>,
+  type: StreamType,
+  batchSize = 500,
+  /** Titles read so far, twice a second at most: the whole listing is read before a title is written (card 42). */
+  onRead?: (count: number) => void
+): Promise<ReadLibrary> {
   const byCategory = new Map<string, Stream[]>();
   let count = 0;
+  let toldAt = 0;
   let batch: Record<string, unknown>[] = [];
   const file = () => {
     for (const stream of slimStreams(batch, type)) {
@@ -58,6 +65,10 @@ export async function readLibrary(bytes: AsyncIterable<Uint8Array>, type: Stream
       }
     }
     batch = [];
+    if (onRead && Date.now() - toldAt >= 500) {
+      toldAt = Date.now();
+      onRead(count);
+    }
   };
   for await (const item of jsonArrayObjects(bytes)) {
     batch.push(item);
@@ -66,6 +77,7 @@ export async function readLibrary(bytes: AsyncIterable<Uint8Array>, type: Stream
     }
   }
   file();
+  onRead?.(count);
   return { byCategory, count };
 }
 
@@ -97,6 +109,8 @@ export type FromLibraryWorker =
   | { type: 'pull' }
   | { type: 'category'; categoryId: string; streams: Stream[] }
   | { type: 'done'; count: number }
+  /** Titles read so far, before any is handed over. */
+  | { type: 'read'; count: number }
   | { type: 'failed'; message: string }
   /** The file at `url` could not be fetched: nothing was read or filed. */
   | { type: 'unreadable'; message: string };
@@ -183,7 +197,7 @@ export function serveLibraryRead(
           yield message.bytes;
         }
       })();
-      const { byCategory, count } = await readLibrary(bytes, start.streamType);
+      const { byCategory, count } = await readLibrary(bytes, start.streamType, undefined, read => scope.postMessage({ type: 'read', count: read }));
       for (const [categoryId, streams] of byCategory) {
         // Let go of each as it is handed over: the worker need not hold the
         // library after the page has it.
@@ -203,8 +217,8 @@ export function serveLibraryRead(
  * go over as the worker asks for them, moved rather than copied again; the
  * categories come back one at a time, each written before the next.
  */
-export function workerLibraryReader(create: () => LibraryWorkerHandle): LibraryReader {
-  return (bytes, type, file) => converse(create, { type: 'start', streamType: type }, bytes, file);
+export function workerLibraryReader(create: () => LibraryWorkerHandle, onRead?: (count: number) => void): LibraryReader {
+  return (bytes, type, file) => converse(create, { type: 'start', streamType: type }, bytes, file, onRead);
 }
 
 /**
@@ -212,16 +226,18 @@ export function workerLibraryReader(create: () => LibraryWorkerHandle): LibraryR
  * Throws `LibraryFileUnreadable` when it cannot, before anything is filed.
  */
 export function workerLibraryFileReader(
-  create: () => LibraryWorkerHandle
+  create: () => LibraryWorkerHandle,
+  onRead?: (count: number) => void
 ): (url: string, type: StreamType, file: FileCategory) => Promise<number> {
-  return (url, type, file) => converse(create, { type: 'start', streamType: type, url }, null, file);
+  return (url, type, file) => converse(create, { type: 'start', streamType: type, url }, null, file, onRead);
 }
 
 async function converse(
   create: () => LibraryWorkerHandle,
   start: Extract<ToLibraryWorker, { type: 'start' }>,
   bytes: AsyncIterable<Uint8Array> | null,
-  file: FileCategory
+  file: FileCategory,
+  onRead?: (count: number) => void
 ): Promise<number> {
   let worker: LibraryWorkerHandle;
   try {
@@ -262,6 +278,9 @@ async function converse(
             }
             return;
           }
+          case 'read':
+            onRead?.(message.count);
+            return;
           case 'category':
             await file(message.categoryId, message.streams);
             worker.postMessage({ type: 'written' });

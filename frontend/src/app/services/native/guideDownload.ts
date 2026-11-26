@@ -15,7 +15,11 @@ export interface GuideDownloadPlugin {
     url: string;
     connectTimeoutMs?: number;
     idleTimeoutMs?: number;
+    /** Echoed in its progress events, to tell downloads apart. */
+    tag?: string;
   }): Promise<DownloadedFile>;
+  /** Bytes downloaded so far, about twice a second; an APK from before card 42 sends none. */
+  addListener?(event: 'progress', listener: (event: { tag?: string; bytes: number }) => void): Promise<{ remove(): Promise<void> }>;
   read(options: { id: string; offset: number; length: number }): Promise<{ data: string; eof: boolean }>;
   discard(options: { id: string }): Promise<void>;
 }
