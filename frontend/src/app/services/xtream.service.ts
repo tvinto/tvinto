@@ -108,14 +108,17 @@ const EMPTY_SERIES: SeriesInfo = {
 
 /**
  * A library download as it goes: categories written of how many (null until
- * known), the titles in them, and before any is written the bytes of the
- * listing downloaded so far where the device says (null otherwise).
+ * known), the titles in them; before any is written, the bytes of the
+ * listing downloaded so far where the device says, and then the titles read
+ * from it -- the whole listing is read before a title is written, 17 s of
+ * the owner's films (card 42). `read` stays, as how many there are to write.
  */
 export interface LibraryProgress {
   filed: number;
   total: number | null;
   titles: number;
   bytes: number | null;
+  read: number | null;
 }
 
 @Injectable({
@@ -942,7 +945,7 @@ export class XtreamService {
       const now = Date.now();
       if (now - shownAt >= 500 || filed === total) {
         shownAt = now;
-        this.indexProgress.set({ filed, total: total ?? (known && known >= filed ? known : null), titles, bytes: null });
+        this.indexProgress.set({ filed, total: total ?? (known && known >= filed ? known : null), titles, bytes: null, read: this.indexProgress()?.read ?? null });
       }
     };
     try {
@@ -977,7 +980,7 @@ export class XtreamService {
           // The desktop's listing counted as it downloads (FetchTransport).
           fetchProgress.onBytes = bytes => {
             if (!this.indexProgress()?.titles) {
-              this.indexProgress.set({ filed: 0, total: null, titles: 0, bytes });
+              this.indexProgress.set({ filed: 0, total: null, titles: 0, bytes, read: null });
             }
           };
           try {
@@ -1008,7 +1011,7 @@ export class XtreamService {
     const listening = await plugin
       .addListener?.('progress', event => {
         if (event.tag === tag && !this.indexProgress()?.titles) {
-          this.indexProgress.set({ filed: 0, total: null, titles: 0, bytes: event.bytes });
+          this.indexProgress.set({ filed: 0, total: null, titles: 0, bytes: event.bytes, read: null });
         }
       })
       .catch(() => null);
@@ -1018,6 +1021,13 @@ export class XtreamService {
       await listening?.remove().catch(() => undefined);
     }
   }
+
+  /** Titles read from a listing so far, before any is written. */
+  private readonly onRead = (read: number) => {
+    if (!this.indexProgress()?.titles) {
+      this.indexProgress.set({ filed: 0, total: null, titles: 0, bytes: null, read });
+    }
+  };
 
   /** Set once the library worker could not be started here, so the next index does not try again. */
   private libraryReadHere = typeof Worker === 'undefined';
@@ -1037,7 +1047,7 @@ export class XtreamService {
       let start: typeof import('./native/library-worker').startLibraryWorker | null = null;
       try {
         ({ startLibraryWorker: start } = await import('./native/library-worker'));
-        return await workerLibraryFileReader(start)(address, type, file);
+        return await workerLibraryFileReader(start, this.onRead)(address, type, file);
       } catch (error) {
         if (error instanceof LibraryFileUnreadable) {
           console.warn('The library worker could not fetch the download; reading it over the bridge');
@@ -1065,7 +1075,7 @@ export class XtreamService {
       let start: typeof import('./native/library-worker').startLibraryWorker | null = null;
       try {
         ({ startLibraryWorker: start } = await import('./native/library-worker'));
-        return await workerLibraryReader(start)(bytes, type, file);
+        return await workerLibraryReader(start, this.onRead)(bytes, type, file);
       } catch (error) {
         // Failing part way through is the index's failure, the caller's to
         // report; only a worker that never started is read around.

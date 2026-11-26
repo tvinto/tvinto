@@ -84,7 +84,8 @@ export class FirstLoadStripComponent {
   /** Titles so far, or the listing's megabytes while it downloads; nothing when not known. */
   amount(one: PartView): string {
     if (one.count !== null) {
-      return t('firstLoad.count', { count: one.count });
+      const count = t('firstLoad.count', { count: one.count });
+      return one.of !== null ? `${count} / ${t('firstLoad.count', { count: one.of })}` : count;
     }
     if (one.bytes !== null && one.bytes >= 100_000) {
       return t('firstLoad.megabytes', { size: Math.round(one.bytes / 100_000) / 10 });

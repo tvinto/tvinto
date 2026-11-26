@@ -86,6 +86,16 @@ describe('reading a library listing', () => {
     expect(first['plot']).toBeUndefined();
     expect(first['cast']).toBeUndefined();
   });
+
+  it('says how many titles it has read as it goes, ending with them all (card 42)', async () => {
+    const told: number[] = [];
+
+    await readLibrary(bytesOf(listing(3, 4)), 'vod', 5, count => told.push(count));
+
+    expect(told.length).toBeGreaterThan(0);
+    expect(told[told.length - 1]).toBe(13);
+    expect(told).toEqual([...told].sort((a, b) => a - b));
+  });
 });
 
 describe('the library worker', () => {

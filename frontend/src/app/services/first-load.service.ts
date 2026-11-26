@@ -14,6 +14,8 @@ export interface PartView {
   state: PartState;
   /** Titles (or a guide's programmes) so far, or in all once done; null when not known. */
   count: number | null;
+  /** How many titles there are to write, once the listing has been read; null before. */
+  of: number | null;
   /** Bytes of the listing downloaded, before any title is counted; null otherwise. */
   bytes: number | null;
 }
@@ -75,29 +77,38 @@ export class FirstLoadService {
     const parts: PartView[] = LIBRARIES.map(type => {
       const state = states[type];
       if (state === 'loading' && indexing === type) {
-        return { part: type, state, count: progress?.titles || null, bytes: progress?.titles ? null : (progress?.bytes ?? null) };
+        // Downloaded bytes, then titles read, then titles written of them.
+        const written = progress?.titles || null;
+        return {
+          part: type,
+          state,
+          count: written ?? progress?.read ?? null,
+          of: written ? (progress?.read ?? null) : null,
+          bytes: written || progress?.read ? null : (progress?.bytes ?? null)
+        };
       }
-      return { part: type, state, count: state === 'done' ? (titles[type] ?? null) : null, bytes: null };
+      return { part: type, state, count: state === 'done' ? (titles[type] ?? null) : null, of: null, bytes: null };
     });
     const loading = this.guide.loading();
     if (loading) {
-      parts.push({ part: 'guide', state: 'loading', count: loading.programmes || null, bytes: null });
+      parts.push({ part: 'guide', state: 'loading', count: loading.programmes || null, of: null, bytes: null });
     } else if (this.guide.queued().length || (this.running() && this.sources.sources().length)) {
-      parts.push({ part: 'guide', state: 'waiting', count: null, bytes: null });
+      parts.push({ part: 'guide', state: 'waiting', count: null, of: null, bytes: null });
     } else if (this.sources.sources().length) {
-      parts.push({ part: 'guide', state: 'done', count: null, bytes: null });
+      parts.push({ part: 'guide', state: 'done', count: null, of: null, bytes: null });
     }
     return parts;
   });
 
   constructor() {
-    // Time left from how fast categories are written, once some are and the
-    // number of them is known; begun again for each library.
-    let first: { type: StreamType; filed: number; at: number } | null = null;
+    // Time left from how fast titles are written of those read, or else
+    // categories of those known, once some are; begun again for each library.
+    let first: { type: StreamType; done: number; at: number } | null = null;
     effect(() => {
       const type = this.xtream.indexing();
       const progress = this.xtream.indexProgress();
-      if (!type || !progress?.total || !progress.filed) {
+      const [done, all] = progress?.read && progress.titles ? [progress.titles, progress.read] : [progress?.filed ?? 0, progress?.total ?? 0];
+      if (!type || !all || !done) {
         if (!type) {
           first = null;
           this.secondsLeft.set(null);
@@ -106,11 +117,11 @@ export class FirstLoadService {
       }
       const now = performance.now();
       if (first?.type !== type) {
-        first = { type, filed: progress.filed, at: now };
+        first = { type, done, at: now };
         return;
       }
-      const done = progress.filed - first.filed;
-      this.secondsLeft.set(done > 0 ? Math.max(0, Math.round(((now - first.at) / done) * (progress.total - progress.filed) / 1000)) : null);
+      const since = done - first.done;
+      this.secondsLeft.set(since > 0 ? Math.max(0, Math.round((((now - first.at) / since) * (all - done)) / 1000)) : null);
     });
   }
 
