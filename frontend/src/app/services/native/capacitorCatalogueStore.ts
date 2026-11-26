@@ -37,6 +37,15 @@ export class CapacitorCatalogueStore implements CatalogueStore {
   /** Whether `stream_names` indexes every name held (shared/xtream/streamNames.ts). */
   private namesIndexed = false;
 
+  /** Whether this SQLite has FTS5, and so the word index at all. */
+  private namesHere = false;
+
+  /** The fill of the word index running now, if one is. */
+  private filling: Promise<void> | null = null;
+
+  /** Set while a whole library is written without the word index's triggers (`bulk`). */
+  private bulkWriting: Promise<void> | null = null;
+
   /**
    * Creates the tables if this device has not held a catalogue before.
    *
@@ -105,7 +114,45 @@ export class CapacitorCatalogueStore implements CatalogueStore {
       // No FTS5 here (the web's sql.js): titles are looked for with LIKE.
       return;
     }
-    void this.indexNames().catch(() => undefined);
+    this.namesHere = true;
+    this.fillNames();
+  }
+
+  private fillNames(): void {
+    this.filling ??= this.indexNames()
+      .catch(() => undefined)
+      .finally(() => (this.filling = null));
+  }
+
+  /**
+   * A library never held, written whole without the word index's insert and
+   * rename triggers; the index is filled afterwards, while nobody uses the
+   * app (indexNames). With them, a first load on the owner's TV held the
+   * database 1 to 3 s in 31 of its writes (26 November, card 42): FTS5
+   * merging as 200,000 names went in. Titles are looked for with LIKE until
+   * the fill is done.
+   */
+  async bulk<T>(work: () => Promise<T>): Promise<T> {
+    if (!this.namesHere || this.bulkWriting) {
+      return work();
+    }
+    let done = () => undefined as void;
+    this.bulkWriting = new Promise<void>(resolve => (done = resolve));
+    try {
+      const filled = (await this.db.query('SELECT upto, done FROM stream_names_filled WHERE id = 1')).values?.[0];
+      const last = Number((await this.db.query('SELECT MAX(rowid) AS last FROM streams')).values?.[0]?.['last'] ?? 0);
+      // Indexed up to here: everything held, or as far as a fill has got.
+      const upto = filled && !filled['done'] ? Math.min(Number(filled['upto'] ?? 0), last) : last;
+      await this.db.execute('DROP TRIGGER IF EXISTS stream_names_insert; DROP TRIGGER IF EXISTS stream_names_update;');
+      await this.db.run(STREAM_NAMES_PROGRESS, [upto, 0]);
+      this.namesIndexed = false;
+      return await work();
+    } finally {
+      await this.db.execute(STREAM_NAMES_SETUP).catch(() => undefined);
+      this.bulkWriting = null;
+      done();
+      this.fillNames();
+    }
   }
 
   /**
@@ -122,13 +169,29 @@ export class CapacitorCatalogueStore implements CatalogueStore {
     const filled = (await this.db.query('SELECT upto, done FROM stream_names_filled WHERE id = 1')).values?.[0];
     let upto = Number(filled?.['upto'] ?? 0);
     if (!filled?.['done']) {
-      const last = Number((await this.db.query('SELECT MAX(rowid) AS last FROM streams')).values?.[0]?.['last'] ?? 0);
-      // `run`, not executeSet: given rows of values, executeSet writes them
-      // into a VALUES list, which an INSERT ... SELECT has not got.
-      for (; upto < last; upto += STREAM_NAMES_PIECE) {
-        await untilIdleWork();
-        await this.db.run(STREAM_NAMES_FILL, [upto, upto + STREAM_NAMES_PIECE]);
-        await this.db.run(STREAM_NAMES_PROGRESS, [upto + STREAM_NAMES_PIECE, 0]);
+      // Until no row is left past what is indexed: a library written
+      // meanwhile without the triggers (`bulk`) adds rows to fill.
+      for (;;) {
+        await this.bulkWriting;
+        const last = Number((await this.db.query('SELECT MAX(rowid) AS last FROM streams')).values?.[0]?.['last'] ?? 0);
+        if (upto >= last) {
+          break;
+        }
+        // `run`, not executeSet: given rows of values, executeSet writes them
+        // into a VALUES list, which an INSERT ... SELECT has not got.
+        for (; upto < last; upto += STREAM_NAMES_PIECE) {
+          await untilIdleWork();
+          // Never beside a library being written (`bulk`): the merging is what it avoids.
+          while (this.bulkWriting) {
+            await this.bulkWriting;
+            await untilIdleWork();
+          }
+          await this.db.run(STREAM_NAMES_FILL, [upto, upto + STREAM_NAMES_PIECE]);
+          await this.db.run(STREAM_NAMES_PROGRESS, [upto + STREAM_NAMES_PIECE, 0]);
+        }
+      }
+      if (this.bulkWriting) {
+        return;
       }
       await this.db.run(STREAM_NAMES_PROGRESS, [upto, 1]);
     }

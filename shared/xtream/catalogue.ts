@@ -72,6 +72,13 @@ export interface CatalogueStore {
    * a store without it has nothing to carry over from.
    */
   allStreams?(type: StreamType): Promise<Stream[]>;
+
+  /**
+   * A whole library this store has never held, written by `work`, without
+   * what the store keeps beside each title as it is written; made up
+   * afterwards (CapacitorCatalogueStore: the word index, card 42). Optional.
+   */
+  bulk?<T>(work: () => Promise<T>): Promise<T>;
 }
 
 export interface CataloguePolicy {
@@ -264,7 +271,7 @@ export class Catalogue {
   index(type: StreamType, timeoutMs = INDEX_TIMEOUT_MS, onFiled?: FiledProgress, pause?: () => Promise<void>): Promise<number> {
     return this.once(type, async () => {
       const all = await this.client.getStreams(type, undefined, timeoutMs);
-      return this.fileLibrary(type, all.map(slim), onFiled, pause);
+      return this.whole(type, () => this.fileLibrary(type, all.map(slim), onFiled, pause));
     });
   }
 
@@ -288,7 +295,7 @@ export class Catalogue {
         }
       }
       kept.push(...normaliseStreams(batch, type).map(slim));
-      return this.fileLibrary(type, kept);
+      return this.whole(type, () => this.fileLibrary(type, kept));
     });
   }
 
@@ -306,7 +313,7 @@ export class Catalogue {
     onFiled?: FiledProgress,
     pause?: () => Promise<void>
   ): Promise<number> {
-    return this.once(type, async () => {
+    return this.once(type, () => this.whole(type, async () => {
       const at = this.policy.now().toISOString();
       let filed = 0;
       let titles = 0;
@@ -319,7 +326,12 @@ export class Catalogue {
       });
       await this.store.markFetched(type, WHOLE_LIBRARY, at);
       return count;
-    });
+    }));
+  }
+
+  /** A library's writes, through the store's `bulk` when it has never held it whole. */
+  private async whole(type: StreamType, work: () => Promise<number>): Promise<number> {
+    return this.store.bulk && !(await this.indexedAt(type)) ? this.store.bulk(work) : work();
   }
 
   private once(type: StreamType, work: () => Promise<number>): Promise<number> {
