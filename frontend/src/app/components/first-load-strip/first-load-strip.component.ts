@@ -31,12 +31,16 @@ const LABEL: Record<LoadPart, string> = { live: 'firstLoad.channels', vod: 'firs
                   <ng-icon name="lucideLoaderCircle" size="16" class="animate-spin" />
                 }
               </span>
-              <span class="min-w-0 flex-1 truncate text-sm" [class.text-muted-foreground]="one.state === 'waiting'">{{ label(one) }}</span>
+              <span class="flex min-w-0 flex-1 flex-col">
+                <span class="truncate text-sm" [class.text-muted-foreground]="one.state === 'waiting'">{{ label(one) }}</span>
+                <!-- Under the part it is for: below every row it read as the whole wait,
+                     "less than a minute" for the channels of a seven-minute load (the owner, 26 November). -->
+                @if (one.state === 'loading' && timeLeft(); as left) {
+                  <span class="truncate text-xs text-muted-foreground" data-first-load-left>{{ left }}</span>
+                }
+              </span>
               <span class="shrink-0 text-sm font-semibold tabular-nums">{{ amount(one) }}</span>
             </div>
-          }
-          @if (timeLeft(); as left) {
-            <p class="pt-3 text-sm text-muted-foreground" data-first-load-left>{{ left }}</p>
           }
           @if (load.retrying()) {
             <p class="pt-3 text-sm text-muted-foreground">{{ 'firstLoad.retrying' | t }}</p>
