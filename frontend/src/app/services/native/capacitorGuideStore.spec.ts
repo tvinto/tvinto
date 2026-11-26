@@ -87,3 +87,56 @@ describe('CapacitorGuideStore writes in pieces', () => {
     ]);
   });
 });
+
+describe('CapacitorGuideStore.searchProgrammes', () => {
+  interface SqlJs {
+    exec(sql: string, params?: unknown[]): { columns: string[]; values: unknown[][] }[];
+  }
+
+  /** The store on a real SQLite (sql.js, which the web build's plugin already ships). */
+  const open = async () => {
+    const module = 'sql.js/dist/sql-asm.js';
+    const initSqlJs = ((await import(module)) as { default: () => Promise<{ Database: new () => SqlJs }> }).default;
+    const sqlite = new (await initSqlJs()).Database();
+    const query = async (sql: string, params: unknown[] = []) => {
+      const [result] = sqlite.exec(sql, params);
+      return { values: (result?.values ?? []).map(row => Object.fromEntries(result.columns.map((column, i) => [column, row[i]]))) };
+    };
+    const db = {
+      execute: async (sql: string) => (sqlite.exec(sql), { changes: { changes: 0 } }),
+      query,
+      run: async (sql: string, params: unknown[] = []) => (sqlite.exec(sql, params), { changes: { changes: 0 } }),
+      executeSet: async (set: Array<{ statement: string; values: unknown[][] }>) => {
+        for (const row of set[0].values) {
+          sqlite.exec(set[0].statement, row);
+        }
+        return { changes: { changes: set[0].values.length } };
+      }
+    };
+    const store = new CapacitorGuideStore(db as never);
+    await store.initialise();
+    return { store, query };
+  };
+
+  const programme = (channel: string, start: number, title: string) => ({ channel, start, stop: start + 30, title, description: 'x'.repeat(500), category: '' });
+
+  it('finds titles through the title index alone, the earliest first, only in finished loads', async () => {
+    const { store, query } = await open();
+    await store.beginLoad('a');
+    await store.writeProgrammes('a', [programme('1', 300, 'Dnevnik'), programme('2', 100, 'Šport uživo'), programme('1', 200, 'Dnevnik 2'), programme('1', 10, 'Dnevnik')]);
+    await store.finishLoad('a', 'now');
+    await store.beginLoad('b');
+    await store.writeProgrammes('b', [programme('9', 150, 'Dnevnik')]);
+
+    const found = await store.searchProgrammes('dnevnik', 60, 1000, 2);
+    expect(found.map(hit => [hit.channel, hit.start, hit.title])).toEqual([
+      ['1', 200, 'Dnevnik 2'],
+      ['1', 300, 'Dnevnik']
+    ]);
+    expect((await store.searchProgrammes('sport', 0, 1000, 5)).map(hit => hit.title)).toEqual(['Šport uživo']);
+
+    const plan = (await query("EXPLAIN QUERY PLAN SELECT g.rowid FROM guide_programmes g WHERE g.title LIKE '%x%' AND g.stop > 0 AND g.start < 9"))
+      .values.map(step => String(step['detail'])).join(' | ');
+    expect(plan).toContain('COVERING INDEX idx_guide_programmes_title');
+  });
+});

@@ -11,6 +11,14 @@ import {
 } from '@shared/xtream/guide';
 import { likePattern, titleMatches } from '@shared/xtream/guideSearch';
 import { whenRunningOut } from '@shared/xtream/guideReload';
+import { untilIdleWork } from '../../utils/library-refresh.utils';
+
+/**
+ * Titles with what a search keeps them by, for `searchProgrammes` to look
+ * through instead of every row with its description: a tenth of the bytes
+ * (10 MB against 81 for 275,000 programmes on a PC).
+ */
+const TITLE_INDEX = `CREATE INDEX IF NOT EXISTS idx_guide_programmes_title ON guide_programmes(title, start, stop, source_id)`;
 
 /** Programmes per write (`writeProgrammes`). */
 const WRITE_PIECE_PROGRAMMES = 100;
@@ -80,6 +88,17 @@ export class CapacitorGuideStore implements GuideStore {
       ['guide_channels', 'generation', 'TEXT'],
       ['guide_programmes', 'generation', 'TEXT']
     ]);
+
+    // At once on an empty guide; over a guide already held it is built in one
+    // statement, so only once nobody is using the app.
+    const held = (await this.db.query('SELECT 1 FROM guide_programmes LIMIT 1')).values?.length;
+    if (held) {
+      void untilIdleWork()
+        .then(() => this.db.execute(TITLE_INDEX))
+        .catch(() => undefined);
+    } else {
+      await this.db.execute(TITLE_INDEX);
+    }
   }
 
   /** The load each source is in the middle of, if any. */
@@ -325,14 +344,20 @@ export class CapacitorGuideStore implements GuideStore {
    * the limit, for what the check turns away.
    */
   async searchProgrammes(query: string, from: number, to: number, limit: number): Promise<GuideHit[]> {
+    // The rows wanted are picked from TITLE_INDEX alone, and only those read
+    // whole: the whole table took 2.2 s on a user's TV after a first load.
     const result = await this.db.query(
       `SELECT p.source_id, p.channel_id, p.start, p.stop, p.title, p.description, p.category
          FROM guide_programmes p
-         JOIN guide_loads l ON l.source_id = p.source_id
-        WHERE p.stop > ? AND p.start < ?
-          AND p.title LIKE ? ESCAPE '\\'
-        ORDER BY p.start
-        LIMIT ?`,
+        WHERE p.rowid IN (
+          SELECT g.rowid
+            FROM guide_programmes g
+            JOIN guide_loads l ON l.source_id = g.source_id
+           WHERE g.stop > ? AND g.start < ?
+             AND g.title LIKE ? ESCAPE '\\'
+           ORDER BY g.start
+           LIMIT ?)
+        ORDER BY p.start`,
       [from, to, likePattern(query), limit * 4]
     );
 
