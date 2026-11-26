@@ -7,6 +7,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.community.database.sqlite.CapacitorSQLitePlugin;
 
 import android.database.Cursor;
+import android.os.SystemClock;
 import android.util.Log;
 
 import net.zetetic.database.sqlcipher.SQLiteDatabase;
@@ -18,7 +19,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * The SQLite plugin, on a thread of its own.
@@ -46,34 +47,29 @@ public class DatabaseLanePlugin extends CapacitorSQLitePlugin {
     private static final String FILE = "xtream-catalogueSQLite.db";
 
     /**
-     * Pages in the log not yet in the file before they are folded in. A
-     * quarter of SQLite's own point for it (1,000), which the app's connection
-     * no longer acts on (device-database.service.ts sets wal_autocheckpoint
-     * to 0): a fold ends in a sync, and on a user's TV a write made meanwhile
-     * waited for it, 0.6 to 1.3 s after a fold of 1,000 pages (27 November).
-     */
-    private static final int FOLD_FRAMES = 256;
-
-    /**
-     * A log this long, 16 MB, is started over (`untilFolded`): the size it
-     * is cut back to afterwards (device-database.service.ts). Each start holds
-     * the app's writes for a fold, so not at every FOLD_FRAMES.
+     * A log this long, 16 MB, is folded in and started over (`untilFolded`):
+     * the size it is cut back to afterwards (device-database.service.ts).
      */
     private static final int RESTART_FRAMES = 4096;
 
+    /** How long a "foldDue" the app has not answered waits before it is said again. */
+    private static final long ASK_AGAIN_MS = 10_000;
+
     /**
-     * Folding the log into the file, on a connection and a thread of its own.
+     * Folding the log into the file, on a connection and a thread of its own,
+     * while the app holds its writes.
      *
      * SQLite folds it in at the end of whichever write filled it, so that write
      * held the lane: on the TV emulator every write over 38 ms of a first load
      * was one that folded (103 of 1,118, 24 to 126 ms against a median of 10),
-     * and on a user's TV 37 to 42 writes held it 1 to 3 s (26 November). A
-     * passive fold waits for nobody, and the lane's reads and writes go on
-     * beside it, the log's own design.
+     * and on a user's TV 37 to 42 writes held it 1 to 3 s (26 November).
+     * Folded beside the writes instead, a write made while a fold synced waited
+     * for the sync, 0.5 to 2 s on that TV whatever the fold's size (27
+     * November). So the app's writes wait while the fold runs; its reads go on.
      */
     private final ExecutorService folding = Executors.newSingleThreadExecutor(work -> new Thread(work, "database-fold"));
-    private final AtomicBoolean foldAsked = new AtomicBoolean();
-    private final AtomicBoolean restartAsked = new AtomicBoolean();
+    /** When "foldDue" was last said and not yet answered by a fold; 0 when it was. */
+    private final AtomicLong askedAt = new AtomicLong();
     /** Held by a fold, and by whatever closes or deletes the file, so neither happens during the other. */
     private final Object foldLock = new Object();
 
@@ -85,39 +81,27 @@ public class DatabaseLanePlugin extends CapacitorSQLitePlugin {
     }
 
     /**
-     * Run on the lane after each call. Folds in the log beside the lane once
-     * it holds FOLD_FRAMES unfolded pages, and tells the app once it is
-     * RESTART_FRAMES long.
+     * Run on the lane after each call: tells the app when the log is
+     * RESTART_FRAMES long, and again if nothing answered (a page reloading
+     * loses what it was told).
      */
     private void foldIfDue() {
-        int[] log = log();
-        if (log[0] < RESTART_FRAMES) {
-            restartAsked.set(false);
-        } else if (restartAsked.compareAndSet(false, true)) {
-            notifyListeners("foldDue", new JSObject());
-        }
-        if (log[0] - log[1] < FOLD_FRAMES || !foldAsked.compareAndSet(false, true)) {
+        if (log()[0] < RESTART_FRAMES) {
+            askedAt.set(0);
             return;
         }
-        folding.execute(() -> {
-            try {
-                synchronized (foldLock) {
-                    fold();
-                }
-            } finally {
-                foldAsked.set(false);
-            }
-        });
+        long now = SystemClock.elapsedRealtime();
+        long asked = askedAt.get();
+        if ((asked == 0 || now - asked > ASK_AGAIN_MS) && askedAt.compareAndSet(asked, now)) {
+            notifyListeners("foldDue", new JSObject());
+        }
     }
 
     /**
-     * Folds the whole log in, beside the lane, and answers when it is: asked
-     * by the app (device-database.service.ts) when told "foldDue", with its
-     * writes held meanwhile, so the next write starts the log over. A log
-     * starts over only at a write that finds every page of it folded in, and
-     * a first load writes without a pause: folded beside the writes alone,
-     * the log reached 447 MB on the TV emulator; folded on the lane to catch
-     * up, each start cost the lane the fold's syncs. Reads go on meanwhile.
+     * Folds the whole log in and answers when it is: asked by the app
+     * (device-database.service.ts) when told "foldDue", with its writes held
+     * meanwhile, so the next write starts the log over -- it starts over only
+     * at a write that finds every page of it folded in.
      */
     @PluginMethod
     public void untilFolded(PluginCall call) {
@@ -135,7 +119,7 @@ public class DatabaseLanePlugin extends CapacitorSQLitePlugin {
                 }
             } finally {
                 // Told again after the next write if the log is still long.
-                restartAsked.set(false);
+                askedAt.set(0);
                 call.resolve();
             }
         });
