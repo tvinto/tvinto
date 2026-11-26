@@ -1457,7 +1457,7 @@
   },
   "firstLoad": {
     "title": "Je bibliotheek wordt geladen",
-    "lead": "Tvinto opent vanzelf zodra zenders, films en series binnen zijn.",
+    "lead": "Tvinto opent vanzelf zodra zenders, films, series en de gids binnen zijn.",
     "channels": "Zenders",
     "films": "Films",
     "shows": "Series",

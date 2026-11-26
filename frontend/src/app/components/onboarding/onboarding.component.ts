@@ -112,8 +112,8 @@ export class OnboardingComponent {
   readonly tmdbKey = viewChild(TmdbKeyComponent);
   readonly keyTyped = computed(() => !!this.tmdbKey()?.draft().trim());
 
-  /** On the last screen, the libraries still coming in: it waits, and opens the app once they are in. */
-  readonly waiting = computed(() => this.step() === 'done' && this.firstLoad.started() && !this.firstLoad.librariesIn());
+  /** On the last screen, the libraries or the guide still coming in: it waits, and opens the app once they are in. */
+  readonly waiting = computed(() => this.step() === 'done' && this.firstLoad.started() && !this.firstLoad.allIn());
 
   /** The parts still loading, for the line beside "Continue anyway". */
   readonly stillLoading = computed(() =>
@@ -219,14 +219,14 @@ export class OnboardingComponent {
       }
     });
 
-    // The last screen opens the app by itself once channels, films and shows
-    // are in -- if it had to wait for them: arrived before, it is the summary
+    // The last screen opens the app by itself once channels, films, shows and
+    // the guide are in -- if it had to wait for them: arrived before, it is the summary
     // with Start watching, as a small library has always had.
     let waited = false;
     effect(() => {
       if (this.waiting()) {
         waited = true;
-      } else if (waited && this.step() === 'done' && this.firstLoad.librariesIn()) {
+      } else if (waited && this.step() === 'done' && this.firstLoad.allIn()) {
         untracked(() => this.startWatching());
       }
     });

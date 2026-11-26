@@ -22,6 +22,8 @@ describe('OnboardingService', () => {
           provide: GuideService,
           useValue: {
             isLoading: () => loading() !== null,
+            willLoad: () => undefined,
+            wontLoad: () => undefined,
             load: async (id: string) => {
               loaded.push(id);
               return {};

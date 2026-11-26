@@ -1531,7 +1531,7 @@
   },
   "firstLoad": {
     "title": "Wczytywanie biblioteki",
-    "lead": "Tvinto otworzy się samo, gdy tylko dotrą kanały, filmy i seriale.",
+    "lead": "Tvinto otworzy się samo, gdy tylko dotrą kanały, filmy, seriale i przewodnik.",
     "channels": "Kanały",
     "films": "Filmy",
     "shows": "Seriale",

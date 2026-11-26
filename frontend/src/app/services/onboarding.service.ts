@@ -61,6 +61,8 @@ export class OnboardingService {
   addGuide(url: string, label?: string): Promise<unknown> {
     this.sources.add(url, label);
     const id = guideSourceId(url);
+    // Queued from now, so a first load's last screen waits for it (FirstLoadService.allIn).
+    this.guide.willLoad([id]);
     return (async () => {
       await afterFirstLibraries();
       const until = Date.now() + WAIT_FOR_LOAD_MS;
@@ -72,6 +74,8 @@ export class OnboardingService {
         return null;
       } catch (error) {
         console.warn('Could not load a guide added at the start', technicalDetail(error));
+        // Not left queued: the last screen would wait for it for ever.
+        this.guide.wontLoad([id]);
         return error;
       }
     })();

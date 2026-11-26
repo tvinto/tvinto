@@ -13,6 +13,9 @@ describe('FirstLoadService', () => {
   let held: Set<StreamType>;
   let arrives: (type: StreamType) => boolean;
   let fetched: StreamType[];
+  const guideLoading = signal<object | null>(null);
+  const queued = signal<string[]>([]);
+  const sources = signal<{ id: string }[]>([]);
 
   const setup = () => {
     TestBed.resetTestingModule();
@@ -35,8 +38,8 @@ describe('FirstLoadService', () => {
             }
           }
         },
-        { provide: GuideService, useValue: { loading: signal(null), queued: signal([]) } },
-        { provide: GuideSourcesService, useValue: { sources: signal([]) } },
+        { provide: GuideService, useValue: { loading: guideLoading, queued } },
+        { provide: GuideSourcesService, useValue: { sources } },
         { provide: ProviderAccessService, useValue: { supported: true } }
       ]
     });
@@ -48,6 +51,24 @@ describe('FirstLoadService', () => {
     held = new Set();
     arrives = () => true;
     fetched = [];
+    guideLoading.set(null);
+    queued.set([]);
+    sources.set([]);
+  });
+
+  it('is all in only once the guide is too: queued, then downloading, then done', async () => {
+    sources.set([{ id: 'provider' }]);
+    queued.set(['provider']);
+    const load = setup();
+    await load.start();
+
+    expect(load.librariesIn()).toBe(true);
+    expect(load.allIn()).toBe(false);
+    queued.set([]);
+    guideLoading.set({ sourceId: 'provider', programmes: 10 });
+    expect(load.allIn()).toBe(false);
+    guideLoading.set(null);
+    expect(load.allIn()).toBe(true);
   });
 
   it('brings in channels, films and shows in turn, and the guide only after them', async () => {

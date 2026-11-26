@@ -1457,7 +1457,7 @@
   },
   "firstLoad": {
     "title": "Deine Mediathek wird geladen",
-    "lead": "Tvinto öffnet sich von selbst, sobald Sender, Filme und Serien da sind.",
+    "lead": "Tvinto öffnet sich von selbst, sobald Sender, Filme, Serien und der Programmführer da sind.",
     "channels": "Sender",
     "films": "Filme",
     "shows": "Serien",

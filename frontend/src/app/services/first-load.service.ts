@@ -55,6 +55,13 @@ export class FirstLoadService {
   /** Channels, films and shows each arrived or given up on for this launch. */
   readonly librariesIn = computed(() => LIBRARIES.every(type => this.settled(this.states()[type])));
 
+  /**
+   * Everything in, the guide too: what the last screen waits for. The owner
+   * on 26 November, after entering with two guides still downloading: "It
+   * should wait for the guide."
+   */
+  readonly allIn = computed(() => this.librariesIn() && this.parts().every(part => part.part !== 'guide' || part.state === 'done'));
+
   readonly failed = computed(() => LIBRARIES.some(type => this.states()[type] === 'failed'));
 
   /** Rough seconds left of the library downloading now, once it can be told; null before. */
