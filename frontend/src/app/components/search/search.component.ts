@@ -7,7 +7,7 @@ import { SearchFacets, resultsIn, searchFacets } from '@shared/xtream/searchFace
 import { catchError, firstValueFrom, of } from 'rxjs';
 import { LowerCasePipe } from '@angular/common';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideArrowDownUp, lucideArrowLeft, lucideBell, lucideCheck, lucideLoaderCircle, lucideSearch, lucideX } from '@ng-icons/lucide';
+import { lucideArrowDownUp, lucideArrowLeft, lucideArrowRight, lucideBell, lucideCheck, lucideLoaderCircle, lucideSearch, lucideX } from '@ng-icons/lucide';
 import { ChoicePanelService } from '../../ui/choice-panel.service';
 import { RemindersService } from '../../services/reminders.service';
 import { GuideFind } from '../../utils/guide-search.utils';
@@ -144,7 +144,7 @@ let lastSearch: KeptSearch | null = null;
   selector: 'app-search',
   standalone: true,
   imports: [AgeCoverComponent, TPipe, ProviderNamePipe, ChannelTitlePipe, ChannelMonogramPipe, PosterTitlePipe, PosterYearPipe, NgIcon, HlmButton, HlmInput, RouterLink, CardGesturesDirective, LowerCasePipe, ItemActionsComponent],
-  providers: [provideIcons({ lucideArrowDownUp, lucideArrowLeft, lucideBell, lucideCheck, lucideLoaderCircle, lucideSearch, lucideX })],
+  providers: [provideIcons({ lucideArrowDownUp, lucideArrowLeft, lucideArrowRight, lucideBell, lucideCheck, lucideLoaderCircle, lucideSearch, lucideX })],
   templateUrl: './search.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })

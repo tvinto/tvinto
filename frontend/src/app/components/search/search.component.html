@@ -280,21 +280,41 @@
               <!-- The last card in the row rather than a control somewhere
                    else, so a remote reaches it by carrying on right. -->
               @if (section.more) {
+                <!-- A card like the ones before it, not a button: a channel card's
+                     shape at the end of the channels, a poster's at the end of the
+                     posters (the owner, 26 November). -->
+                @let allCount = section.found.length + (section.capped ? '+' : '');
                 <a
-                  hlmBtn
-                 
                   [routerLink]="section.path"
                   [queryParams]="{ q: query() }"
+                  data-search-card
                   data-search-show-all
                   (click)="showAll()"
                   [attr.data-focus-key]="'search-all-' + section.type"
-                  class="flex shrink-0 flex-col items-start justify-center gap-1 rounded-lg px-4 text-left"
-                  [class]="section.type === 'live' ? 'h-[5.5rem] w-[11rem]' : 'h-auto w-[9rem]'"
+                  [attr.data-fy-card]="section.type === 'live' ? '' : null"
+                  [attr.data-fy-poster]="section.type === 'live' ? null : ''"
+                  [class]="
+                    section.type === 'live'
+                      ? 'relative flex h-[5.5rem] w-[14.25rem] shrink-0 items-center gap-3 overflow-hidden rounded-lg glass-card p-2.5 text-left transition-colors'
+                      : 'flex w-[7.875rem] shrink-0 flex-col gap-1.5 text-left'
+                  "
                 >
-                  <span class="text-sm font-semibold">
-                    {{ 'search.showAll' | t: { count: section.found.length + (section.capped ? '+' : '') } }}
-                  </span>
-                  <span class="text-xs text-muted-foreground">{{ section.label | lowercase }}</span>
+                  @if (section.type === 'live') {
+                    <span class="flex h-full w-16 shrink-0 items-center justify-center rounded-md bg-[var(--glass-quiet)]" data-fy-thumb>
+                      <ng-icon name="lucideArrowRight" size="24" />
+                    </span>
+                    <span class="min-w-0 flex-1">
+                      <span class="block truncate font-semibold">{{ 'search.showAll' | t: { count: allCount } }}</span>
+                      <span class="block truncate text-sm text-muted-foreground">{{ section.label | lowercase }}</span>
+                    </span>
+                  } @else {
+                    <span class="relative flex h-[11.8rem] w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-md glass-card" data-fy-poster-image>
+                      <span class="text-3xl font-bold tabular-nums">{{ allCount }}</span>
+                      <ng-icon name="lucideArrowRight" size="24" class="text-muted-foreground" />
+                    </span>
+                    <span class="block w-full truncate text-sm font-semibold">{{ 'search.showAll' | t: { count: allCount } }}</span>
+                    <span class="block w-full truncate text-xs text-muted-foreground">{{ section.label | lowercase }}</span>
+                  }
                 </a>
               }
             </div>
