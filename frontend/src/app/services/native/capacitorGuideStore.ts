@@ -11,14 +11,16 @@ import {
 } from '@shared/xtream/guide';
 import { likePattern, titleMatches } from '@shared/xtream/guideSearch';
 import { whenRunningOut } from '@shared/xtream/guideReload';
+import {
+  GUIDE_TITLES_FILL,
+  GUIDE_TITLES_FILLED,
+  GUIDE_TITLES_PIECE,
+  GUIDE_TITLES_PROGRESS,
+  GUIDE_TITLES_SETUP,
+  PROGRAMMES_TITLED,
+  titlesHolding
+} from '@shared/xtream/guideTitles';
 import { untilIdleWork } from '../../utils/library-refresh.utils';
-
-/**
- * Titles with what a search keeps them by, for `searchProgrammes` to look
- * through instead of every row with its description: a tenth of the bytes
- * (10 MB against 81 for 275,000 programmes on a PC).
- */
-const TITLE_INDEX = `CREATE INDEX IF NOT EXISTS idx_guide_programmes_title ON guide_programmes(title, start, stop, source_id)`;
 
 /** Programmes per write (`writeProgrammes`). */
 const WRITE_PIECE_PROGRAMMES = 100;
@@ -89,16 +91,37 @@ export class CapacitorGuideStore implements GuideStore {
       ['guide_programmes', 'generation', 'TEXT']
     ]);
 
-    // At once on an empty guide; over a guide already held it is built in one
-    // statement, so only once nobody is using the app.
-    const held = (await this.db.query('SELECT 1 FROM guide_programmes LIMIT 1')).values?.length;
-    if (held) {
-      void untilIdleWork()
-        .then(() => this.db.execute(TITLE_INDEX))
-        .catch(() => undefined);
-    } else {
-      await this.db.execute(TITLE_INDEX);
+    try {
+      await this.db.execute(GUIDE_TITLES_SETUP);
+    } catch {
+      // No FTS5 here (the web's sql.js): titles are looked for with LIKE.
+      return;
     }
+    void this.indexTitles().catch(() => undefined);
+  }
+
+  /** Whether `guide_titles` indexes every programme held (shared/xtream/guideTitles.ts). */
+  private titlesIndexed = false;
+
+  /**
+   * Indexes the titles held before the index existed, a piece per call and
+   * only while nobody uses the app, as `CapacitorCatalogueStore.indexNames`
+   * does names. The triggers index whatever is written meanwhile; a guide
+   * first loaded with the index has nothing to fill.
+   */
+  private async indexTitles(): Promise<void> {
+    const filled = (await this.db.query(GUIDE_TITLES_FILLED)).values?.[0];
+    let upto = Number(filled?.['upto'] ?? 0);
+    if (!filled?.['done']) {
+      const last = Number((await this.db.query('SELECT MAX(rowid) AS last FROM guide_programmes')).values?.[0]?.['last'] ?? 0);
+      for (; upto < last; upto += GUIDE_TITLES_PIECE) {
+        await untilIdleWork();
+        await this.db.run(GUIDE_TITLES_FILL, [upto, upto + GUIDE_TITLES_PIECE]);
+        await this.db.run(GUIDE_TITLES_PROGRESS, [upto + GUIDE_TITLES_PIECE, 0]);
+      }
+      await this.db.run(GUIDE_TITLES_PROGRESS, [upto, 1]);
+    }
+    this.titlesIndexed = true;
   }
 
   /** The load each source is in the middle of, if any. */
@@ -160,10 +183,15 @@ export class CapacitorGuideStore implements GuideStore {
     for (let at = 0; at < rows.length; at += WRITE_PIECE_PROGRAMMES) {
       await this.db.executeSet([
         {
+          // An upsert rather than INSERT OR REPLACE, so a programme written
+          // again keeps its row: a replaced row is deleted without its delete
+          // triggers, and guide_titles kept every old title of every reload.
           statement:
-            'INSERT OR REPLACE INTO guide_programmes ' +
+            'INSERT INTO guide_programmes ' +
             '(source_id, channel_id, start, stop, title, description, category, generation) ' +
-            'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?) ' +
+            'ON CONFLICT (source_id, channel_id, start) DO UPDATE SET stop = excluded.stop, title = excluded.title, ' +
+            'description = excluded.description, category = excluded.category, generation = excluded.generation',
           values: rows.slice(at, at + WRITE_PIECE_PROGRAMMES)
         }
       ]);
@@ -338,28 +366,24 @@ export class CapacitorGuideStore implements GuideStore {
   }
 
   /**
-   * Titles found with LIKE, which SQLite does over every row in the window --
-   * no index helps with words inside a title -- and then checked properly in
-   * code, since LIKE cannot fold accents (guideSearch.ts). Asked for more than
-   * the limit, for what the check turns away.
+   * Titles found through the trigram index (shared/xtream/guideTitles.ts), or
+   * with LIKE over every row in the window until it is filled, and then
+   * checked properly in code, since neither folds exactly as guideSearch.ts
+   * does. Asked for more than the limit, for what the check turns away.
    */
   async searchProgrammes(query: string, from: number, to: number, limit: number): Promise<GuideHit[]> {
-    // The rows wanted are picked from TITLE_INDEX alone, and only those read
-    // whole: the whole table took 2.2 s on a user's TV after a first load.
-    const result = await this.db.query(
-      `SELECT p.source_id, p.channel_id, p.start, p.stop, p.title, p.description, p.category
-         FROM guide_programmes p
-        WHERE p.rowid IN (
-          SELECT g.rowid
-            FROM guide_programmes g
-            JOIN guide_loads l ON l.source_id = g.source_id
-           WHERE g.stop > ? AND g.start < ?
-             AND g.title LIKE ? ESCAPE '\\'
-           ORDER BY g.start
-           LIMIT ?)
-        ORDER BY p.start`,
-      [from, to, likePattern(query), limit * 4]
-    );
+    const result = this.titlesIndexed
+      ? await this.db.query(PROGRAMMES_TITLED, [titlesHolding(query), from, to, limit * 4])
+      : await this.db.query(
+          `SELECT p.source_id, p.channel_id, p.start, p.stop, p.title, p.description, p.category
+             FROM guide_programmes p
+             JOIN guide_loads l ON l.source_id = p.source_id
+            WHERE p.stop > ? AND p.start < ?
+              AND p.title LIKE ? ESCAPE '\\'
+            ORDER BY p.start
+            LIMIT ?`,
+          [from, to, likePattern(query), limit * 4]
+        );
 
     const seen = new Set<string>();
     const found: GuideHit[] = [];

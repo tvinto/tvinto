@@ -54,6 +54,18 @@ describe('CapacitorCatalogueStore searches', () => {
 
   const film = (id: number, name: string) => ({ stream_id: String(id), name }) as unknown as Stream;
 
+  it('reads a whole library as one cell of JSON, each stream as a row read would have it', async () => {
+    const { store } = await open();
+    const channel = { stream_id: 7, name: 'HR| HRT 1 "HD"', stream_icon: 'http://x/1.png', epg_channel_id: 'HRT1.hr', num: 3, tv_archive: 1, tv_archive_duration: 4 };
+    await store.writeStreams('live', '2', [channel as unknown as Stream, { stream_id: 8, name: 'Bare' } as unknown as Stream]);
+
+    expect(await store.allStreams('live')).toEqual([
+      { stream_id: '7', name: 'HR| HRT 1 "HD"', icon: 'http://x/1.png', stream_icon: 'http://x/1.png', epg_channel_id: 'HRT1.hr', added: undefined, num: 3, container_extension: undefined, tv_archive: 1, tv_archive_duration: 4, category_id: '2' },
+      { stream_id: '8', name: 'Bare', icon: '', stream_icon: '', epg_channel_id: undefined, added: undefined, num: undefined, container_extension: undefined, category_id: '2' }
+    ]);
+    expect(await store.allStreams('vod')).toEqual([]);
+  });
+
   it('finds a word in any case, and reads a category through its own index', async () => {
     const { store, query } = await open();
     await store.writeStreams('vod', '1', [film(1, 'EN| The MATRIX (1999)'), film(2, 'Heat (1995)')]);

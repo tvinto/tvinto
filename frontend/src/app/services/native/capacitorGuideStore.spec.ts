@@ -120,8 +120,8 @@ describe('CapacitorGuideStore.searchProgrammes', () => {
 
   const programme = (channel: string, start: number, title: string) => ({ channel, start, stop: start + 30, title, description: 'x'.repeat(500), category: '' });
 
-  it('finds titles through the title index alone, the earliest first, only in finished loads', async () => {
-    const { store, query } = await open();
+  it('finds titles with LIKE until the title index is filled, the earliest first, only in finished loads', async () => {
+    const { store } = await open();
     await store.beginLoad('a');
     await store.writeProgrammes('a', [programme('1', 300, 'Dnevnik'), programme('2', 100, 'Šport uživo'), programme('1', 200, 'Dnevnik 2'), programme('1', 10, 'Dnevnik')]);
     await store.finishLoad('a', 'now');
@@ -135,8 +135,5 @@ describe('CapacitorGuideStore.searchProgrammes', () => {
     ]);
     expect((await store.searchProgrammes('sport', 0, 1000, 5)).map(hit => hit.title)).toEqual(['Šport uživo']);
 
-    const plan = (await query("EXPLAIN QUERY PLAN SELECT g.rowid FROM guide_programmes g WHERE g.title LIKE '%x%' AND g.stop > 0 AND g.start < 9"))
-      .values.map(step => String(step['detail'])).join(' | ');
-    expect(plan).toContain('COVERING INDEX idx_guide_programmes_title');
   });
 });

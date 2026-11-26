@@ -306,14 +306,17 @@ export class CapacitorCatalogueStore implements CatalogueStore {
   }
 
   async allStreams(type: StreamType): Promise<Stream[]> {
+    // One cell of JSON, written by SQLite, rather than a row each: the plugin
+    // builds a Java object for every cell, and a TV's 55,000 channels took
+    // 19 s that way, 17 of them building (27 November), on every guide search.
     const result = await this.db.query(
-      `SELECT stream_id, name, stream_icon, epg_channel_id, added, num, container_extension, category_id,
-              tv_archive, tv_archive_duration, extra
+      `SELECT json_group_array(json_object(${ALL_COLUMNS.map(column => `'${column}', ${column}`).join(', ')})) AS rows
          FROM streams
         WHERE provider = ? AND type = ?`,
       [this.providerUsername, type]
     );
-    return (result.values ?? []).map(row => ({
+    const rows = JSON.parse(String(result.values?.[0]?.['rows'] ?? '[]')) as Record<string, unknown>[];
+    return rows.map(row => ({
       stream_id: String(row['stream_id']),
       name: String(row['name'] ?? ''),
       icon: String(row['stream_icon'] ?? ''),
@@ -424,6 +427,9 @@ export class CapacitorCatalogueStore implements CatalogueStore {
 
 const FOUND_COLUMNS =
   'stream_id, name, stream_icon, epg_channel_id, added, num, container_extension, category_id, tv_archive, tv_archive_duration, extra';
+
+/** What `allStreams` reads of each row. */
+const ALL_COLUMNS = FOUND_COLUMNS.split(', ');
 
 /** FOUND_COLUMNS read through the word index. */
 const INDEXED_COLUMNS = FOUND_COLUMNS.split(', ').map(column => `streams.${column}`).join(', ');
