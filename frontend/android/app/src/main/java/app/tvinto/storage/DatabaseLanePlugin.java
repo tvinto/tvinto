@@ -1,12 +1,24 @@
 package app.tvinto.storage;
 
+import com.getcapacitor.JSObject;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.community.database.sqlite.CapacitorSQLitePlugin;
 
+import android.database.Cursor;
+import android.util.Log;
+
+import net.zetetic.database.sqlcipher.SQLiteDatabase;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * The SQLite plugin, on a thread of its own.
@@ -26,204 +38,373 @@ import java.util.concurrent.Executors;
 @CapacitorPlugin(name = "CapacitorSQLite")
 public class DatabaseLanePlugin extends CapacitorSQLitePlugin {
 
+    private static final String TAG = "DatabaseLane";
+
     private final ExecutorService lane = Executors.newSingleThreadExecutor(work -> new Thread(work, "database"));
+
+    /** The app's database (device-database.service.ts), as the plugin names its file. */
+    private static final String FILE = "xtream-catalogueSQLite.db";
+
+    /**
+     * Pages in the log not yet in the file before they are folded in: SQLite's
+     * own point for it, which the app's connection no longer acts on
+     * (device-database.service.ts sets wal_autocheckpoint to 0).
+     */
+    private static final int FOLD_FRAMES = 1000;
+
+    /**
+     * A log this long, 16 MB, is started over (`untilFolded`): the size it
+     * is cut back to afterwards (device-database.service.ts). Each start holds
+     * the app's writes for a fold, so not at every FOLD_FRAMES.
+     */
+    private static final int RESTART_FRAMES = 4096;
+
+    /**
+     * Folding the log into the file, on a connection and a thread of its own.
+     *
+     * SQLite folds it in at the end of whichever write filled it, so that write
+     * held the lane: on the TV emulator every write over 38 ms of a first load
+     * was one that folded (103 of 1,118, 24 to 126 ms against a median of 10),
+     * and on a user's TV 37 to 42 writes held it 1 to 3 s (26 November). A
+     * passive fold waits for nobody, and the lane's reads and writes go on
+     * beside it, the log's own design.
+     */
+    private final ExecutorService folding = Executors.newSingleThreadExecutor(work -> new Thread(work, "database-fold"));
+    private final AtomicBoolean foldAsked = new AtomicBoolean();
+    private final AtomicBoolean restartAsked = new AtomicBoolean();
+    /** Held by a fold, and by whatever closes or deletes the file, so neither happens during the other. */
+    private final Object foldLock = new Object();
+
+    private void onLane(Runnable work) {
+        lane.execute(() -> {
+            work.run();
+            foldIfDue();
+        });
+    }
+
+    /**
+     * Run on the lane after each call. Folds in the log beside the lane once
+     * it holds FOLD_FRAMES unfolded pages, and tells the app once it is
+     * RESTART_FRAMES long.
+     */
+    private void foldIfDue() {
+        int[] log = log();
+        if (log[0] < RESTART_FRAMES) {
+            restartAsked.set(false);
+        } else if (restartAsked.compareAndSet(false, true)) {
+            notifyListeners("foldDue", new JSObject());
+        }
+        if (log[0] - log[1] < FOLD_FRAMES || !foldAsked.compareAndSet(false, true)) {
+            return;
+        }
+        folding.execute(() -> {
+            try {
+                synchronized (foldLock) {
+                    fold();
+                }
+            } finally {
+                foldAsked.set(false);
+            }
+        });
+    }
+
+    /**
+     * Folds the whole log in, beside the lane, and answers when it is: asked
+     * by the app (device-database.service.ts) when told "foldDue", with its
+     * writes held meanwhile, so the next write starts the log over. A log
+     * starts over only at a write that finds every page of it folded in, and
+     * a first load writes without a pause: folded beside the writes alone,
+     * the log reached 447 MB on the TV emulator; folded on the lane to catch
+     * up, each start cost the lane the fold's syncs. Reads go on meanwhile.
+     */
+    @PluginMethod
+    public void untilFolded(PluginCall call) {
+        folding.execute(() -> {
+            try {
+                // A few tries: a write that was not held (a `run`) can add pages meanwhile.
+                for (int tries = 0; tries < 3; tries++) {
+                    synchronized (foldLock) {
+                        fold();
+                    }
+                    int[] log = log();
+                    if (log[0] == log[1]) {
+                        break;
+                    }
+                }
+            } finally {
+                // Told again after the next write if the log is still long.
+                restartAsked.set(false);
+                call.resolve();
+            }
+        });
+    }
+
+    /** The folds' own connection, kept open between them (opening it was most of a short fold's time). */
+    private SQLiteDatabase folder;
+
+    /** Under foldLock. */
+    private void fold() {
+        try {
+            if (folder == null) {
+                File file = getContext().getDatabasePath(FILE);
+                if (!file.exists()) {
+                    return;
+                }
+                // Opened as WAL: opened plainly, SQLCipher sets its default
+                // journal mode, which takes the file out of WAL if no other
+                // connection has it open.
+                folder = SQLiteDatabase.openDatabase(file.getPath(), "", null,
+                    SQLiteDatabase.OPEN_READWRITE | SQLiteDatabase.ENABLE_WRITE_AHEAD_LOGGING, null, null);
+            }
+            try (Cursor result = folder.rawQuery("PRAGMA wal_checkpoint(PASSIVE)", null)) {
+                result.moveToFirst();
+            }
+        } catch (Exception failure) {
+            // The next write past the point asks again, on a connection opened anew.
+            Log.w(TAG, "fold: " + failure.getClass().getSimpleName());
+            closeFolder();
+        }
+    }
+
+    /** Under foldLock. */
+    private void closeFolder() {
+        if (folder != null) {
+            try {
+                folder.close();
+            } catch (Exception ignored) {
+                // Closed already, or the file gone: either way not ours to keep.
+            }
+            folder = null;
+        }
+    }
+
+    /**
+     * The log's length in pages and how many of them are folded in, from its
+     * index beside it (sqlite.org/walformat.html: mxFrame at byte 16,
+     * nBackfill at byte 96, in the device's byte order), read without taking
+     * any lock. Zeros when there is no log.
+     */
+    private int[] log() {
+        File index = new File(getContext().getDatabasePath(FILE).getPath() + "-shm");
+        try (RandomAccessFile shm = new RandomAccessFile(index, "r")) {
+            if (shm.length() < 100) {
+                return new int[] { 0, 0 };
+            }
+            byte[] head = new byte[100];
+            shm.readFully(head);
+            ByteBuffer read = ByteBuffer.wrap(head).order(ByteOrder.nativeOrder());
+            return new int[] { read.getInt(16), read.getInt(96) };
+        } catch (IOException missing) {
+            return new int[] { 0, 0 };
+        }
+    }
+
+    /** A call that closes or deletes the file, once no fold is under way and the folds' connection is closed. */
+    private void afterFolding(Runnable work) {
+        onLane(() -> {
+            synchronized (foldLock) {
+                closeFolder();
+                work.run();
+            }
+        });
+    }
 
     @Override
     @PluginMethod
     public void echo(PluginCall call) {
-        lane.execute(() -> super.echo(call));
+        onLane(() -> super.echo(call));
     }
 
     @Override
     @PluginMethod
     public void isSecretStored(PluginCall call) {
-        lane.execute(() -> super.isSecretStored(call));
+        onLane(() -> super.isSecretStored(call));
     }
 
     @Override
     @PluginMethod
     public void setEncryptionSecret(PluginCall call) {
-        lane.execute(() -> super.setEncryptionSecret(call));
+        onLane(() -> super.setEncryptionSecret(call));
     }
 
     @Override
     @PluginMethod
     public void changeEncryptionSecret(PluginCall call) {
-        lane.execute(() -> super.changeEncryptionSecret(call));
+        onLane(() -> super.changeEncryptionSecret(call));
     }
 
     @Override
     @PluginMethod
     public void clearEncryptionSecret(PluginCall call) {
-        lane.execute(() -> super.clearEncryptionSecret(call));
+        onLane(() -> super.clearEncryptionSecret(call));
     }
 
     @Override
     @PluginMethod
     public void checkEncryptionSecret(PluginCall call) {
-        lane.execute(() -> super.checkEncryptionSecret(call));
+        onLane(() -> super.checkEncryptionSecret(call));
     }
 
     @Override
     @PluginMethod
     public void getNCDatabasePath(PluginCall call) {
-        lane.execute(() -> super.getNCDatabasePath(call));
+        onLane(() -> super.getNCDatabasePath(call));
     }
 
     @Override
     @PluginMethod
     public void createNCConnection(PluginCall call) {
-        lane.execute(() -> super.createNCConnection(call));
+        onLane(() -> super.createNCConnection(call));
     }
 
     @Override
     @PluginMethod
     public void createConnection(PluginCall call) {
-        lane.execute(() -> super.createConnection(call));
+        onLane(() -> super.createConnection(call));
     }
 
     @Override
     @PluginMethod
     public void open(PluginCall call) {
-        lane.execute(() -> super.open(call));
+        onLane(() -> super.open(call));
     }
 
     @Override
     @PluginMethod
     public void close(PluginCall call) {
-        lane.execute(() -> super.close(call));
+        afterFolding(() -> super.close(call));
     }
 
     @Override
     @PluginMethod
     public void beginTransaction(PluginCall call) {
-        lane.execute(() -> super.beginTransaction(call));
+        onLane(() -> super.beginTransaction(call));
     }
 
     @Override
     @PluginMethod
     public void commitTransaction(PluginCall call) {
-        lane.execute(() -> super.commitTransaction(call));
+        onLane(() -> super.commitTransaction(call));
     }
 
     @Override
     @PluginMethod
     public void rollbackTransaction(PluginCall call) {
-        lane.execute(() -> super.rollbackTransaction(call));
+        onLane(() -> super.rollbackTransaction(call));
     }
 
     @Override
     @PluginMethod
     public void isTransactionActive(PluginCall call) {
-        lane.execute(() -> super.isTransactionActive(call));
+        onLane(() -> super.isTransactionActive(call));
     }
 
     @Override
     @PluginMethod
     public void getUrl(PluginCall call) {
-        lane.execute(() -> super.getUrl(call));
+        onLane(() -> super.getUrl(call));
     }
 
     @Override
     @PluginMethod
     public void getVersion(PluginCall call) {
-        lane.execute(() -> super.getVersion(call));
+        onLane(() -> super.getVersion(call));
     }
 
     @Override
     @PluginMethod
     public void closeNCConnection(PluginCall call) {
-        lane.execute(() -> super.closeNCConnection(call));
+        afterFolding(() -> super.closeNCConnection(call));
     }
 
     @Override
     @PluginMethod
     public void closeConnection(PluginCall call) {
-        lane.execute(() -> super.closeConnection(call));
+        afterFolding(() -> super.closeConnection(call));
     }
 
     @Override
     @PluginMethod
     public void checkConnectionsConsistency(PluginCall call) {
-        lane.execute(() -> super.checkConnectionsConsistency(call));
+        onLane(() -> super.checkConnectionsConsistency(call));
     }
 
     @Override
     @PluginMethod
     public void isDatabase(PluginCall call) {
-        lane.execute(() -> super.isDatabase(call));
+        onLane(() -> super.isDatabase(call));
     }
 
     @Override
     @PluginMethod
     public void isDatabaseEncrypted(PluginCall call) {
-        lane.execute(() -> super.isDatabaseEncrypted(call));
+        onLane(() -> super.isDatabaseEncrypted(call));
     }
 
     @Override
     @PluginMethod
     public void isInConfigEncryption(PluginCall call) {
-        lane.execute(() -> super.isInConfigEncryption(call));
+        onLane(() -> super.isInConfigEncryption(call));
     }
 
     @Override
     @PluginMethod
     public void isInConfigBiometricAuth(PluginCall call) {
-        lane.execute(() -> super.isInConfigBiometricAuth(call));
+        onLane(() -> super.isInConfigBiometricAuth(call));
     }
 
     @Override
     @PluginMethod
     public void isNCDatabase(PluginCall call) {
-        lane.execute(() -> super.isNCDatabase(call));
+        onLane(() -> super.isNCDatabase(call));
     }
 
     @Override
     @PluginMethod
     public void isTableExists(PluginCall call) {
-        lane.execute(() -> super.isTableExists(call));
+        onLane(() -> super.isTableExists(call));
     }
 
     @Override
     @PluginMethod
     public void getDatabaseList(PluginCall call) {
-        lane.execute(() -> super.getDatabaseList(call));
+        onLane(() -> super.getDatabaseList(call));
     }
 
     @Override
     @PluginMethod
     public void getMigratableDbList(PluginCall call) {
-        lane.execute(() -> super.getMigratableDbList(call));
+        onLane(() -> super.getMigratableDbList(call));
     }
 
     @Override
     @PluginMethod
     public void addSQLiteSuffix(PluginCall call) {
-        lane.execute(() -> super.addSQLiteSuffix(call));
+        onLane(() -> super.addSQLiteSuffix(call));
     }
 
     @Override
     @PluginMethod
     public void deleteOldDatabases(PluginCall call) {
-        lane.execute(() -> super.deleteOldDatabases(call));
+        onLane(() -> super.deleteOldDatabases(call));
     }
 
     @Override
     @PluginMethod
     public void moveDatabasesAndAddSuffix(PluginCall call) {
-        lane.execute(() -> super.moveDatabasesAndAddSuffix(call));
+        onLane(() -> super.moveDatabasesAndAddSuffix(call));
     }
 
     @Override
     @PluginMethod
     public void execute(PluginCall call) {
-        lane.execute(() -> super.execute(call));
+        onLane(() -> super.execute(call));
     }
 
     @Override
     @PluginMethod
     public void executeSet(PluginCall call) {
-        lane.execute(() -> {
+        onLane(() -> {
             try {
                 super.executeSet(call);
             } catch (Exception failure) {
@@ -235,96 +416,96 @@ public class DatabaseLanePlugin extends CapacitorSQLitePlugin {
     @Override
     @PluginMethod
     public void run(PluginCall call) {
-        lane.execute(() -> super.run(call));
+        onLane(() -> super.run(call));
     }
 
     @Override
     @PluginMethod
     public void query(PluginCall call) {
-        lane.execute(() -> super.query(call));
+        onLane(() -> super.query(call));
     }
 
     @Override
     @PluginMethod
     public void getTableList(PluginCall call) {
-        lane.execute(() -> super.getTableList(call));
+        onLane(() -> super.getTableList(call));
     }
 
     @Override
     @PluginMethod
     public void isDBExists(PluginCall call) {
-        lane.execute(() -> super.isDBExists(call));
+        onLane(() -> super.isDBExists(call));
     }
 
     @Override
     @PluginMethod
     public void isDBOpen(PluginCall call) {
-        lane.execute(() -> super.isDBOpen(call));
+        onLane(() -> super.isDBOpen(call));
     }
 
     @Override
     @PluginMethod
     public void deleteDatabase(PluginCall call) {
-        lane.execute(() -> super.deleteDatabase(call));
+        afterFolding(() -> super.deleteDatabase(call));
     }
 
     @Override
     @PluginMethod
     public void createSyncTable(PluginCall call) {
-        lane.execute(() -> super.createSyncTable(call));
+        onLane(() -> super.createSyncTable(call));
     }
 
     @Override
     @PluginMethod
     public void setSyncDate(PluginCall call) {
-        lane.execute(() -> super.setSyncDate(call));
+        onLane(() -> super.setSyncDate(call));
     }
 
     @Override
     @PluginMethod
     public void getSyncDate(PluginCall call) {
-        lane.execute(() -> super.getSyncDate(call));
+        onLane(() -> super.getSyncDate(call));
     }
 
     @Override
     @PluginMethod
     public void addUpgradeStatement(PluginCall call) {
-        lane.execute(() -> super.addUpgradeStatement(call));
+        onLane(() -> super.addUpgradeStatement(call));
     }
 
     @Override
     @PluginMethod
     public void isJsonValid(PluginCall call) {
-        lane.execute(() -> super.isJsonValid(call));
+        onLane(() -> super.isJsonValid(call));
     }
 
     @Override
     @PluginMethod
     public void importFromJson(PluginCall call) {
-        lane.execute(() -> super.importFromJson(call));
+        onLane(() -> super.importFromJson(call));
     }
 
     @Override
     @PluginMethod
     public void exportToJson(PluginCall call) {
-        lane.execute(() -> super.exportToJson(call));
+        onLane(() -> super.exportToJson(call));
     }
 
     @Override
     @PluginMethod
     public void deleteExportedRows(PluginCall call) {
-        lane.execute(() -> super.deleteExportedRows(call));
+        onLane(() -> super.deleteExportedRows(call));
     }
 
     @Override
     @PluginMethod
     public void copyFromAssets(PluginCall call) {
-        lane.execute(() -> super.copyFromAssets(call));
+        onLane(() -> super.copyFromAssets(call));
     }
 
     @Override
     @PluginMethod
     public void getFromHTTPRequest(PluginCall call) {
-        lane.execute(() -> super.getFromHTTPRequest(call));
+        onLane(() -> super.getFromHTTPRequest(call));
     }
 }

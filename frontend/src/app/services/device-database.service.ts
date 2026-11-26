@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { Capacitor } from '@capacitor/core';
 import {
   CapacitorSQLite,
   SQLiteConnection,
@@ -8,6 +9,12 @@ import {
 /** The database the device keeps its own copy of things in. */
 const DB_NAME = 'xtream-catalogue';
 const DB_VERSION = 1;
+
+/** DatabaseLanePlugin.java's own method, beside the SQLite plugin's. */
+interface Folding {
+  untilFolded(): Promise<void>;
+  addListener(event: 'foldDue', listener: () => void): Promise<unknown>;
+}
 
 /** The calls that touch the file, held while a clean rewrites it (`hold`). */
 const HELD_CALLS = new Set(['query', 'run', 'execute', 'executeSet', 'executeTransaction', 'beginTransaction', 'commitTransaction', 'rollbackTransaction']);
@@ -41,6 +48,21 @@ export class DeviceDatabaseService {
 
   private connection: SQLiteDBConnection | null = null;
   private opening: Promise<SQLiteDBConnection> | null = null;
+
+  /** Set while the log is folded in before it starts over; writes wait for it (`open`). */
+  private folding: Promise<void> | null = null;
+
+  constructor() {
+    if (Capacitor.getPlatform() !== 'android') {
+      return;
+    }
+    const lane = CapacitorSQLite as unknown as Folding;
+    void lane.addListener('foldDue', () => {
+      this.folding ??= lane.untilFolded()
+        .catch(() => undefined)
+        .finally(() => (this.folding = null));
+    });
+  }
 
   /** Set while "Free up space" rewrites the file on a connection of its own (DatabaseSpaceService). */
   private held: Promise<void> | null = null;
@@ -130,6 +152,14 @@ export class DeviceDatabaseService {
     try {
       await db.query('PRAGMA journal_mode = WAL');
       await db.query('PRAGMA journal_size_limit = 16777216');
+      // Android folds the log into the file on a connection of its own
+      // (DatabaseLanePlugin.java): folded in by whichever write filled it,
+      // that write held every other call 1 to 3 s on a user's TV. When the
+      // log is long, writes wait while all of it is folded in, so the next
+      // one starts it over; reads go on.
+      if (Capacitor.getPlatform() === 'android') {
+        await db.query('PRAGMA wal_autocheckpoint = 0');
+      }
     } catch {
       // The rollback journal still works, only slower.
     }
@@ -148,6 +178,9 @@ export class DeviceDatabaseService {
         return async (...args: unknown[]) => {
           while (this.held) {
             await this.held;
+          }
+          while (key === 'executeSet' && this.folding) {
+            await this.folding;
           }
           return value.apply(target, args);
         };
