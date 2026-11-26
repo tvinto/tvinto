@@ -153,7 +153,8 @@ export class SqliteCatalogueStore implements CatalogueStore {
       return [];
     }
 
-    const column = joined ? searchableSql('name') : 'LOWER(name)';
+    // fold (utils/database.ts): the words arrive with their accents folded.
+    const column = joined ? searchableSql('fold(name)') : 'fold(name)';
     const conditions = words.map(() => `${column} LIKE ?`).join(' AND ');
     const rows = db
       .prepare(

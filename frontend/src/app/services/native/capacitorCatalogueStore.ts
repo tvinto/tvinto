@@ -3,10 +3,13 @@ import { Category, Stream, StreamType } from '@shared/types';
 import { CatalogueStore } from '@shared/xtream/catalogue';
 import { searchableSql } from '@shared/xtream/channelNames';
 import {
-  namesBeginningWith,
+  namesWithAny,
+  namesWithEvery,
   STREAM_NAMES_FILL,
+  STREAM_NAMES_FILLED,
   STREAM_NAMES_PIECE,
   STREAM_NAMES_PROGRESS,
+  STREAM_NAMES_RETIRE,
   STREAM_NAMES_SETUP,
   STREAMS_NAMED,
   UPSERT_STREAM
@@ -34,7 +37,7 @@ export class CapacitorCatalogueStore implements CatalogueStore {
     private readonly providerUsername: string
   ) {}
 
-  /** Whether `stream_names` indexes every name held (shared/xtream/streamNames.ts). */
+  /** Whether `stream_words` indexes every name held (shared/xtream/streamNames.ts). */
   private namesIndexed = false;
 
   /**
@@ -119,7 +122,7 @@ export class CapacitorCatalogueStore implements CatalogueStore {
    * (about 1.5 s whatever the size there) and FTS5 merging (26 November).
    */
   private async indexNames(): Promise<void> {
-    const filled = (await this.db.query('SELECT upto, done FROM stream_names_filled WHERE id = 1')).values?.[0];
+    const filled = (await this.db.query(STREAM_NAMES_FILLED)).values?.[0];
     let upto = Number(filled?.['upto'] ?? 0);
     if (!filled?.['done']) {
       const last = Number((await this.db.query('SELECT MAX(rowid) AS last FROM streams')).values?.[0]?.['last'] ?? 0);
@@ -133,6 +136,8 @@ export class CapacitorCatalogueStore implements CatalogueStore {
       await this.db.run(STREAM_NAMES_PROGRESS, [upto, 1]);
     }
     this.namesIndexed = true;
+    await untilIdleWork();
+    await this.db.execute(STREAM_NAMES_RETIRE);
   }
 
   async readCategories(type: StreamType): Promise<Category[]> {
@@ -327,6 +332,21 @@ export class CapacitorCatalogueStore implements CatalogueStore {
     if (words.length === 0) {
       return [];
     }
+    if (this.namesIndexed) {
+      try {
+        // Looked up in the word index rather than LIKE over every name: 19 s
+        // on a user's TV just after a first load, its cache cold (27
+        // November). Unsorted, so a word in a great many names stops at
+        // `limit` rather than reading every one of them to sort.
+        const result = await this.db.query(
+          `SELECT ${INDEXED_COLUMNS} ${STREAMS_NAMED} AND streams.provider = ? LIMIT ?`,
+          [namesWithEvery(type, words, joined), this.providerUsername, limit]
+        );
+        return (result.values ?? []).map(foundStream);
+      } catch {
+        // A word FTS5 cannot read: as before.
+      }
+    }
     // `name`, not `LOWER(name)`: LIKE already ignores case, and the words
     // arrive lower-cased. LOWER on every name made a read of twenty titles three times slower.
     const column = joined ? searchableSql('name') : 'name';
@@ -345,10 +365,8 @@ export class CapacitorCatalogueStore implements CatalogueStore {
         // many names stops at `limit` rather than sorting every one of them
         // (three times quicker on the emulator for a word in 200,000).
         const result = await this.db.query(
-          `SELECT ${FOUND_COLUMNS.split(', ').map(column => `streams.${column}`).join(', ')}
-             ${STREAMS_NAMED} AND streams.provider = ? AND streams.type = ?
-            LIMIT ?`,
-          [namesBeginningWith(words), this.providerUsername, type, limit]
+          `SELECT ${INDEXED_COLUMNS} ${STREAMS_NAMED} AND streams.provider = ? LIMIT ?`,
+          [namesWithAny(type, words), this.providerUsername, limit]
         );
         return (result.values ?? []).map(foundStream);
       } catch {
@@ -406,6 +424,9 @@ export class CapacitorCatalogueStore implements CatalogueStore {
 
 const FOUND_COLUMNS =
   'stream_id, name, stream_icon, epg_channel_id, added, num, container_extension, category_id, tv_archive, tv_archive_duration, extra';
+
+/** FOUND_COLUMNS read through the word index. */
+const INDEXED_COLUMNS = FOUND_COLUMNS.split(', ').map(column => `streams.${column}`).join(', ');
 
 /** A row of a search (FOUND_COLUMNS) as a stream. */
 function foundStream(row: Record<string, unknown>): Stream {

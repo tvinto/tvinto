@@ -79,7 +79,7 @@ describe('CapacitorCatalogueStore name index', () => {
       {
         execute: async () => ({ changes: { changes: 0 } }),
         query: async (sql: string) => ({
-          values: sql.includes('stream_names_filled')
+          values: sql.includes('stream_words_filled')
             ? []
             : sql.includes('MAX(rowid)')
               ? [{ last: 2500 }]

@@ -1,6 +1,8 @@
 import { Category, Stream, StreamType } from '../types';
 import { CatalogueSource } from './source';
 import { nameWords, nameWordsJoined } from './channelNames';
+import { foldText } from './guideSearch';
+import { PREFIX_FROM } from './streamNames';
 import { normaliseStreams } from './protocol';
 
 /**
@@ -388,7 +390,9 @@ export class Catalogue {
    * would be worse than answering it with nothing.
    */
   async search(type: StreamType, query: string, limit = 100): Promise<Stream[]> {
-    const words = nameWords(query);
+    // Accents folded on both sides, as the device's word index has them:
+    // "cuvar" and "čuvar" both find "Čuvar".
+    const words = nameWords(foldText(query));
     if (words.length === 0) {
       return [];
     }
@@ -510,7 +514,7 @@ export class Catalogue {
 
     const matches = candidates.filter(stream => {
       // With runs of words written together, so "xmen" begins "X-Men".
-      const streamWords = nameWordsJoined(stream.name ?? '');
+      const streamWords = nameWordsJoined(foldText(stream.name ?? ''));
       return words.every(word =>
         streamWords.some(nameWord =>
           word.length >= PREFIX_FROM ? nameWord.startsWith(word) : nameWord === word
@@ -609,7 +613,6 @@ function slim(stream: Stream): Stream {
  * Three, so "apo" can open "Apocalypse" while "a" and "of" still have to be
  * words in their own right -- a one-letter prefix matches half the library.
  */
-const PREFIX_FROM = 3;
 
 /** Titles' words asked for in one read of the library (`findTitles`). */
 const TITLE_KEYS_PER_READ = 20;

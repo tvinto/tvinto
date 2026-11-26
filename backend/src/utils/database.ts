@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import { config } from '../config/config';
+import { foldText } from '../../../shared/xtream/guideSearch';
 import { runMigrations } from './migrations';
 import { observeTime } from './syncClock';
 
@@ -15,6 +16,9 @@ db.pragma('journal_mode = WAL');
 // documentation rather than rules -- and deleting an account would leave its
 // subscriptions behind.
 db.pragma('foreign_keys = ON');
+
+// A name as Catalogue.search reads it, accents folded, for SqliteCatalogueStore.findStreams.
+db.function('fold', { deterministic: true }, (value: unknown) => (typeof value === 'string' ? foldText(value) : value));
 
 // Create tables
 db.exec(`
