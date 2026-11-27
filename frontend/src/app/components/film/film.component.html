@@ -7,7 +7,7 @@
       @if (film.backdrop && !failedIcons().has(film.backdrop)) {
         <img [src]="film.backdrop" (error)="iconFailed(film.backdrop)" alt="" />
       } @else if (heroPoster(); as poster) {
-        <img [src]="poster" (error)="iconFailed(poster)" alt="" data-nx-hero-blur />
+        <img [src]="poster" (error)="iconFailed(poster)" alt="" data-nx-hero-poster />
       }
     </div>
 

@@ -7,7 +7,7 @@
   @if (tmdbShow()?.backdrop; as backdrop) {
     <img [src]="backdrop" alt="" />
   } @else if (facts().cover && !coverFailed()) {
-    <img [src]="facts().cover" alt="" data-nx-hero-blur (error)="coverFailed.set(true)" />
+    <img [src]="facts().cover" alt="" data-nx-hero-poster (error)="coverFailed.set(true)" />
   }
 </div>
 <div class="relative mx-auto flex max-w-6xl flex-col gap-5 p-5" data-tv-wide>

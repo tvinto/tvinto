@@ -1382,7 +1382,7 @@ export class SectionComponent {
       () => this.closeDrawer()
     );
 
-    this.back.bindTo(this.browsing, () => this.backToHome());
+    this.back.bindTo(this.browsing, () => this.leaveBrowsing());
 
     // The categories are a level of the drawer only while this screen is
     // showing them. Left goes straight to the navigation everywhere else, and
@@ -1471,6 +1471,7 @@ export class SectionComponent {
     // screen -- when the player closed (29 October). Live channels
     // load it all the same: Channel Up and Down step through it.
     const params = this.route.snapshot.queryParamMap;
+    this.fromSearch = params.get('from') === 'search';
     const passingThrough = !!params.get('play') && params.get('return') === '1' && type !== 'live';
 
     // Back to the category this library last showed -- from a film's page, a
@@ -1626,7 +1627,8 @@ export class SectionComponent {
       relativeTo: this.route,
       queryParams: {
         category: this.selectedCategory() || null,
-        q: searching ? this.form.controls.searchTerm.value || null : null
+        q: searching ? this.form.controls.searchTerm.value || null : null,
+        from: searching && this.fromSearch ? 'search' : null
       },
       replaceUrl: true
     });
@@ -1901,6 +1903,22 @@ export class SectionComponent {
   }
 
   /** Back to the section's front page. */
+  /**
+   * Opened by Search's "See all" (`from=search`), this page's search is
+   * Search's, and Back returns there, its words, results and "See all" as they
+   * were -- not to this library's front page (a user's TV, card 44).
+   */
+  private fromSearch = false;
+
+  /** Back, or the Back button, while a category or a search is open. */
+  leaveBrowsing(): void {
+    if (this.fromSearch && !this.selectedCategory()) {
+      this.location.back();
+      return;
+    }
+    this.backToHome();
+  }
+
   backToHome(): void {
     this.form.reset({ selectedCategory: '', searchTerm: '' });
     this.selectedCategory.set('');

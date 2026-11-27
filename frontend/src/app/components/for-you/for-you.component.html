@@ -22,15 +22,15 @@
       @if (featuredShown()?.backdrop; as backdrop) {
         <img [src]="backdrop" alt="" />
       } @else if (row.entry.icon && !failedIcons().has(row.entry.icon)) {
-        <img [src]="row.entry.icon" alt="" data-nx-hero-blur (error)="iconFailed(row.entry.icon)" />
+        <img [src]="row.entry.icon" alt="" data-nx-hero-poster (error)="iconFailed(row.entry.icon)" />
       }
     </div>
   }
   <div class="relative mx-auto flex max-w-[1600px] flex-col gap-6 px-4 py-6 sm:px-6" data-tv-wide>
     @if (!dayOne() && featured(); as row) {
       <!-- The billboard (NX-TV-1): the first film or show in Continue watching,
-           its kind and why it is here, the details, where it got to, two lines
-           about it, and Resume -- which is where focus starts, so opening the
+           its kind and why it is here, the details, where it got to, what it is
+           about, and Resume -- which is where focus starts, so opening the
            app and pressing OK carries on watching. Nothing plays by itself. -->
       <section class="flex max-w-[60rem] min-w-0 flex-col gap-4" data-fy-billboard>
         <span class="text-xs font-extrabold tracking-[0.16em] text-[var(--primary-bright)] uppercase" data-fy-billboard-kicker>
@@ -63,7 +63,7 @@
           }
         </div>
         @if (featuredShown()?.overview; as overview) {
-          <p class="line-clamp-2 max-w-[48rem] text-base leading-relaxed" data-fy-billboard-overview>{{ overview }}</p>
+          <p class="nx-plot line-clamp-6" data-fy-billboard-overview>{{ overview }}</p>
         }
         <div class="flex flex-wrap items-center gap-3 pt-2">
           <button type="button" class="pill pill-primary" data-focus-key="fy-billboard-resume" (click)="resume(row.entry)">
@@ -399,6 +399,7 @@
                     [attr.data-spot-name]="card.item.title"
                     [attr.data-spot-poster]="card.poster"
                     [attr.data-spot-line]="card.kindWord + (card.year ? ' · ' + card.year : '')"
+                    [attr.data-spot-tmdb]="card.item.id"
                     [title]="card.item.title"
                     (activate)="openPopular(card)"
                     (menu)="openMenu({ kind: 'popular', popular: card })"

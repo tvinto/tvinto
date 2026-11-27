@@ -9,8 +9,10 @@ import { t } from '../../utils/i18n';
 /**
  * What a card says about itself for the spotlight, read from its attributes:
  * `data-spot-kind` ("vod", "series", or anything else for a card TMDB knows
- * by another name), `data-spot-id`, `data-spot-name`, `data-spot-poster` and
- * an optional `data-spot-line` -- the words to show before any are found.
+ * by another name), `data-spot-id`, `data-spot-name`, `data-spot-poster`, an
+ * optional `data-spot-line` -- the words to show before any are found -- and
+ * an optional `data-spot-tmdb`, the TMDB id a card from a TMDB list knows, so
+ * its details are not looked for by a name namesakes share (card 44).
  */
 export interface SpotTarget {
   kind: string;
@@ -18,6 +20,7 @@ export interface SpotTarget {
   name: string;
   poster: string;
   line: string;
+  tmdb?: number | null;
 }
 
 /** How long focus rests on a card before the top follows it: holding Right loads no backdrop per poster. */
@@ -67,7 +70,7 @@ export class SpotlightHostDirective {
         timer = null;
         const read = (name: string) => card.getAttribute(`data-spot-${name}`) ?? '';
         const first = !this.target();
-        this.target.set({ kind: read('kind'), id: read('id'), name: read('name'), poster: read('poster'), line: read('line') });
+        this.target.set({ kind: read('kind'), id: read('id'), name: read('name'), poster: read('poster'), line: read('line'), tmdb: Number(read('tmdb')) || null });
         // The page scrolled to the card before the spotlight came, so the card
         // can be under it now; once the spotlight's room is kept, again.
         if (first) {
@@ -102,8 +105,8 @@ interface SpotDetails {
 
 /**
  * The top of the screen while focus is in the rows (NX-TV-2, NX-TV-7): the
- * focused title's backdrop, its name, one line of details and two lines about
- * it. Held at the top of the page while the rows scroll under it; the page
+ * focused title's backdrop, its name, one line of details and as much about
+ * it as the band has room for (card 44). Held at the top of the page while the rows scroll under it; the page
  * keeps the focused row clear of it with `scroll-padding-top` (styles.css,
  * `[data-spot-on]`). Its details are TMDB's, found by name -- the provider
  * is asked nothing.
@@ -119,7 +122,7 @@ interface SpotDetails {
           @if (shown()?.backdrop; as backdrop) {
             <img [src]="backdrop" alt="" />
           } @else if (spot.poster) {
-            <img [src]="spot.poster" alt="" data-nx-hero-blur />
+            <img [src]="spot.poster" alt="" data-nx-hero-poster />
           }
         </div>
         <div class="relative flex max-w-[60rem] flex-col gap-3" data-spotlight-words>
@@ -139,7 +142,7 @@ interface SpotDetails {
               </div>
             }
             @if (details.overview) {
-              <p class="line-clamp-2 max-w-[48rem] text-base leading-relaxed">{{ details.overview }}</p>
+              <p class="nx-plot" data-spotlight-overview>{{ details.overview }}</p>
             }
           } @else if (spot.line) {
             <span class="nx-meta text-base">{{ spot.line }}</span>
@@ -181,7 +184,7 @@ export class SpotlightComponent {
       };
       if (spot.kind === 'vod') {
         void this.films
-          .feature(spot.id, spot.name)
+          .feature(spot.id, spot.name, spot.tmdb ?? null)
           .then(film =>
             done(
               film && {
@@ -196,7 +199,7 @@ export class SpotlightComponent {
           .catch(() => undefined);
       } else if (spot.kind === 'series') {
         void this.shows
-          .feature(spot.id, spot.name)
+          .feature(spot.id, spot.name, spot.tmdb ?? null)
           .then(show =>
             done(
               show && {
