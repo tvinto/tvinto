@@ -431,3 +431,35 @@ export const countMatched = (
 
   return { matched, unmatched: streams.length - matched, loosely };
 };
+
+/**
+ * What a stream must have to resolve to one of these guide channels, as SQL
+ * can test it, so a guide search reads those streams and not the whole live
+ * library: every channel's on a user's TV took 8-19 s to read, the plugin
+ * carrying about 5 us a byte (27 November). A superset, since
+ * `resolveGuideChannel` decides afterwards:
+ *
+ * - by id, an exact or loose match leaves the channel's loose id a
+ *   subsequence of the stream's lower-cased `epg_channel_id`, so
+ *   `idPatterns` are LIKE patterns with a % between every character;
+ * - by name, every one of the channel's name words is in the stream's
+ *   lower-cased name, so `names` are the words, for a LIKE each.
+ *
+ * shortcut: a channel whose id has no letter or digit is matched by name
+ * only; no real guide has been seen to write one.
+ */
+export const guideCandidates = (channels: readonly KnownChannel[]): { idPatterns: string[]; names: string[][] } => {
+  const idPatterns = new Set<string>();
+  const names = new Map<string, string[]>();
+  for (const channel of channels) {
+    const loose = looseChannelId(channel.id);
+    if (loose) {
+      idPatterns.add(`%${[...loose].join('%')}%`);
+    }
+    const words = nameWords(channel.name ?? '');
+    if (words.some(word => /[a-z]/.test(word))) {
+      names.set(words.join(' '), words);
+    }
+  }
+  return { idPatterns: [...idPatterns], names: [...names.values()] };
+};

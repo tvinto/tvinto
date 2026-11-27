@@ -5,6 +5,13 @@ import { foldText } from './guideSearch';
 import { PREFIX_FROM } from './streamNames';
 import { normaliseStreams } from './protocol';
 
+/** What `CatalogueStore.liveStreamsNear` reads by: `guideCandidates`, and stream ids. */
+export interface GuideCandidateKeys {
+  idPatterns: string[];
+  names: string[][];
+  streamIds: string[];
+}
+
 /**
  * Where a device keeps the catalogue it has seen.
  *
@@ -74,6 +81,14 @@ export interface CatalogueStore {
    * a store without it has nothing to carry over from.
    */
   allStreams?(type: StreamType): Promise<Stream[]>;
+
+  /**
+   * The live streams that could be on some guide channels (`guideCandidates`
+   * in guideMatching.ts) or are among `streamIds`, each with its
+   * `category_id`: more than match, never fewer. Optional; a store without
+   * it is asked for every live stream.
+   */
+  liveStreamsNear?(keys: GuideCandidateKeys): Promise<Stream[]>;
 }
 
 export interface CataloguePolicy {
@@ -210,6 +225,11 @@ export class Catalogue {
   /** Every stream this device holds for a library (see `CatalogueStore.allStreams`). */
   async allStreams(type: StreamType): Promise<Stream[]> {
     return (await this.store.allStreams?.(type)) ?? [];
+  }
+
+  /** The live streams that could be on some guide channels: `CatalogueStore.liveStreamsNear`, or every one. */
+  async liveStreamsNear(keys: GuideCandidateKeys): Promise<Stream[]> {
+    return this.store.liveStreamsNear ? this.store.liveStreamsNear(keys) : this.allStreams('live');
   }
 
   /**

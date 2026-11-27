@@ -1,4 +1,5 @@
 import { Stream } from '@shared/types';
+import { guideCandidates, indexGuideChannels, resolveGuideChannel } from '@shared/xtream/guideMatching';
 import { CapacitorCatalogueStore } from './capacitorCatalogueStore';
 import { idleWork } from '../../utils/library-refresh.utils';
 
@@ -53,6 +54,38 @@ describe('CapacitorCatalogueStore searches', () => {
   };
 
   const film = (id: number, name: string) => ({ stream_id: String(id), name }) as unknown as Stream;
+
+  it('reads every live stream the guide matching would tie to some channels, and few others', async () => {
+    const { store } = await open();
+    const live = [
+      [1, 'HR| HRT 1 HD', 'HRT1.hr'],
+      [2, 'HR| HRT 1 FHD', 'htv1.hd.hr'],
+      [3, 'HR| Doma TV', 'Doma.TV.HD.hr'],
+      [4, 'HR| RTL Kockica', ''],
+      [5, 'HR| Šport Klub 1', 'nothing.known'],
+      [6, 'DE| ARD', 'ARD.de'],
+      [7, 'HR| HRT 2', 'HRT2.hr'],
+      [8, 'Mapped by hand', '']
+    ].map(([id, name, epg]) => ({ stream_id: id, name, epg_channel_id: epg }) as unknown as Stream);
+    await store.writeStreams('live', '1', live);
+    const channels = [
+      { id: 'HRT1.hr', name: 'HRT 1', sourceId: 'a' },
+      { id: 'Htv1.hr', name: 'HTV 1', sourceId: 'a' },
+      { id: 'DomaTv.hr', name: 'Doma', sourceId: 'a' },
+      { id: 'kockica.hr', name: 'RTL Kockica', sourceId: 'a' },
+      { id: 'sk1.hr', name: 'Šport Klub 1', sourceId: 'a' },
+      { id: 'HRT2.hr', name: 'HRT 2', sourceId: 'a' },
+      { id: 'ARD.de', name: 'ARD', sourceId: 'a' }
+    ];
+    const found = ['HRT1.hr', 'Htv1.hr', 'DomaTv.hr', 'kockica.hr', 'sk1.hr'];
+
+    const near = await store.liveStreamsNear({ ...guideCandidates(channels.filter(c => found.includes(c.id))), streamIds: ['8'] });
+    const index = indexGuideChannels(channels);
+    const tied = live.filter(stream => found.includes(resolveGuideChannel(index, stream.epg_channel_id, stream.name)?.id ?? ''));
+
+    expect(tied.map(stream => String(stream.stream_id))).toEqual(['1', '2', '3', '4', '5']);
+    expect(near.map(stream => stream.stream_id).sort()).toEqual(['1', '2', '3', '4', '5', '8']);
+  });
 
   it('reads a whole library as one cell of JSON, each stream as a row read would have it', async () => {
     const { store } = await open();

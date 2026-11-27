@@ -1,6 +1,6 @@
 import { SQLiteDBConnection } from '@capacitor-community/sqlite';
 import { Category, Stream, StreamType } from '@shared/types';
-import { CatalogueStore } from '@shared/xtream/catalogue';
+import { CatalogueStore, GuideCandidateKeys } from '@shared/xtream/catalogue';
 import { searchableSql } from '@shared/xtream/channelNames';
 import {
   namesWithAny,
@@ -329,6 +329,32 @@ export class CapacitorCatalogueStore implements CatalogueStore {
       ...extraOf(row),
       category_id: String(row['category_id'] ?? '')
     })) as unknown as Stream[];
+  }
+
+  /** One scan of the live rows in SQLite, carrying only those that could match across the plugin. */
+  async liveStreamsNear(keys: GuideCandidateKeys): Promise<Stream[]> {
+    const tests: string[] = [];
+    const values: unknown[] = [];
+    for (const pattern of keys.idPatterns) {
+      tests.push('LOWER(epg_channel_id) LIKE ?');
+      values.push(pattern);
+    }
+    for (const words of keys.names) {
+      tests.push(`(${words.map(() => 'LOWER(name) LIKE ?').join(' AND ')})`);
+      values.push(...words.map(word => `%${word}%`));
+    }
+    if (keys.streamIds.length) {
+      tests.push(`stream_id IN (${keys.streamIds.map(() => '?').join(', ')})`);
+      values.push(...keys.streamIds);
+    }
+    if (!tests.length) {
+      return [];
+    }
+    const result = await this.db.query(
+      `SELECT ${FOUND_COLUMNS} FROM streams WHERE provider = ? AND type = 'live' AND (${tests.join(' OR ')})`,
+      [this.providerUsername, ...values]
+    );
+    return (result.values ?? []).map(foundStream);
   }
 
   async findStreams(type: StreamType, words: string[], limit: number, joined = false): Promise<Stream[]> {
