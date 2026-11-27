@@ -1,8 +1,10 @@
+import Database from 'better-sqlite3';
 import { GuideProgramme, KnownChannel } from './guide';
 import {
   countMatched,
   indexGuideChannels,
   looseChannelId,
+  looseIdSql,
   normaliseChannelId,
   programmesByStream,
   resolveGuideChannel,
@@ -599,5 +601,17 @@ describe('guideTwins and chooseTwin', () => {
     const twins = guideTwins(index, find('CinestarTV2.hr', 'provider'));
 
     expect(chooseTwin(twins, withProgrammes('provider:KlasikTv.hr', 'epgshare:CineStar.TV.2.hr'))).toBeNull();
+  });
+});
+
+describe('looseIdSql', () => {
+  it('reads an id as looseChannelId does, in one of its two forms', () => {
+    const db = new Database(':memory:');
+    const { all, kept } = looseIdSql('id');
+    const ids = ['HRT1.hr', 'HTV1.HD.hr', ' htv 1 hr ', 'Doma.TV.HD.hr', 'HD.hr', 'hd', 'RTL-Crime (HD) | hr', 'Nova.TV.FHD.4K.hr', "Ocean's.uk", 'sport_klub_1/hr'];
+    for (const id of ids) {
+      const read = db.prepare(`SELECT ${all} AS a, ${kept} AS k FROM (SELECT ? AS id)`).get(id) as { a: string; k: string };
+      expect([id, [read.a, read.k].includes(looseChannelId(id))]).toEqual([id, true]);
+    }
   });
 });

@@ -22,6 +22,9 @@ import {
 } from '@shared/xtream/guideTitles';
 import { untilIdleWork } from '../../utils/library-refresh.utils';
 
+/** Guide channels per read (`allChannels`). */
+const CHANNELS_PER_READ = 1000;
+
 /** Programmes per write (`writeProgrammes`). */
 const WRITE_PIECE_PROGRAMMES = 100;
 
@@ -144,6 +147,7 @@ export class CapacitorGuideStore implements GuideStore {
   }
 
   async writeChannels(sourceId: string, channels: GuideChannel[]): Promise<void> {
+    this.channelsHeld = null;
     if (!channels.length) {
       return;
     }
@@ -161,6 +165,7 @@ export class CapacitorGuideStore implements GuideStore {
         ])
       }
     ]);
+    this.channelsHeld = null;
   }
 
   async writeProgrammes(sourceId: string, programmes: GuideProgramme[]): Promise<void> {
@@ -201,6 +206,7 @@ export class CapacitorGuideStore implements GuideStore {
   async finishLoad(sourceId: string, at: string, totals?: GuideTotals): Promise<void> {
     const generation = this.generations.get(sourceId) ?? null;
     this.generations.delete(sourceId);
+    this.channelsHeld = null;
 
     // `IS NOT` rather than `!=`, which is never true against a null and would
     // keep every row from before generations existed, forever.
@@ -238,6 +244,8 @@ export class CapacitorGuideStore implements GuideStore {
         values: [[sourceId, at, totals?.channels ?? null, totals?.programmes ?? null]]
       }
     ]);
+    // Again: a read that began while this ran holds the channels from before.
+    this.channelsHeld = null;
   }
 
   async lastLoadedAt(sourceId: string): Promise<string | null> {
@@ -309,20 +317,45 @@ export class CapacitorGuideStore implements GuideStore {
    * would then find no programmes for.
    */
   async allChannels(): Promise<KnownChannel[]> {
-    // Not DISTINCT on the channel: the same channel in two sources is two
-    // answers, and which guide to take it from is the person's choice.
-    const result = await this.db.query(
-      `SELECT c.source_id, c.channel_id, c.name
-         FROM guide_channels c
-         JOIN guide_loads l ON l.source_id = c.source_id
-        ORDER BY c.name`
-    );
+    this.channelsHeld ??= this.readAllChannels().catch(error => {
+      this.channelsHeld = null;
+      throw error;
+    });
+    return [...(await this.channelsHeld)];
+  }
 
-    return (result.values ?? []).map(row => ({
-      id: row['channel_id'] as string,
-      name: row['name'] as string,
-      sourceId: row['source_id'] as string
-    }));
+  /** What `allChannels` read, until channels are written or a load finishes. */
+  private channelsHeld: Promise<KnownChannel[]> | null = null;
+
+  /**
+   * A page of rows a call: a TV's 5,652 channels in one read held the
+   * database 1.4 s, nearly all of it the plugin carrying them (27 November).
+   */
+  private async readAllChannels(): Promise<KnownChannel[]> {
+    const channels: KnownChannel[] = [];
+    for (let after = 0; ; ) {
+      // Not DISTINCT on the channel: the same channel in two sources is two
+      // answers, and which guide to take it from is the person's choice.
+      const result = await this.db.query(
+        `SELECT c.rowid AS at, c.source_id, c.channel_id, c.name
+           FROM guide_channels c
+           JOIN guide_loads l ON l.source_id = c.source_id
+          WHERE c.rowid > ?
+          ORDER BY c.rowid
+          LIMIT ${CHANNELS_PER_READ}`,
+        [after]
+      );
+      const rows = result.values ?? [];
+      for (const row of rows) {
+        channels.push({ id: row['channel_id'] as string, name: row['name'] as string, sourceId: row['source_id'] as string });
+      }
+      if (rows.length < CHANNELS_PER_READ) {
+        break;
+      }
+      after = Number(rows[rows.length - 1]['at']);
+    }
+    // As ORDER BY name had them: by SQLite's binary order, not the locale's.
+    return channels.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
   }
 
   /**
@@ -418,6 +451,7 @@ export class CapacitorGuideStore implements GuideStore {
 
   /** Throws the lot away, for a sign-out. */
   async forget(): Promise<void> {
+    this.channelsHeld = null;
     await this.db.execute(`
       DELETE FROM guide_loads;
       DELETE FROM guide_channels;

@@ -7,7 +7,7 @@ import { normaliseStreams } from './protocol';
 
 /** What `CatalogueStore.liveStreamsNear` reads by: `guideCandidates`, and stream ids. */
 export interface GuideCandidateKeys {
-  idPatterns: string[];
+  looseIds: string[];
   names: string[][];
   streamIds: string[];
 }

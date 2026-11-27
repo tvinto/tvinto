@@ -137,3 +137,52 @@ describe('CapacitorGuideStore.searchProgrammes', () => {
 
   });
 });
+
+describe('CapacitorGuideStore.allChannels', () => {
+  interface SqlJs {
+    exec(sql: string, params?: unknown[]): { columns: string[]; values: unknown[][] }[];
+  }
+
+  it('reads channels a page at a time, by name, and again once a load has changed them', async () => {
+    const module = 'sql.js/dist/sql-asm.js';
+    const initSqlJs = ((await import(module)) as { default: () => Promise<{ Database: new () => SqlJs }> }).default;
+    const sqlite = new (await initSqlJs()).Database();
+    const reads: string[] = [];
+    const query = async (sql: string, params: unknown[] = []) => {
+      reads.push(sql);
+      const [result] = sqlite.exec(sql, params);
+      return { values: (result?.values ?? []).map(row => Object.fromEntries(result.columns.map((column, i) => [column, row[i]]))) };
+    };
+    const db = {
+      execute: async (sql: string) => (sqlite.exec(sql), { changes: { changes: 0 } }),
+      query,
+      run: async (sql: string, params: unknown[] = []) => (sqlite.exec(sql, params), { changes: { changes: 0 } }),
+      executeSet: async (set: Array<{ statement: string; values: unknown[][] }>) => {
+        for (const row of set[0].values) {
+          sqlite.exec(set[0].statement, row);
+        }
+        return { changes: { changes: set[0].values.length } };
+      }
+    };
+    const store = new CapacitorGuideStore(db as never);
+    await store.initialise();
+    await store.beginLoad('a');
+    await store.writeChannels('a', Array.from({ length: 2500 }, (_, i) => ({ id: `c${i}`, name: `Channel ${String(2500 - i).padStart(4, '0')}` })));
+    await store.finishLoad('a', 'now');
+
+    const paged = (sql: string) => sql.includes('FROM guide_channels c');
+    reads.length = 0;
+    const channels = await store.allChannels();
+    expect(channels).toHaveLength(2500);
+    expect(channels[0]).toEqual({ id: 'c2499', name: 'Channel 0001', sourceId: 'a' });
+    expect(reads.filter(paged)).toHaveLength(3);
+
+    await store.allChannels();
+    expect(reads.filter(paged)).toHaveLength(3);
+
+    await store.beginLoad('a');
+    await store.writeChannels('a', [{ id: 'new', name: 'New' }]);
+    await store.finishLoad('a', 'later');
+    expect((await store.allChannels()).map(channel => channel.id)).toEqual(['new']);
+  });
+});

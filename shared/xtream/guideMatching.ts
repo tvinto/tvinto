@@ -439,27 +439,44 @@ export const countMatched = (
  * carrying about 5 us a byte (27 November). A superset, since
  * `resolveGuideChannel` decides afterwards:
  *
- * - by id, an exact or loose match leaves the channel's loose id a
- *   subsequence of the stream's lower-cased `epg_channel_id`, so
- *   `idPatterns` are LIKE patterns with a % between every character;
+ * - by id, an exact or loose match means the stream's loose id is the
+ *   channel's (`looseIds`; `looseIdSql` reads a stream's);
  * - by name, every one of the channel's name words is in the stream's
- *   lower-cased name, so `names` are the words, for a LIKE each.
- *
- * shortcut: a channel whose id has no letter or digit is matched by name
- * only; no real guide has been seen to write one.
+ *   lower-cased name (`names`, for a LIKE each).
  */
-export const guideCandidates = (channels: readonly KnownChannel[]): { idPatterns: string[]; names: string[][] } => {
-  const idPatterns = new Set<string>();
+export const guideCandidates = (channels: readonly KnownChannel[]): { looseIds: string[]; names: string[][] } => {
+  const looseIds = new Set<string>();
   const names = new Map<string, string[]>();
   for (const channel of channels) {
     const loose = looseChannelId(channel.id);
     if (loose) {
-      idPatterns.add(`%${[...loose].join('%')}%`);
+      looseIds.add(loose);
     }
     const words = nameWords(channel.name ?? '');
     if (words.some(word => /[a-z]/.test(word))) {
       names.set(words.join(' '), words);
     }
   }
-  return { idPatterns: [...idPatterns], names: [...names.values()] };
+  return { looseIds: [...looseIds], names: [...names.values()] };
+};
+
+/** What `looseChannelId` splits ids on, as far as SQL is told. */
+const ID_SEPARATORS = ['.', ' ', '-', '_', ':', '|', '/', '+', '(', ')', '&', "'", ',', '!', '[', ']', '#', '*', '@'];
+
+/**
+ * `looseChannelId` of a column, in SQL: both its forms, with the quality
+ * words and without, as `looseChannelId` keeps them only when one word
+ * would be left. A row's id is matched when either is in a list.
+ *
+ * shortcut: an id holding a separator not in ID_SEPARATORS (a letter
+ * outside ASCII, say) reads as one word here; no guide id seen has one.
+ */
+export const looseIdSql = (column: string): { all: string; kept: string } => {
+  const dotted = `'.' || ${ID_SEPARATORS.reduce(
+    (sql, separator) => `REPLACE(${sql}, '${separator === "'" ? "''" : separator}', '.')`,
+    `LOWER(TRIM(${column}))`
+  )} || '.'`;
+  // Twice, for two quality words side by side: REPLACE does not see the second.
+  const unqualified = [...QUALITY_WORDS, ...QUALITY_WORDS].reduce((sql, word) => `REPLACE(${sql}, '.${word}.', '.')`, dotted);
+  return { all: `REPLACE(${dotted}, '.', '')`, kept: `REPLACE(${unqualified}, '.', '')` };
 };

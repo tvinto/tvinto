@@ -2,6 +2,7 @@ import { SQLiteDBConnection } from '@capacitor-community/sqlite';
 import { Category, Stream, StreamType } from '@shared/types';
 import { CatalogueStore, GuideCandidateKeys } from '@shared/xtream/catalogue';
 import { searchableSql } from '@shared/xtream/channelNames';
+import { looseIdSql } from '@shared/xtream/guideMatching';
 import {
   namesWithAny,
   namesWithEvery,
@@ -335,9 +336,10 @@ export class CapacitorCatalogueStore implements CatalogueStore {
   async liveStreamsNear(keys: GuideCandidateKeys): Promise<Stream[]> {
     const tests: string[] = [];
     const values: unknown[] = [];
-    for (const pattern of keys.idPatterns) {
-      tests.push('LOWER(epg_channel_id) LIKE ?');
-      values.push(pattern);
+    if (keys.looseIds.length) {
+      const list = `(${keys.looseIds.map(() => '?').join(', ')})`;
+      tests.push(`${LOOSE_ID.kept} IN ${list}`, `${LOOSE_ID.all} IN ${list}`);
+      values.push(...keys.looseIds, ...keys.looseIds);
     }
     for (const words of keys.names) {
       tests.push(`(${words.map(() => 'LOWER(name) LIKE ?').join(' AND ')})`);
@@ -453,6 +455,9 @@ export class CapacitorCatalogueStore implements CatalogueStore {
 
 const FOUND_COLUMNS =
   'stream_id, name, stream_icon, epg_channel_id, added, num, container_extension, category_id, tv_archive, tv_archive_duration, extra';
+
+/** A stream's guide id, loosened as `looseChannelId` does: a pattern a character apart per channel took 26-32 s on a TV. */
+const LOOSE_ID = looseIdSql('epg_channel_id');
 
 /** What `allStreams` reads of each row. */
 const ALL_COLUMNS = FOUND_COLUMNS.split(', ');
