@@ -431,3 +431,40 @@ export const countMatched = (
 
   return { matched, unmatched: streams.length - matched, loosely };
 };
+
+/**
+ * What a guide search looks a stream up by (`CatalogueStore.liveStreamsNear`),
+ * worked out once, when the stream is written: its guide id loosened, and its
+ * name reduced to its identifying words. Reading every live stream to match
+ * took 8-19 s on a user's TV (the plugin carrying about 5 us a byte), and
+ * working these out in SQL for every row 14 s (27 November).
+ *
+ * Every stream `resolveGuideChannel` ties to a channel has one of the
+ * channel's (`guideCandidates`): an exact or a loose id match leaves the two
+ * loose ids equal, and a name match the two keys. So a lookup by them reads
+ * more streams than match, never fewer, and the matching decides.
+ *
+ * shortcut: an id with no letter or digit loosens to nothing and is matched
+ * by name only; no guide has been seen to write one.
+ */
+export const streamGuideKeys = (epgChannelId: string | undefined | null, name: string | undefined | null): [string, string] => [
+  looseChannelId(epgChannelId),
+  nameWords(name ?? '').join(' ')
+];
+
+/** The keys `streamGuideKeys` gives a stream that one of these channels would have. */
+export const guideCandidates = (channels: readonly KnownChannel[]): { looseIds: string[]; nameKeys: string[] } => {
+  const looseIds = new Set<string>();
+  const nameKeys = new Set<string>();
+  for (const channel of channels) {
+    const loose = looseChannelId(channel.id);
+    if (loose) {
+      looseIds.add(loose);
+    }
+    const words = nameWords(channel.name ?? '');
+    if (words.some(word => /[a-z]/.test(word))) {
+      nameKeys.add(words.join(' '));
+    }
+  }
+  return { looseIds: [...looseIds], nameKeys: [...nameKeys] };
+};

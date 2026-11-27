@@ -1,12 +1,16 @@
 import { SQLiteDBConnection } from '@capacitor-community/sqlite';
 import { Category, Stream, StreamType } from '@shared/types';
-import { CatalogueStore } from '@shared/xtream/catalogue';
+import { CatalogueStore, GuideCandidateKeys } from '@shared/xtream/catalogue';
 import { searchableSql } from '@shared/xtream/channelNames';
+import { streamGuideKeys } from '@shared/xtream/guideMatching';
 import {
-  namesBeginningWith,
+  namesWithAny,
+  namesWithEvery,
   STREAM_NAMES_FILL,
+  STREAM_NAMES_FILLED,
   STREAM_NAMES_PIECE,
   STREAM_NAMES_PROGRESS,
+  STREAM_NAMES_RETIRE,
   STREAM_NAMES_SETUP,
   STREAMS_NAMED,
   UPSERT_STREAM
@@ -34,7 +38,7 @@ export class CapacitorCatalogueStore implements CatalogueStore {
     private readonly providerUsername: string
   ) {}
 
-  /** Whether `stream_names` indexes every name held (shared/xtream/streamNames.ts). */
+  /** Whether `stream_words` indexes every name held (shared/xtream/streamNames.ts). */
   private namesIndexed = false;
 
   /**
@@ -96,8 +100,19 @@ export class CapacitorCatalogueStore implements CatalogueStore {
     await ensureColumns(this.db, [
       ['streams', 'tv_archive', 'INTEGER'],
       ['streams', 'tv_archive_duration', 'INTEGER'],
-      ['streams', 'extra', 'TEXT']
+      ['streams', 'extra', 'TEXT'],
+      ['streams', 'guide_id', 'TEXT'],
+      ['streams', 'guide_name', 'TEXT']
     ]);
+    await this.db.execute(GUIDE_KEYS_SETUP);
+    if ((await this.db.query('SELECT done FROM streams_guide_filled WHERE id = 1')).values?.[0]?.['done']) {
+      this.guideKeysFilled = true;
+    } else if (!(await this.db.query('SELECT 1 FROM streams LIMIT 1')).values?.length) {
+      // Nothing held: every stream from now on is written with its keys.
+      await this.markGuideKeysFilled();
+    } else {
+      void this.fillGuideKeys().catch(() => undefined);
+    }
 
     try {
       await this.db.execute(STREAM_NAMES_SETUP);
@@ -119,7 +134,7 @@ export class CapacitorCatalogueStore implements CatalogueStore {
    * (about 1.5 s whatever the size there) and FTS5 merging (26 November).
    */
   private async indexNames(): Promise<void> {
-    const filled = (await this.db.query('SELECT upto, done FROM stream_names_filled WHERE id = 1')).values?.[0];
+    const filled = (await this.db.query(STREAM_NAMES_FILLED)).values?.[0];
     let upto = Number(filled?.['upto'] ?? 0);
     if (!filled?.['done']) {
       const last = Number((await this.db.query('SELECT MAX(rowid) AS last FROM streams')).values?.[0]?.['last'] ?? 0);
@@ -133,6 +148,8 @@ export class CapacitorCatalogueStore implements CatalogueStore {
       await this.db.run(STREAM_NAMES_PROGRESS, [upto, 1]);
     }
     this.namesIndexed = true;
+    await untilIdleWork();
+    await this.db.execute(STREAM_NAMES_RETIRE);
   }
 
   async readCategories(type: StreamType): Promise<Category[]> {
@@ -222,7 +239,8 @@ export class CapacitorCatalogueStore implements CatalogueStore {
         (item['container_extension'] as string) ?? null,
         (item['tv_archive'] as number) ?? null,
         (item['tv_archive_duration'] as number) ?? null,
-        extraFor(item)
+        extraFor(item),
+        ...(type === 'live' ? streamGuideKeys(item['epg_channel_id'] as string, item['name'] as string) : [null, null])
       ];
     });
 
@@ -301,14 +319,17 @@ export class CapacitorCatalogueStore implements CatalogueStore {
   }
 
   async allStreams(type: StreamType): Promise<Stream[]> {
+    // One cell of JSON, written by SQLite, rather than a row each: the plugin
+    // builds a Java object for every cell, and a TV's 55,000 channels took
+    // 19 s that way, 17 of them building (27 November), on every guide search.
     const result = await this.db.query(
-      `SELECT stream_id, name, stream_icon, epg_channel_id, added, num, container_extension, category_id,
-              tv_archive, tv_archive_duration, extra
+      `SELECT json_group_array(json_object(${ALL_COLUMNS.map(column => `'${column}', ${column}`).join(', ')})) AS rows
          FROM streams
         WHERE provider = ? AND type = ?`,
       [this.providerUsername, type]
     );
-    return (result.values ?? []).map(row => ({
+    const rows = JSON.parse(String(result.values?.[0]?.['rows'] ?? '[]')) as Record<string, unknown>[];
+    return rows.map(row => ({
       stream_id: String(row['stream_id']),
       name: String(row['name'] ?? ''),
       icon: String(row['stream_icon'] ?? ''),
@@ -323,9 +344,95 @@ export class CapacitorCatalogueStore implements CatalogueStore {
     })) as unknown as Stream[];
   }
 
+  /** Looked up by the keys every live stream is written with; every live stream until those are filled. */
+  async liveStreamsNear(keys: GuideCandidateKeys): Promise<Stream[]> {
+    if (!this.guideKeysFilled) {
+      return this.allStreams('live');
+    }
+    // A read per key, each through its own index: as one OR, SQLite took the
+    // category index and walked every live stream, 0.6-1 s on a TV.
+    const reads: string[] = [];
+    const values: unknown[] = [];
+    const read = (index: string, column: string, keyed: readonly string[]) => {
+      if (keyed.length) {
+        reads.push(
+          `SELECT ${FOUND_COLUMNS} FROM streams ${index} WHERE provider = ? AND type = 'live' AND ${column} IN (${keyed.map(() => '?').join(', ')})`
+        );
+        values.push(this.providerUsername, ...keyed);
+      }
+    };
+    read('INDEXED BY idx_streams_guide_id', 'guide_id', keys.looseIds);
+    read('INDEXED BY idx_streams_guide_name', 'guide_name', keys.nameKeys);
+    read('', 'stream_id', keys.streamIds);
+    if (!reads.length) {
+      return [];
+    }
+    const result = await this.db.query(reads.join(' UNION '), values);
+    return (result.values ?? []).map(foundStream);
+  }
+
+  /** Whether every live stream held has its guide keys (`streamGuideKeys`). */
+  private guideKeysFilled = false;
+
+  /**
+   * Gives the live streams held before the keys existed theirs, a piece per
+   * call and only while nobody uses the app, worked out here: SQL took 14 s
+   * for 55,000 channels on a TV. Then the indexes, once, while still idle.
+   */
+  private async fillGuideKeys(): Promise<void> {
+    for (let after = 0; ; ) {
+      await untilIdleWork();
+      const rows =
+        (
+          await this.db.query(
+            `SELECT rowid AS at, epg_channel_id, name FROM streams
+              WHERE type = 'live' AND guide_name IS NULL AND rowid > ? ORDER BY rowid LIMIT ${GUIDE_KEYS_PIECE}`,
+            [after]
+          )
+        ).values ?? [];
+      if (rows.length) {
+        const keyed = rows.map(row => [Number(row['at']), ...streamGuideKeys(row['epg_channel_id'] as string, row['name'] as string)] as const);
+        const cases = keyed.map(() => 'WHEN ? THEN ?').join(' ');
+        // `run`, not executeSet, which runs a DELETE with values as nothing (CLAUDE.local.md).
+        await this.db.run(
+          `UPDATE streams SET guide_id = CASE rowid ${cases} END, guide_name = CASE rowid ${cases} END
+            WHERE rowid IN (${keyed.map(() => '?').join(', ')})`,
+          [...keyed.flatMap(([at, id]) => [at, id]), ...keyed.flatMap(([at, , name]) => [at, name]), ...keyed.map(([at]) => at)]
+        );
+      }
+      if (rows.length < GUIDE_KEYS_PIECE) {
+        break;
+      }
+      after = Number(rows[rows.length - 1]['at']);
+    }
+    await untilIdleWork();
+    await this.markGuideKeysFilled();
+  }
+
+  private async markGuideKeysFilled(): Promise<void> {
+    await this.db.execute(GUIDE_KEYS_INDEXES);
+    await this.db.run('INSERT OR REPLACE INTO streams_guide_filled (id, done) VALUES (1, 1)', []);
+    this.guideKeysFilled = true;
+  }
+
   async findStreams(type: StreamType, words: string[], limit: number, joined = false): Promise<Stream[]> {
     if (words.length === 0) {
       return [];
+    }
+    if (this.namesIndexed) {
+      try {
+        // Looked up in the word index rather than LIKE over every name: 19 s
+        // on a user's TV just after a first load, its cache cold (27
+        // November). Unsorted, so a word in a great many names stops at
+        // `limit` rather than reading every one of them to sort.
+        const result = await this.db.query(
+          `SELECT ${INDEXED_COLUMNS} ${STREAMS_NAMED} AND streams.provider = ? LIMIT ?`,
+          [namesWithEvery(type, words, joined), this.providerUsername, limit]
+        );
+        return (result.values ?? []).map(foundStream);
+      } catch {
+        // A word FTS5 cannot read: as before.
+      }
     }
     // `name`, not `LOWER(name)`: LIKE already ignores case, and the words
     // arrive lower-cased. LOWER on every name made a read of twenty titles three times slower.
@@ -345,10 +452,8 @@ export class CapacitorCatalogueStore implements CatalogueStore {
         // many names stops at `limit` rather than sorting every one of them
         // (three times quicker on the emulator for a word in 200,000).
         const result = await this.db.query(
-          `SELECT ${FOUND_COLUMNS.split(', ').map(column => `streams.${column}`).join(', ')}
-             ${STREAMS_NAMED} AND streams.provider = ? AND streams.type = ?
-            LIMIT ?`,
-          [namesBeginningWith(words), this.providerUsername, type, limit]
+          `SELECT ${INDEXED_COLUMNS} ${STREAMS_NAMED} AND streams.provider = ? LIMIT ?`,
+          [namesWithAny(type, words), this.providerUsername, limit]
         );
         return (result.values ?? []).map(foundStream);
       } catch {
@@ -406,6 +511,22 @@ export class CapacitorCatalogueStore implements CatalogueStore {
 
 const FOUND_COLUMNS =
   'stream_id, name, stream_icon, epg_channel_id, added, num, container_extension, category_id, tv_archive, tv_archive_duration, extra';
+
+/** Live streams given their guide keys per call of `fillGuideKeys`. */
+const GUIDE_KEYS_PIECE = 250;
+
+/** Where `fillGuideKeys` keeps that it has finished. */
+const GUIDE_KEYS_SETUP = 'CREATE TABLE IF NOT EXISTS streams_guide_filled (id INTEGER PRIMARY KEY CHECK (id = 1), done INTEGER NOT NULL)';
+
+/** What `liveStreamsNear` looks streams up by: live rows only, so films and shows cost them nothing. */
+const GUIDE_KEYS_INDEXES = `CREATE INDEX IF NOT EXISTS idx_streams_guide_id ON streams(provider, guide_id) WHERE type = 'live';
+CREATE INDEX IF NOT EXISTS idx_streams_guide_name ON streams(provider, guide_name) WHERE type = 'live';`;
+
+/** What `allStreams` reads of each row. */
+const ALL_COLUMNS = FOUND_COLUMNS.split(', ');
+
+/** FOUND_COLUMNS read through the word index. */
+const INDEXED_COLUMNS = FOUND_COLUMNS.split(', ').map(column => `streams.${column}`).join(', ');
 
 /** A row of a search (FOUND_COLUMNS) as a stream. */
 function foundStream(row: Record<string, unknown>): Stream {

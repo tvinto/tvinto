@@ -3,6 +3,8 @@ import {
   countMatched,
   indexGuideChannels,
   looseChannelId,
+  guideCandidates,
+  streamGuideKeys,
   normaliseChannelId,
   programmesByStream,
   resolveGuideChannel,
@@ -599,5 +601,32 @@ describe('guideTwins and chooseTwin', () => {
     const twins = guideTwins(index, find('CinestarTV2.hr', 'provider'));
 
     expect(chooseTwin(twins, withProgrammes('provider:KlasikTv.hr', 'epgshare:CineStar.TV.2.hr'))).toBeNull();
+  });
+});
+
+describe('streamGuideKeys', () => {
+  it('gives every stream the matching ties to a channel one of the keys that channel gives', () => {
+    const channels: KnownChannel[] = [
+      { id: 'HRT1.hr', name: 'HRT 1', sourceId: 'a' },
+      { id: 'DomaTv.hr', name: 'Doma TV', sourceId: 'a' },
+      { id: 'kockica.hr', name: 'RTL Kockica', sourceId: 'a' },
+      { id: 'ARD.de', name: 'ARD', sourceId: 'a' }
+    ];
+    const streams = [
+      { stream_id: 1, name: 'HR| HRT 1 HD', epg_channel_id: 'hrt1.hr' },
+      { stream_id: 2, name: 'HR| HRT 1 FHD', epg_channel_id: 'HRT1.HD.hr' },
+      { stream_id: 3, name: 'HR| Doma', epg_channel_id: 'Doma.TV.HD.hr' },
+      { stream_id: 4, name: 'HR| RTL Kockica ᴴᴰ', epg_channel_id: '' },
+      { stream_id: 5, name: 'DE| ARD', epg_channel_id: 'ARD.de' }
+    ];
+    const index = indexGuideChannels(channels);
+    const found = channels.slice(0, 3);
+    const { looseIds, nameKeys } = guideCandidates(found);
+
+    for (const stream of streams) {
+      const tied = found.some(channel => channel.id === resolveGuideChannel(index, stream.epg_channel_id, stream.name)?.id);
+      const [loose, named] = streamGuideKeys(stream.epg_channel_id, stream.name);
+      expect([stream.stream_id, tied]).toEqual([stream.stream_id, looseIds.includes(loose) || nameKeys.includes(named)]);
+    }
   });
 });

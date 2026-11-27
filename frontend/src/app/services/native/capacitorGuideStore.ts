@@ -11,6 +11,19 @@ import {
 } from '@shared/xtream/guide';
 import { likePattern, titleMatches } from '@shared/xtream/guideSearch';
 import { whenRunningOut } from '@shared/xtream/guideReload';
+import {
+  GUIDE_TITLES_FILL,
+  GUIDE_TITLES_FILLED,
+  GUIDE_TITLES_PIECE,
+  GUIDE_TITLES_PROGRESS,
+  GUIDE_TITLES_SETUP,
+  PROGRAMMES_TITLED,
+  titlesHolding
+} from '@shared/xtream/guideTitles';
+import { untilIdleWork } from '../../utils/library-refresh.utils';
+
+/** Guide channels per read (`allChannels`). */
+const CHANNELS_PER_READ = 500;
 
 /** Programmes per write (`writeProgrammes`). */
 const WRITE_PIECE_PROGRAMMES = 100;
@@ -80,6 +93,38 @@ export class CapacitorGuideStore implements GuideStore {
       ['guide_channels', 'generation', 'TEXT'],
       ['guide_programmes', 'generation', 'TEXT']
     ]);
+
+    try {
+      await this.db.execute(GUIDE_TITLES_SETUP);
+    } catch {
+      // No FTS5 here (the web's sql.js): titles are looked for with LIKE.
+      return;
+    }
+    void this.indexTitles().catch(() => undefined);
+  }
+
+  /** Whether `guide_titles` indexes every programme held (shared/xtream/guideTitles.ts). */
+  private titlesIndexed = false;
+
+  /**
+   * Indexes the titles held before the index existed, a piece per call and
+   * only while nobody uses the app, as `CapacitorCatalogueStore.indexNames`
+   * does names. The triggers index whatever is written meanwhile; a guide
+   * first loaded with the index has nothing to fill.
+   */
+  private async indexTitles(): Promise<void> {
+    const filled = (await this.db.query(GUIDE_TITLES_FILLED)).values?.[0];
+    let upto = Number(filled?.['upto'] ?? 0);
+    if (!filled?.['done']) {
+      const last = Number((await this.db.query('SELECT MAX(rowid) AS last FROM guide_programmes')).values?.[0]?.['last'] ?? 0);
+      for (; upto < last; upto += GUIDE_TITLES_PIECE) {
+        await untilIdleWork();
+        await this.db.run(GUIDE_TITLES_FILL, [upto, upto + GUIDE_TITLES_PIECE]);
+        await this.db.run(GUIDE_TITLES_PROGRESS, [upto + GUIDE_TITLES_PIECE, 0]);
+      }
+      await this.db.run(GUIDE_TITLES_PROGRESS, [upto, 1]);
+    }
+    this.titlesIndexed = true;
   }
 
   /** The load each source is in the middle of, if any. */
@@ -102,6 +147,7 @@ export class CapacitorGuideStore implements GuideStore {
   }
 
   async writeChannels(sourceId: string, channels: GuideChannel[]): Promise<void> {
+    this.channelsHeld = null;
     if (!channels.length) {
       return;
     }
@@ -119,6 +165,7 @@ export class CapacitorGuideStore implements GuideStore {
         ])
       }
     ]);
+    this.channelsHeld = null;
   }
 
   async writeProgrammes(sourceId: string, programmes: GuideProgramme[]): Promise<void> {
@@ -141,10 +188,15 @@ export class CapacitorGuideStore implements GuideStore {
     for (let at = 0; at < rows.length; at += WRITE_PIECE_PROGRAMMES) {
       await this.db.executeSet([
         {
+          // An upsert rather than INSERT OR REPLACE, so a programme written
+          // again keeps its row: a replaced row is deleted without its delete
+          // triggers, and guide_titles kept every old title of every reload.
           statement:
-            'INSERT OR REPLACE INTO guide_programmes ' +
+            'INSERT INTO guide_programmes ' +
             '(source_id, channel_id, start, stop, title, description, category, generation) ' +
-            'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?) ' +
+            'ON CONFLICT (source_id, channel_id, start) DO UPDATE SET stop = excluded.stop, title = excluded.title, ' +
+            'description = excluded.description, category = excluded.category, generation = excluded.generation',
           values: rows.slice(at, at + WRITE_PIECE_PROGRAMMES)
         }
       ]);
@@ -154,6 +206,7 @@ export class CapacitorGuideStore implements GuideStore {
   async finishLoad(sourceId: string, at: string, totals?: GuideTotals): Promise<void> {
     const generation = this.generations.get(sourceId) ?? null;
     this.generations.delete(sourceId);
+    this.channelsHeld = null;
 
     // `IS NOT` rather than `!=`, which is never true against a null and would
     // keep every row from before generations existed, forever.
@@ -184,6 +237,8 @@ export class CapacitorGuideStore implements GuideStore {
         values: [[sourceId, at, totals?.channels ?? null, totals?.programmes ?? null]]
       }
     ]);
+    // Again: a read that began while this ran holds the channels from before.
+    this.channelsHeld = null;
   }
 
   async lastLoadedAt(sourceId: string): Promise<string | null> {
@@ -255,20 +310,45 @@ export class CapacitorGuideStore implements GuideStore {
    * would then find no programmes for.
    */
   async allChannels(): Promise<KnownChannel[]> {
-    // Not DISTINCT on the channel: the same channel in two sources is two
-    // answers, and which guide to take it from is the person's choice.
-    const result = await this.db.query(
-      `SELECT c.source_id, c.channel_id, c.name
-         FROM guide_channels c
-         JOIN guide_loads l ON l.source_id = c.source_id
-        ORDER BY c.name`
-    );
+    this.channelsHeld ??= this.readAllChannels().catch(error => {
+      this.channelsHeld = null;
+      throw error;
+    });
+    return [...(await this.channelsHeld)];
+  }
 
-    return (result.values ?? []).map(row => ({
-      id: row['channel_id'] as string,
-      name: row['name'] as string,
-      sourceId: row['source_id'] as string
-    }));
+  /** What `allChannels` read, until channels are written or a load finishes. */
+  private channelsHeld: Promise<KnownChannel[]> | null = null;
+
+  /**
+   * A page of rows a call: a TV's 5,652 channels in one read held the
+   * database 1.4 s, nearly all of it the plugin carrying them (27 November).
+   */
+  private async readAllChannels(): Promise<KnownChannel[]> {
+    const channels: KnownChannel[] = [];
+    for (let after = 0; ; ) {
+      // Not DISTINCT on the channel: the same channel in two sources is two
+      // answers, and which guide to take it from is the person's choice.
+      const result = await this.db.query(
+        `SELECT c.rowid AS at, c.source_id, c.channel_id, c.name
+           FROM guide_channels c
+           JOIN guide_loads l ON l.source_id = c.source_id
+          WHERE c.rowid > ?
+          ORDER BY c.rowid
+          LIMIT ${CHANNELS_PER_READ}`,
+        [after]
+      );
+      const rows = result.values ?? [];
+      for (const row of rows) {
+        channels.push({ id: row['channel_id'] as string, name: row['name'] as string, sourceId: row['source_id'] as string });
+      }
+      if (rows.length < CHANNELS_PER_READ) {
+        break;
+      }
+      after = Number(rows[rows.length - 1]['at']);
+    }
+    // As ORDER BY name had them: by SQLite's binary order, not the locale's.
+    return channels.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
   }
 
   /**
@@ -312,22 +392,24 @@ export class CapacitorGuideStore implements GuideStore {
   }
 
   /**
-   * Titles found with LIKE, which SQLite does over every row in the window --
-   * no index helps with words inside a title -- and then checked properly in
-   * code, since LIKE cannot fold accents (guideSearch.ts). Asked for more than
-   * the limit, for what the check turns away.
+   * Titles found through the trigram index (shared/xtream/guideTitles.ts), or
+   * with LIKE over every row in the window until it is filled, and then
+   * checked properly in code, since neither folds exactly as guideSearch.ts
+   * does. Asked for more than the limit, for what the check turns away.
    */
   async searchProgrammes(query: string, from: number, to: number, limit: number): Promise<GuideHit[]> {
-    const result = await this.db.query(
-      `SELECT p.source_id, p.channel_id, p.start, p.stop, p.title, p.description, p.category
-         FROM guide_programmes p
-         JOIN guide_loads l ON l.source_id = p.source_id
-        WHERE p.stop > ? AND p.start < ?
-          AND p.title LIKE ? ESCAPE '\\'
-        ORDER BY p.start
-        LIMIT ?`,
-      [from, to, likePattern(query), limit * 4]
-    );
+    const result = this.titlesIndexed
+      ? await this.db.query(PROGRAMMES_TITLED, [titlesHolding(query), from, to, limit * 4])
+      : await this.db.query(
+          `SELECT p.source_id, p.channel_id, p.start, p.stop, p.title, p.description, p.category
+             FROM guide_programmes p
+             JOIN guide_loads l ON l.source_id = p.source_id
+            WHERE p.stop > ? AND p.start < ?
+              AND p.title LIKE ? ESCAPE '\\'
+            ORDER BY p.start
+            LIMIT ?`,
+          [from, to, likePattern(query), limit * 4]
+        );
 
     const seen = new Set<string>();
     const found: GuideHit[] = [];
@@ -377,6 +459,7 @@ export class CapacitorGuideStore implements GuideStore {
 
   /** Throws the lot away, for a sign-out. */
   async forget(): Promise<void> {
+    this.channelsHeld = null;
     await this.db.execute(`
       DELETE FROM guide_loads;
       DELETE FROM guide_channels;

@@ -420,6 +420,11 @@ export class GuideSourcesService {
     return this.ensureLoaded().mappings[String(streamId)];
   }
 
+  /** Every channel chosen by hand, keyed by stream id, as `mappingFor` reads them. */
+  allMappings(): Readonly<Record<string, ChannelMapping>> {
+    return this.ensureLoaded().mappings;
+  }
+
   /**
    * The subscription's own guide, if there is one to offer.
    *

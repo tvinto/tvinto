@@ -24,6 +24,7 @@ import {
   GuideChannelIndex,
   MatchedChannel,
   chooseTwin,
+  guideCandidates,
   guideTwins,
   indexGuideChannels,
   normaliseChannelId,
@@ -1773,10 +1774,19 @@ export class XtreamService {
     if (!hits.length) {
       return [];
     }
+    // Only the streams that could be on the channels found: matchToGuide
+    // decides among them exactly as among all of them.
+    const guideChannels = await this.guide.allChannels();
+    const hitChannels = new Set(hits.map(hit => normaliseChannelId(hit.channel)));
+    const keys = guideCandidates(guideChannels.filter(channel => hitChannels.has(normaliseChannelId(channel.id))));
+    const mapped = Object.entries(this.guideSources.allMappings())
+      .filter(([, mapping]) => hitChannels.has(normaliseChannelId(mapping.channelId)))
+      .map(([streamId]) => untagged(streamId));
     const direct = await this.provider.direct();
     const streams: Stream[] = [];
     for (const slot of direct?.slots ?? []) {
-      for (const stream of await slot.catalogue.allStreams('live').catch(() => [] as Stream[])) {
+      const streamIds = mapped.filter(id => id.tag === slot.tag).map(id => id.id);
+      for (const stream of await slot.catalogue.liveStreamsNear({ ...keys, streamIds }).catch(() => [] as Stream[])) {
         const tagged = tagStream(slot.tag, stream);
         if (!this.lock.keepsOut('live', tagged.category_id)) {
           streams.push(tagged);
@@ -1786,7 +1796,7 @@ export class XtreamService {
     if (!streams.length) {
       return [];
     }
-    const { streamsByChannel } = this.matchToGuide(streams, await this.guide.allChannels());
+    const { streamsByChannel } = this.matchToGuide(streams, guideChannels);
     return linkGuideHits(hits, streamsByChannel, new Map(streams.map(stream => [String(stream.stream_id), stream])), now, limit);
   }
 

@@ -2,6 +2,7 @@ import { Category, Stream, StreamType } from '../types';
 import { Catalogue, CatalogueStore } from './catalogue';
 import { searchable } from './channelNames';
 import { XtreamClient } from './client';
+import { foldText } from './guideSearch';
 import { XtreamResponse, XtreamTransport } from './transport';
 import { readLibraryHere } from './libraryWorker';
 
@@ -68,7 +69,7 @@ class MemoryStore implements CatalogueStore {
         continue;
       }
       for (const stream of streams) {
-        const name = joined ? searchable(stream.name ?? '') : (stream.name ?? '').toLowerCase();
+        const name = joined ? searchable(foldText(stream.name ?? '')) : foldText(stream.name ?? '');
         if (words.every(word => name.includes(word))) {
           found.push(stream);
         }

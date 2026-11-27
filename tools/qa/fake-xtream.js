@@ -11,7 +11,7 @@
  * seasons and one of none), and answers every stream address with 404:
  * nothing can play.
  *
- *   node tools/qa/fake-xtream.js [--port 8767] [--play <local .ts file>] [--art <image address>] [--demo] [--slow <seconds>] [--pad <films>] [--library-kbps <n>]
+ *   node tools/qa/fake-xtream.js [--port 8767] [--play <local .ts file>] [--art <image address>] [--demo] [--slow <seconds>] [--pad <films>] [--pad-guide <programmes>] [--library-kbps <n>]
  *
  * --demo answers with demo-catalogue.js instead: a believable, invented
  * line-up with drawn posters and logos, for screenshots people will see.
@@ -499,8 +499,17 @@ function xmltv() {
       at = to;
     }
   }
+  // --pad-guide <programmes>: that many more, on a thousand channels nobody
+  // watches, over the next days: a guide as large as a user's, for timing.
+  for (let i = 0; i < PAD_GUIDE; i++) {
+    const at = new Date(start.getTime() + Math.floor(i / 1000) * 2700000);
+    const title = `${['Dnevnik', 'Vijesti', 'Šport', 'Film', 'Dokumentarac'][i % 5]} ${sentence(1 + (i % 4))} ${i % 997}`;
+    xml += `  <programme start="${time(at)}" stop="${time(new Date(at.getTime() + 2700000))}" channel="padded.${i % 1000}"><title>${esc(title)}</title><desc>${esc(sentence(20 + (i % 40)))}</desc></programme>\n`;
+  }
   return xml + '</tv>\n';
 }
+
+const PAD_GUIDE = process.argv.includes('--pad-guide') ? Number(process.argv[process.argv.indexOf('--pad-guide') + 1]) : 0;
 
 /** The demo's pictures are addressed as ART/...; they are served from wherever the app reached this. */
 let artBase = '';

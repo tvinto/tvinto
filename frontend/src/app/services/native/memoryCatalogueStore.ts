@@ -1,6 +1,7 @@
 import { Category, Stream, StreamType } from '@shared/types';
 import { CatalogueStore } from '@shared/xtream/catalogue';
 import { searchable } from '@shared/xtream/channelNames';
+import { foldText } from '@shared/xtream/guideSearch';
 
 /**
  * A catalogue that lasts as long as the window does.
@@ -88,7 +89,7 @@ export class MemoryCatalogueStore implements CatalogueStore {
         continue;
       }
       for (const stream of streams) {
-        const name = joined ? searchable(stream.name ?? '') : (stream.name ?? '').toLowerCase();
+        const name = joined ? searchable(foldText(stream.name ?? '')) : foldText(stream.name ?? '');
         if (words.every(word => name.includes(word))) {
           found.push(stream);
           if (found.length >= limit) {
