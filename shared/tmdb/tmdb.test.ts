@@ -95,6 +95,14 @@ describe('finding the film', () => {
     expect(pickMatch(both, ['Dune'], null)).toBeNull();
   });
 
+  it('takes the first of namesakes from the very year, and none without a year', () => {
+    const namesakes = [result(1, 'Superman', '2025'), result(2, 'Superman', '2025'), result(3, 'Superman', '2024')];
+
+    expect(pickMatch(namesakes, ['Superman'], 2025)?.id).toBe(1);
+    expect(pickMatch(namesakes, ['Superman'], null)).toBeNull();
+    expect(pickMatch([result(3, 'Superman', '2024'), result(4, 'Superman', '2026')], ['Superman'], 2025)).toBeNull();
+  });
+
   it('takes nothing rather than a name that is only close', () => {
     expect(pickMatch([result(1, 'X-Men: First Class', '2011')], ['X-Men'], 2011)).toBeNull();
   });

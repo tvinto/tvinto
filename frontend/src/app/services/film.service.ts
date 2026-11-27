@@ -292,17 +292,18 @@ export class FilmService {
 
   /**
    * What For You's billboard shows of a library film (NX-TV-1): its backdrop
-   * and words from TMDB, found by the name the catalogue shows -- For You
-   * asks the provider nothing, so not its details either. Lighter than
-   * `open` -- the copies are not looked for -- and kept for the session.
+   * and words from TMDB, by the id the card knows (`tmdbId`, a TMDB list's)
+   * or found by the name the catalogue shows -- For You asks the provider
+   * nothing, so not its details either. Lighter than `open` -- the copies are
+   * not looked for -- and kept for the session.
    */
-  feature(streamId: string, name: string): Promise<FilmFeature | null> {
+  feature(streamId: string, name: string, tmdbId: number | null = null): Promise<FilmFeature | null> {
     const held = this.features.get(streamId);
     if (held) {
       return held;
     }
     const found = (async () => {
-      const id = await this.descriptions.filmTmdbIdByName(name).catch(() => null);
+      const id = tmdbId || (await this.descriptions.filmTmdbIdByName(name).catch(() => null));
       const details = id ? await this.details(id).catch(() => null) : null;
       if (!details) {
         return null;

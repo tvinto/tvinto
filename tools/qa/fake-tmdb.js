@@ -17,8 +17,10 @@
 const http = require('http');
 
 
-const film = (id, title, year, genres) => ({ id, title, original_title: title, release_date: `${year}-06-01`, genre_ids: genres, poster_path: '', backdrop_path: '', overview: `${title}, as the stand-in tells it.`, vote_average: 7.4, vote_count: 3000 });
-const show = (id, name, year, genres) => ({ id, name, original_name: name, first_air_date: `${year}-02-18`, genre_ids: genres, poster_path: '', backdrop_path: '', overview: `${name}, as the stand-in tells it.`, vote_average: 8.1, vote_count: 900 });
+// Pictures at TMDB's image address, which a test answers itself like the API (`/fake-backdrop.jpg`, `/fake-poster.jpg`).
+const LONG = ' It runs on, as TMDB descriptions often do, for several sentences: who they are, what they lost, where it takes them, and the one thing that stands in the way, so a billboard has a whole paragraph to show rather than two lines.';
+const film = (id, title, year, genres) => ({ id, title, original_title: title, release_date: `${year}-06-01`, genre_ids: genres, poster_path: '/fake-poster.jpg', backdrop_path: '/fake-backdrop.jpg', overview: `${title}, as the stand-in tells it.${LONG}`, vote_average: 7.4, vote_count: 3000 });
+const show = (id, name, year, genres) => ({ id, name, original_name: name, first_air_date: `${year}-02-18`, genre_ids: genres, poster_path: '/fake-poster.jpg', backdrop_path: '/fake-backdrop.jpg', overview: `${name}, as the stand-in tells it.${LONG}`, vote_average: 8.1, vote_count: 900 });
 
 // In the fake library: the films added in copies, and the older ones.
 const odyssey = film(9001, 'The Odyssey', 2026, [12, 28]);
@@ -29,6 +31,10 @@ const harbour = film(9005, 'Quiet Harbour', 2025, [18]);
 const matrix = film(603, 'The Matrix', 1999, [28, 878]);
 const dune = film(438631, 'Dune', 2021, [878, 12]);
 const spare = film(9006, 'Spare Copy', 2020, [18]);
+// Namesakes, as TMDB has for most short titles: another The Odyssey, and a
+// Quiet Harbour of the same year, so a match by name alone is not unique
+// (For You's spotlight with no words, a film page with no backdrop; card 44).
+const namesakes = [film(9010, 'The Odyssey', 1954, [12]), { ...film(9011, 'Quiet Harbour', 2025, [99]), vote_count: 3, backdrop_path: '' }];
 // Not in the library: a row must leave these out.
 const missing = [film(9100, 'Nowhere To Be Found', 2026, [28]), film(9101, 'Absent Friends', 2025, [18])];
 
@@ -72,7 +78,9 @@ const genres = {
 };
 
 const page = results => ({ page: 1, results, total_pages: 1, total_results: results.length });
-const all = [...Object.values(lists.movie).flat(), ...Object.values(lists.tv).flat()];
+const all = [...Object.values(lists.movie).flat(), ...namesakes, ...Object.values(lists.tv).flat()];
+/** "More like this": what TMDB recommends, most of it in the library (FilmService.moreLikeThis wants three). */
+const recommended = { movie: [matrix, dune, fall, mommy, surrender, harbour, missing[0]], tv: [spareShow, twelve, ringSaga, severance] };
 
 /** Which list a request is, by TMDB's own addresses (shared/tmdb/client.ts, listRequest). */
 function listOf(kind, path, q) {
@@ -108,7 +116,7 @@ function answer(address) {
       const names = genres[kind];
       return send(200, {
         ...one, runtime: 120, number_of_seasons: 2, genres: one.genre_ids.map(id => ({ id, name: names.find(([g]) => g === id)?.[1] ?? '' })),
-        release_dates: { results: [] }, content_ratings: { results: [] }, recommendations: { results: [] }, videos: { results: [] }, episodes: [],
+        release_dates: { results: [] }, content_ratings: { results: [] }, recommendations: { results: recommended[kind].filter(other => other.id !== one.id) }, videos: { results: [] }, episodes: [],
         ...(kind === 'tv' ? showDetails[one.id]?.() : {})
       });
     }

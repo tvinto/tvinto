@@ -75,7 +75,10 @@ export const fold = (value: string): string =>
  * Only a clear match: the title (or original title) the same once case,
  * accents and punctuation are set aside, and the year within one when both
  * are known -- a remake shares its name with the original. Two that fit is no
- * match at all; a wrong description is worse than the provider's.
+ * match at all; a wrong description is worse than the provider's. Except
+ * that TMDB keeps a short or a stub of the same name and year beside many a
+ * big film ("Superman", 2025): with the year known, TMDB's first of that very
+ * year -- its most popular -- is the one meant (card 44).
  */
 export function pickMatch(results: readonly TmdbTitle[], names: readonly string[], year: number | null): TmdbTitle | null {
   const wanted = new Set(names.map(fold).filter(Boolean));
@@ -84,7 +87,10 @@ export function pickMatch(results: readonly TmdbTitle[], names: readonly string[
     const dated = !year || !result.year || Math.abs(Number(result.year) - year) <= 1;
     return named && dated;
   });
-  return fits.length === 1 ? fits[0] : null;
+  if (fits.length === 1) {
+    return fits[0];
+  }
+  return year ? (fits.find(result => Number(result.year) === year) ?? null) : null;
 }
 
 /** What is known about a film or show from the provider. */

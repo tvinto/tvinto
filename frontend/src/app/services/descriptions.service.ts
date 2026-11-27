@@ -10,6 +10,7 @@ import {
   tmdbLanguage,
   fold
 } from '@shared/tmdb/describe';
+import { plainTitle } from '@shared/tmdb/popular';
 import { episodeIdentity, filmIdentity } from '@shared/opensubtitles/identify';
 import { SettingsService } from './settings.service';
 import { ProviderAccessService } from './provider-access.service';
@@ -21,6 +22,17 @@ const CACHE_KEY = 'xtream_tmdb_cache';
 
 /** Kept this long -- well inside the six months TMDB's terms allow. */
 const KEEP_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * The name a title is looked up on TMDB by: the one the catalogue shows,
+ * without the language prefix, quality and copy words a provider adds --
+ * "EN - The Odyssey 4K (2026)" is The Odyssey, which TMDB knows, where "The
+ * Odyssey 4K" it does not (card 44).
+ */
+const searchTitle = (name: string): ReturnType<typeof posterTitle> => {
+  const shown = posterTitle(name);
+  return { ...shown, title: plainTitle(shown.title) || shown.title };
+};
 
 /** At most this many answers, the oldest going first, so storage stays small. */
 const MOST_KEPT = 400;
@@ -110,14 +122,14 @@ export class DescriptionsService {
     const plot = text(info['plot']) || text(info['description']);
     // A page opened by its address knows no name: the provider's details do.
     name = name || text(info['name']) || text(object(object(details)['movie_data'])['name']);
-    const identity = filmIdentity(details, posterTitle(name));
+    const identity = filmIdentity(details, searchTitle(name));
     const tmdb = await this.tmdb();
     if (!tmdb) {
       return { id: null, plot, name };
     }
     const known = { tmdbId: identity.tmdbId, imdbId: identity.imdbId, title: identity.title, originalTitle: identity.originalTitle, year: identity.year };
     try {
-      const id = await this.remembered(`id:movie:${known.tmdbId ?? ''}:${known.imdbId ?? ''}:${known.title}:${known.year ?? ''}`, () =>
+      const id = await this.remembered(`tmdb-id:movie:${known.tmdbId ?? ''}:${known.imdbId ?? ''}:${known.title}:${known.year ?? ''}`, () =>
         findTmdbId(tmdb, { kind: 'movie', ...known })
       );
       return { id, plot, name };
@@ -137,10 +149,10 @@ export class DescriptionsService {
     if (!tmdb) {
       return null;
     }
-    const identity = filmIdentity(null, posterTitle(name));
+    const identity = filmIdentity(null, searchTitle(name));
     const known = { tmdbId: null, imdbId: null, title: identity.title, originalTitle: identity.originalTitle, year: identity.year };
     try {
-      return await this.remembered(`id:movie:::${known.title}:${known.year ?? ''}`, () => findTmdbId(tmdb, { kind: 'movie', ...known }));
+      return await this.remembered(`tmdb-id:movie:::${known.title}:${known.year ?? ''}`, () => findTmdbId(tmdb, { kind: 'movie', ...known }));
     } catch {
       return null;
     }
@@ -155,10 +167,10 @@ export class DescriptionsService {
     if (!tmdb) {
       return null;
     }
-    const identity = filmIdentity(null, posterTitle(name));
+    const identity = filmIdentity(null, searchTitle(name));
     const known = { tmdbId: null, imdbId: null, title: identity.title, originalTitle: identity.originalTitle, year: identity.year };
     try {
-      const id = await this.remembered(`id:tv:::${known.title}:${known.year ?? ''}`, () => findTmdbId(tmdb, { kind: 'tv', ...known }));
+      const id = await this.remembered(`tmdb-id:tv:::${known.title}:${known.year ?? ''}`, () => findTmdbId(tmdb, { kind: 'tv', ...known }));
       if (id) {
         return id;
       }
@@ -179,7 +191,7 @@ export class DescriptionsService {
     const details = await this.vodDetails(streamId);
     const info = object(object(details)['info']);
     const ownWords = text(info['plot']) || text(info['description']);
-    const display = posterTitle(name);
+    const display = searchTitle(name);
     const identity = filmIdentity(details, display);
 
     return this.describe('movie', ownWords, {
@@ -194,7 +206,7 @@ export class DescriptionsService {
   /** A show's description, from the `get_series_info` its page already holds. */
   /** A show's TMDB id, as its description finds it (round 6, TV-29); null without a key or a match. */
   async showTmdbId(seriesInfo: unknown, name: string): Promise<number | null> {
-    const identity = episodeIdentity(seriesInfo, { season: 1, episode: 1 }, posterTitle(name));
+    const identity = episodeIdentity(seriesInfo, { season: 1, episode: 1 }, searchTitle(name));
     const tmdb = await this.tmdb();
     if (!tmdb) {
       return null;
@@ -207,7 +219,7 @@ export class DescriptionsService {
       year: identity.year
     };
     try {
-      return await this.remembered(`id:tv:${known.tmdbId ?? ''}:${known.imdbId ?? ''}:${known.title}:${known.year ?? ''}`, () =>
+      return await this.remembered(`tmdb-id:tv:${known.tmdbId ?? ''}:${known.imdbId ?? ''}:${known.title}:${known.year ?? ''}`, () =>
         findTmdbId(tmdb, { kind: 'tv', ...known })
       );
     } catch {
@@ -218,7 +230,7 @@ export class DescriptionsService {
   async show(seriesInfo: unknown, name: string): Promise<ChosenDescription | null> {
     const info = object(seriesInfo)['info'] ? object(object(seriesInfo)['info']) : object(seriesInfo);
     const ownWords = text(info['plot']) || text(info['description']);
-    const identity = episodeIdentity(seriesInfo, { season: 1, episode: 1 }, posterTitle(name));
+    const identity = episodeIdentity(seriesInfo, { season: 1, episode: 1 }, searchTitle(name));
     return this.describe('tv', ownWords, {
       tmdbId: identity.parentTmdbId,
       imdbId: identity.parentImdbId,
@@ -249,10 +261,10 @@ export class DescriptionsService {
       return shown;
     }
 
-    const identity = episodeIdentity(seriesInfo, { season, episode: 1 }, posterTitle(name));
+    const identity = episodeIdentity(seriesInfo, { season, episode: 1 }, searchTitle(name));
     const tmdb = await this.tmdb();
     const showId = tmdb
-      ? await this.remembered(`id:tv:${identity.parentTmdbId ?? ''}:${identity.parentImdbId ?? ''}:${identity.title}`, () =>
+      ? await this.remembered(`tmdb-id:tv:${identity.parentTmdbId ?? ''}:${identity.parentImdbId ?? ''}:${identity.title}`, () =>
           findTmdbId(tmdb, {
             kind: 'tv',
             tmdbId: identity.parentTmdbId,
@@ -307,7 +319,7 @@ export class DescriptionsService {
     }
 
     try {
-      const id = await this.remembered(`id:${kind}:${known.tmdbId ?? ''}:${known.imdbId ?? ''}:${known.title}:${known.year ?? ''}`, () =>
+      const id = await this.remembered(`tmdb-id:${kind}:${known.tmdbId ?? ''}:${known.imdbId ?? ''}:${known.title}:${known.year ?? ''}`, () =>
         findTmdbId(tmdb, { kind, ...known })
       );
       if (!id) {
@@ -333,7 +345,11 @@ export class DescriptionsService {
     return this.keys.client();
   }
 
-  /** An answer kept on the device for a month, or asked for. */
+  /**
+   * An answer kept on the device for a month, or asked for. TMDB ids are kept
+   * as `tmdb-id:` since card 44, so a "no match" kept before namesakes of the
+   * same year could match is asked again rather than for the rest of a month.
+   */
   private async remembered<T>(key: string, ask: () => Promise<T>): Promise<T> {
     const cache = this.readCache();
     const held = cache[key];

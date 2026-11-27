@@ -89,6 +89,14 @@ describe('DescriptionsService', () => {
     expect(await service.film(1, 'The Matrix (1999)')).toEqual({ text: 'A hacker learns the truth.', source: 'tmdb' });
   });
 
+  it('looks a film up by its name without the quality and copy words a provider adds', async () => {
+    const service = setup({
+      tmdb: { '/search/movie?en-US': { results: [{ id: 9001, title: 'The Odyssey', original_title: 'The Odyssey', release_date: '2026-06-01' }] } }
+    });
+
+    expect(await service.filmTmdbIdByName('EN - The Odyssey 4K (2026)')).toBe(9001);
+  });
+
   it('remembers what TMDB said, so the same film twice is one request', async () => {
     settings['descriptionLanguage'] = 'en';
     const service = setup({ tmdb: { '/movie/603?en-US': { id: 603, title: 'The Matrix', overview: 'A hacker.' } } });

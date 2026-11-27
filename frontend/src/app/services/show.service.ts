@@ -177,22 +177,21 @@ export class ShowService {
   private readonly features = new Map<string, Promise<FilmFeature | null>>();
 
   /**
-   * What the spotlight and the billboard show of a show (round 13): its page's
-   * when it has been opened, else TMDB's, found by the name the catalogue
-   * shows -- the provider is asked nothing. Kept for the session.
+   * What the spotlight and the billboard show of a show (round 13): TMDB's,
+   * by the id the card knows (`tmdbId`, a TMDB list's), its page's when it has
+   * been opened, else the one found by the name the catalogue shows -- the
+   * provider is asked nothing. Kept for the session. Always TMDB's own answer,
+   * not the page's: the page holds no description (card 44).
    */
-  feature(seriesId: string, name: string): Promise<FilmFeature | null> {
+  feature(seriesId: string, name: string, tmdbId: number | null = null): Promise<FilmFeature | null> {
     const held = this.features.get(seriesId);
     if (held) {
       return held;
     }
     const found = (async (): Promise<FilmFeature | null> => {
       const page = await (this.cached(seriesId) ?? Promise.resolve(null)).catch(() => null);
-      if (page) {
-        return { backdrop: page.backdrop, overview: '', year: page.year, runtime: 0, genres: page.genres, rating: page.rating, vote: page.vote, seasons: page.seasons };
-      }
       const client = await this.tmdb.client();
-      const id = client ? await this.descriptions.showTmdbIdByName(name).catch(() => null) : null;
+      const id = tmdbId || page?.tmdbId || (client ? await this.descriptions.showTmdbIdByName(name).catch(() => null) : null);
       const show = client && id ? await client.show(id, this.language()).catch(() => null) : null;
       if (!show) {
         return null;

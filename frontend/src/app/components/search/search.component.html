@@ -286,7 +286,7 @@
                 @let allCount = section.found.length + (section.capped ? '+' : '');
                 <a
                   [routerLink]="section.path"
-                  [queryParams]="{ q: query() }"
+                  [queryParams]="{ q: query(), from: 'search' }"
                   data-search-card
                   data-search-show-all
                   (click)="showAll()"
@@ -328,7 +328,7 @@
                 hlmBtn
                
                 [routerLink]="section.path"
-                [queryParams]="{ q: query() }"
+                [queryParams]="{ q: query(), from: 'search' }"
                 data-search-show-all-phone
                 (click)="showAll()"
                 class="w-full"
