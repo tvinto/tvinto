@@ -26,9 +26,9 @@ describe('stream_words', () => {
       provider TEXT NOT NULL, type TEXT NOT NULL, category_id TEXT NOT NULL, stream_id TEXT NOT NULL,
       name TEXT NOT NULL, stream_icon TEXT, epg_channel_id TEXT, added TEXT, num INTEGER,
       container_extension TEXT, tv_archive INTEGER, tv_archive_duration INTEGER, extra TEXT,
-      PRIMARY KEY (provider, type, stream_id))`);
+      guide_id TEXT, guide_name TEXT, PRIMARY KEY (provider, type, stream_id))`);
     const write = (id: string, name: string, type = 'vod') =>
-      db.prepare(UPSERT_STREAM).run('me', type, '1', id, name, null, null, null, null, null, null, null, null);
+      db.prepare(UPSERT_STREAM).run('me', type, '1', id, name, null, null, null, null, null, null, null, null, null, null);
     const read = (query: string) =>
       db
         .prepare(`SELECT streams.stream_id ${STREAMS_NAMED} AND streams.provider = ? ORDER BY streams.name`)
@@ -151,10 +151,10 @@ describe('search through stream_words', () => {
     db.function('fold', { deterministic: true }, (value: unknown) => foldText(String(value)));
     db.exec(`CREATE TABLE streams (provider TEXT, type TEXT, category_id TEXT, stream_id TEXT, name TEXT, stream_icon TEXT,
       epg_channel_id TEXT, added TEXT, num INTEGER, container_extension TEXT, tv_archive INTEGER, tv_archive_duration INTEGER,
-      extra TEXT, PRIMARY KEY (provider, type, stream_id))`);
+      extra TEXT, guide_id TEXT, guide_name TEXT, PRIMARY KEY (provider, type, stream_id))`);
     db.exec(STREAM_NAMES_SETUP);
     NAMES.forEach((name, index) =>
-      db.prepare(UPSERT_STREAM).run('me', 'vod', '1', String(index), name, null, null, null, null, null, null, null, null)
+      db.prepare(UPSERT_STREAM).run('me', 'vod', '1', String(index), name, null, null, null, null, null, null, null, null, null, null)
     );
     const liked = (words: string[], joined: boolean) =>
       words.map(() => `${joined ? searchableSql('fold(name)') : 'fold(name)'} LIKE ?`).join(' AND ');

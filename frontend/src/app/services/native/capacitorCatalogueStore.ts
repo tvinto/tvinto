@@ -2,7 +2,7 @@ import { SQLiteDBConnection } from '@capacitor-community/sqlite';
 import { Category, Stream, StreamType } from '@shared/types';
 import { CatalogueStore, GuideCandidateKeys } from '@shared/xtream/catalogue';
 import { searchableSql } from '@shared/xtream/channelNames';
-import { looseIdSql } from '@shared/xtream/guideMatching';
+import { streamGuideKeys } from '@shared/xtream/guideMatching';
 import {
   namesWithAny,
   namesWithEvery,
@@ -100,8 +100,19 @@ export class CapacitorCatalogueStore implements CatalogueStore {
     await ensureColumns(this.db, [
       ['streams', 'tv_archive', 'INTEGER'],
       ['streams', 'tv_archive_duration', 'INTEGER'],
-      ['streams', 'extra', 'TEXT']
+      ['streams', 'extra', 'TEXT'],
+      ['streams', 'guide_id', 'TEXT'],
+      ['streams', 'guide_name', 'TEXT']
     ]);
+    await this.db.execute(GUIDE_KEYS_SETUP);
+    if ((await this.db.query('SELECT done FROM streams_guide_filled WHERE id = 1')).values?.[0]?.['done']) {
+      this.guideKeysFilled = true;
+    } else if (!(await this.db.query('SELECT 1 FROM streams LIMIT 1')).values?.length) {
+      // Nothing held: every stream from now on is written with its keys.
+      await this.markGuideKeysFilled();
+    } else {
+      void this.fillGuideKeys().catch(() => undefined);
+    }
 
     try {
       await this.db.execute(STREAM_NAMES_SETUP);
@@ -228,7 +239,8 @@ export class CapacitorCatalogueStore implements CatalogueStore {
         (item['container_extension'] as string) ?? null,
         (item['tv_archive'] as number) ?? null,
         (item['tv_archive_duration'] as number) ?? null,
-        extraFor(item)
+        extraFor(item),
+        ...(type === 'live' ? streamGuideKeys(item['epg_channel_id'] as string, item['name'] as string) : [null, null])
       ];
     });
 
@@ -332,31 +344,69 @@ export class CapacitorCatalogueStore implements CatalogueStore {
     })) as unknown as Stream[];
   }
 
-  /** One scan of the live rows in SQLite, carrying only those that could match across the plugin. */
+  /** Looked up by the keys every live stream is written with; every live stream until those are filled. */
   async liveStreamsNear(keys: GuideCandidateKeys): Promise<Stream[]> {
-    const tests: string[] = [];
-    const values: unknown[] = [];
-    if (keys.looseIds.length) {
-      const list = `(${keys.looseIds.map(() => '?').join(', ')})`;
-      tests.push(`${LOOSE_ID.kept} IN ${list}`, `${LOOSE_ID.all} IN ${list}`);
-      values.push(...keys.looseIds, ...keys.looseIds);
+    if (!this.guideKeysFilled) {
+      return this.allStreams('live');
     }
-    for (const words of keys.names) {
-      tests.push(`(${words.map(() => 'LOWER(name) LIKE ?').join(' AND ')})`);
-      values.push(...words.map(word => `%${word}%`));
-    }
-    if (keys.streamIds.length) {
-      tests.push(`stream_id IN (${keys.streamIds.map(() => '?').join(', ')})`);
-      values.push(...keys.streamIds);
-    }
+    const list = (values: readonly string[]) => `(${values.map(() => '?').join(', ')})`;
+    const tests = [
+      keys.looseIds.length ? `guide_id IN ${list(keys.looseIds)}` : '',
+      keys.nameKeys.length ? `guide_name IN ${list(keys.nameKeys)}` : '',
+      keys.streamIds.length ? `stream_id IN ${list(keys.streamIds)}` : ''
+    ].filter(Boolean);
     if (!tests.length) {
       return [];
     }
     const result = await this.db.query(
       `SELECT ${FOUND_COLUMNS} FROM streams WHERE provider = ? AND type = 'live' AND (${tests.join(' OR ')})`,
-      [this.providerUsername, ...values]
+      [this.providerUsername, ...keys.looseIds, ...keys.nameKeys, ...keys.streamIds]
     );
     return (result.values ?? []).map(foundStream);
+  }
+
+  /** Whether every live stream held has its guide keys (`streamGuideKeys`). */
+  private guideKeysFilled = false;
+
+  /**
+   * Gives the live streams held before the keys existed theirs, a piece per
+   * call and only while nobody uses the app, worked out here: SQL took 14 s
+   * for 55,000 channels on a TV. Then the indexes, once, while still idle.
+   */
+  private async fillGuideKeys(): Promise<void> {
+    for (let after = 0; ; ) {
+      await untilIdleWork();
+      const rows =
+        (
+          await this.db.query(
+            `SELECT rowid AS at, epg_channel_id, name FROM streams
+              WHERE type = 'live' AND guide_name IS NULL AND rowid > ? ORDER BY rowid LIMIT ${GUIDE_KEYS_PIECE}`,
+            [after]
+          )
+        ).values ?? [];
+      if (rows.length) {
+        const keyed = rows.map(row => [Number(row['at']), ...streamGuideKeys(row['epg_channel_id'] as string, row['name'] as string)] as const);
+        const cases = keyed.map(() => 'WHEN ? THEN ?').join(' ');
+        // `run`, not executeSet, which runs a DELETE with values as nothing (CLAUDE.local.md).
+        await this.db.run(
+          `UPDATE streams SET guide_id = CASE rowid ${cases} END, guide_name = CASE rowid ${cases} END
+            WHERE rowid IN (${keyed.map(() => '?').join(', ')})`,
+          [...keyed.flatMap(([at, id]) => [at, id]), ...keyed.flatMap(([at, , name]) => [at, name]), ...keyed.map(([at]) => at)]
+        );
+      }
+      if (rows.length < GUIDE_KEYS_PIECE) {
+        break;
+      }
+      after = Number(rows[rows.length - 1]['at']);
+    }
+    await untilIdleWork();
+    await this.markGuideKeysFilled();
+  }
+
+  private async markGuideKeysFilled(): Promise<void> {
+    await this.db.execute(GUIDE_KEYS_INDEXES);
+    await this.db.run('INSERT OR REPLACE INTO streams_guide_filled (id, done) VALUES (1, 1)', []);
+    this.guideKeysFilled = true;
   }
 
   async findStreams(type: StreamType, words: string[], limit: number, joined = false): Promise<Stream[]> {
@@ -456,8 +506,15 @@ export class CapacitorCatalogueStore implements CatalogueStore {
 const FOUND_COLUMNS =
   'stream_id, name, stream_icon, epg_channel_id, added, num, container_extension, category_id, tv_archive, tv_archive_duration, extra';
 
-/** A stream's guide id, loosened as `looseChannelId` does: a pattern a character apart per channel took 26-32 s on a TV. */
-const LOOSE_ID = looseIdSql('epg_channel_id');
+/** Live streams given their guide keys per call of `fillGuideKeys`. */
+const GUIDE_KEYS_PIECE = 500;
+
+/** Where `fillGuideKeys` keeps that it has finished. */
+const GUIDE_KEYS_SETUP = 'CREATE TABLE IF NOT EXISTS streams_guide_filled (id INTEGER PRIMARY KEY CHECK (id = 1), done INTEGER NOT NULL)';
+
+/** What `liveStreamsNear` looks streams up by: live rows only, so films and shows cost them nothing. */
+const GUIDE_KEYS_INDEXES = `CREATE INDEX IF NOT EXISTS idx_streams_guide_id ON streams(provider, guide_id) WHERE type = 'live';
+CREATE INDEX IF NOT EXISTS idx_streams_guide_name ON streams(provider, guide_name) WHERE type = 'live';`;
 
 /** What `allStreams` reads of each row. */
 const ALL_COLUMNS = FOUND_COLUMNS.split(', ');

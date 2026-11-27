@@ -77,7 +77,10 @@ export const STREAM_COLUMNS = [
   'container_extension',
   'tv_archive',
   'tv_archive_duration',
-  'extra'
+  'extra',
+  // streamGuideKeys (guideMatching.ts), live streams only.
+  'guide_id',
+  'guide_name'
 ] as const;
 
 export const UPSERT_STREAM = `INSERT INTO streams (${STREAM_COLUMNS.join(', ')})

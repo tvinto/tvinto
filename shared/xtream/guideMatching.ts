@@ -433,20 +433,29 @@ export const countMatched = (
 };
 
 /**
- * What a stream must have to resolve to one of these guide channels, as SQL
- * can test it, so a guide search reads those streams and not the whole live
- * library: every channel's on a user's TV took 8-19 s to read, the plugin
- * carrying about 5 us a byte (27 November). A superset, since
- * `resolveGuideChannel` decides afterwards:
+ * What a guide search looks a stream up by (`CatalogueStore.liveStreamsNear`),
+ * worked out once, when the stream is written: its guide id loosened, and its
+ * name reduced to its identifying words. Reading every live stream to match
+ * took 8-19 s on a user's TV (the plugin carrying about 5 us a byte), and
+ * working these out in SQL for every row 14 s (27 November).
  *
- * - by id, an exact or loose match means the stream's loose id is the
- *   channel's (`looseIds`; `looseIdSql` reads a stream's);
- * - by name, every one of the channel's name words is in the stream's
- *   lower-cased name (`names`, for a LIKE each).
+ * Every stream `resolveGuideChannel` ties to a channel has one of the
+ * channel's (`guideCandidates`): an exact or a loose id match leaves the two
+ * loose ids equal, and a name match the two keys. So a lookup by them reads
+ * more streams than match, never fewer, and the matching decides.
+ *
+ * shortcut: an id with no letter or digit loosens to nothing and is matched
+ * by name only; no guide has been seen to write one.
  */
-export const guideCandidates = (channels: readonly KnownChannel[]): { looseIds: string[]; names: string[][] } => {
+export const streamGuideKeys = (epgChannelId: string | undefined | null, name: string | undefined | null): [string, string] => [
+  looseChannelId(epgChannelId),
+  nameWords(name ?? '').join(' ')
+];
+
+/** The keys `streamGuideKeys` gives a stream that one of these channels would have. */
+export const guideCandidates = (channels: readonly KnownChannel[]): { looseIds: string[]; nameKeys: string[] } => {
   const looseIds = new Set<string>();
-  const names = new Map<string, string[]>();
+  const nameKeys = new Set<string>();
   for (const channel of channels) {
     const loose = looseChannelId(channel.id);
     if (loose) {
@@ -454,29 +463,8 @@ export const guideCandidates = (channels: readonly KnownChannel[]): { looseIds: 
     }
     const words = nameWords(channel.name ?? '');
     if (words.some(word => /[a-z]/.test(word))) {
-      names.set(words.join(' '), words);
+      nameKeys.add(words.join(' '));
     }
   }
-  return { looseIds: [...looseIds], names: [...names.values()] };
-};
-
-/** What `looseChannelId` splits ids on, as far as SQL is told. */
-const ID_SEPARATORS = ['.', ' ', '-', '_', ':', '|', '/', '+', '(', ')', '&', "'", ',', '!', '[', ']', '#', '*', '@'];
-
-/**
- * `looseChannelId` of a column, in SQL: both its forms, with the quality
- * words and without, as `looseChannelId` keeps them only when one word
- * would be left. A row's id is matched when either is in a list.
- *
- * shortcut: an id holding a separator not in ID_SEPARATORS (a letter
- * outside ASCII, say) reads as one word here; no guide id seen has one.
- */
-export const looseIdSql = (column: string): { all: string; kept: string } => {
-  const dotted = `'.' || ${ID_SEPARATORS.reduce(
-    (sql, separator) => `REPLACE(${sql}, '${separator === "'" ? "''" : separator}', '.')`,
-    `LOWER(TRIM(${column}))`
-  )} || '.'`;
-  // Twice, for two quality words side by side: REPLACE does not see the second.
-  const unqualified = [...QUALITY_WORDS, ...QUALITY_WORDS].reduce((sql, word) => `REPLACE(${sql}, '.${word}.', '.')`, dotted);
-  return { all: `REPLACE(${dotted}, '.', '')`, kept: `REPLACE(${unqualified}, '.', '')` };
+  return { looseIds: [...looseIds], nameKeys: [...nameKeys] };
 };

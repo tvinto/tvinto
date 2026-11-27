@@ -50,7 +50,7 @@ describe('CapacitorCatalogueStore searches', () => {
     };
     const store = new CapacitorCatalogueStore(db as never, 'provider');
     await store.initialise();
-    return { store, query };
+    return { store, query, db };
   };
 
   const film = (id: number, name: string) => ({ stream_id: String(id), name }) as unknown as Stream;
@@ -85,6 +85,31 @@ describe('CapacitorCatalogueStore searches', () => {
 
     expect(tied.map(stream => String(stream.stream_id))).toEqual(['1', '2', '3', '4', '5']);
     expect(near.map(stream => stream.stream_id).sort()).toEqual(['1', '2', '3', '4', '5', '8']);
+  });
+
+  it('gives the live streams held before the guide keys theirs while nobody uses the app, then looks them up', async () => {
+    const { store, query, db } = await open();
+    await store.writeStreams('live', '1', [{ stream_id: 1, name: 'HR| HRT 1', epg_channel_id: 'HRT1.hr' } as unknown as Stream]);
+    await query('UPDATE streams SET guide_id = NULL, guide_name = NULL');
+    await query('DELETE FROM streams_guide_filled');
+    const again = new CapacitorCatalogueStore(db as never, 'provider');
+    let idle!: () => void;
+    idleWork.until = () => new Promise(resolve => (idle = resolve));
+    await again.initialise();
+    const keys = { looseIds: ['hrt1hr'], nameKeys: [], streamIds: [] };
+
+    expect(await again.liveStreamsNear(keys)).toHaveLength(1);
+    expect((await query('SELECT guide_id FROM streams')).values).toEqual([{ guide_id: null }]);
+
+    for (let i = 0; i < 3; i++) {
+      idleWork.until = async () => undefined;
+      idle?.();
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+    expect((await query('SELECT guide_id, guide_name FROM streams')).values).toEqual([{ guide_id: 'hrt1hr', guide_name: 'hrt 1' }]);
+    expect((await again.liveStreamsNear(keys)).map(stream => stream.stream_id)).toEqual(['1']);
+    expect(await again.liveStreamsNear({ looseIds: ['ard'], nameKeys: [], streamIds: [] })).toEqual([]);
+    delete idleWork.until;
   });
 
   it('reads a whole library as one cell of JSON, each stream as a row read would have it', async () => {
@@ -126,9 +151,11 @@ describe('CapacitorCatalogueStore name index', () => {
         query: async (sql: string) => ({
           values: sql.includes('stream_words_filled')
             ? []
+            : sql.includes('streams_guide_filled')
+              ? [{ done: 1 }]
             : sql.includes('MAX(rowid)')
               ? [{ last: 2500 }]
-              : ['tv_archive', 'tv_archive_duration', 'extra'].map(name => ({ name }))
+              : ['tv_archive', 'tv_archive_duration', 'extra', 'guide_id', 'guide_name'].map(name => ({ name }))
         }),
         run: async (_sql: string, values: unknown[]) => (ran.push(values), { changes: { changes: 0 } })
       } as never,
