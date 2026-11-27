@@ -349,19 +349,25 @@ export class CapacitorCatalogueStore implements CatalogueStore {
     if (!this.guideKeysFilled) {
       return this.allStreams('live');
     }
-    const list = (values: readonly string[]) => `(${values.map(() => '?').join(', ')})`;
-    const tests = [
-      keys.looseIds.length ? `guide_id IN ${list(keys.looseIds)}` : '',
-      keys.nameKeys.length ? `guide_name IN ${list(keys.nameKeys)}` : '',
-      keys.streamIds.length ? `stream_id IN ${list(keys.streamIds)}` : ''
-    ].filter(Boolean);
-    if (!tests.length) {
+    // A read per key, each through its own index: as one OR, SQLite took the
+    // category index and walked every live stream, 0.6-1 s on a TV.
+    const reads: string[] = [];
+    const values: unknown[] = [];
+    const read = (index: string, column: string, keyed: readonly string[]) => {
+      if (keyed.length) {
+        reads.push(
+          `SELECT ${FOUND_COLUMNS} FROM streams ${index} WHERE provider = ? AND type = 'live' AND ${column} IN (${keyed.map(() => '?').join(', ')})`
+        );
+        values.push(this.providerUsername, ...keyed);
+      }
+    };
+    read('INDEXED BY idx_streams_guide_id', 'guide_id', keys.looseIds);
+    read('INDEXED BY idx_streams_guide_name', 'guide_name', keys.nameKeys);
+    read('', 'stream_id', keys.streamIds);
+    if (!reads.length) {
       return [];
     }
-    const result = await this.db.query(
-      `SELECT ${FOUND_COLUMNS} FROM streams WHERE provider = ? AND type = 'live' AND (${tests.join(' OR ')})`,
-      [this.providerUsername, ...keys.looseIds, ...keys.nameKeys, ...keys.streamIds]
-    );
+    const result = await this.db.query(reads.join(' UNION '), values);
     return (result.values ?? []).map(foundStream);
   }
 
@@ -507,7 +513,7 @@ const FOUND_COLUMNS =
   'stream_id, name, stream_icon, epg_channel_id, added, num, container_extension, category_id, tv_archive, tv_archive_duration, extra';
 
 /** Live streams given their guide keys per call of `fillGuideKeys`. */
-const GUIDE_KEYS_PIECE = 500;
+const GUIDE_KEYS_PIECE = 250;
 
 /** Where `fillGuideKeys` keeps that it has finished. */
 const GUIDE_KEYS_SETUP = 'CREATE TABLE IF NOT EXISTS streams_guide_filled (id INTEGER PRIMARY KEY CHECK (id = 1), done INTEGER NOT NULL)';

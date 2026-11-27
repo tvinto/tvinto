@@ -56,7 +56,7 @@ describe('CapacitorCatalogueStore searches', () => {
   const film = (id: number, name: string) => ({ stream_id: String(id), name }) as unknown as Stream;
 
   it('reads every live stream the guide matching would tie to some channels, and few others', async () => {
-    const { store } = await open();
+    const { store, query } = await open();
     const live = [
       [1, 'HR| HRT 1 HD', 'HRT1.hr'],
       [2, 'HR| HRT 1 FHD', 'htv1.hd.hr'],
@@ -85,6 +85,15 @@ describe('CapacitorCatalogueStore searches', () => {
 
     expect(tied.map(stream => String(stream.stream_id))).toEqual(['1', '2', '3', '4', '5']);
     expect(near.map(stream => stream.stream_id).sort()).toEqual(['1', '2', '3', '4', '5', '8']);
+
+    const sent: [string, unknown[]][] = [];
+    (store as unknown as { db: { query: typeof query } }).db.query = async (sql, params = []) => (sent.push([sql, params]), query(sql, params));
+    await store.liveStreamsNear({ looseIds: ['hrt1hr'], nameKeys: ['hrt 1'], streamIds: ['8'] });
+    const plan = (await query('EXPLAIN QUERY PLAN ' + sent[0][0], sent[0][1])).values.map(step => String(step['detail'])).join(' | ');
+    // Not every live stream walked through the category index.
+    expect(plan).toContain('idx_streams_guide_id');
+    expect(plan).toContain('idx_streams_guide_name');
+    expect(plan).not.toContain('idx_streams_category');
   });
 
   it('gives the live streams held before the guide keys theirs while nobody uses the app, then looks them up', async () => {
