@@ -23,7 +23,7 @@ import {
 import { untilIdleWork } from '../../utils/library-refresh.utils';
 
 /** Guide channels per read (`allChannels`). */
-const CHANNELS_PER_READ = 1000;
+const CHANNELS_PER_READ = 500;
 
 /** Programmes per write (`writeProgrammes`). */
 const WRITE_PIECE_PROGRAMMES = 100;

@@ -167,14 +167,14 @@ describe('CapacitorGuideStore.allChannels', () => {
     const store = new CapacitorGuideStore(db as never);
     await store.initialise();
     await store.beginLoad('a');
-    await store.writeChannels('a', Array.from({ length: 2500 }, (_, i) => ({ id: `c${i}`, name: `Channel ${String(2500 - i).padStart(4, '0')}` })));
+    await store.writeChannels('a', Array.from({ length: 1200 }, (_, i) => ({ id: `c${i}`, name: `Channel ${String(1200 - i).padStart(4, '0')}` })));
     await store.finishLoad('a', 'now');
 
     const paged = (sql: string) => sql.includes('FROM guide_channels c');
     reads.length = 0;
     const channels = await store.allChannels();
-    expect(channels).toHaveLength(2500);
-    expect(channels[0]).toEqual({ id: 'c2499', name: 'Channel 0001', sourceId: 'a' });
+    expect(channels).toHaveLength(1200);
+    expect(channels[0]).toEqual({ id: 'c1199', name: 'Channel 0001', sourceId: 'a' });
     expect(reads.filter(paged)).toHaveLength(3);
 
     await store.allChannels();
